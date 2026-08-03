@@ -19,6 +19,9 @@ var round_reward_plan: Dictionary = {}
 var reward_heroes: Array = []
 
 func apply_server_view(view: Dictionary) -> void:
+	apply_public_view(view)
+
+func apply_public_view(view: Dictionary) -> void:
 	run_id = String(view.get("id", ""))
 	state = String(view.get("state", ""))
 	round = int(view.get("round", 0))

@@ -6,6 +6,7 @@ const ReplaySchedulerScript = preload("res://scripts/replay_scheduler.gd")
 const CombatEventScript = preload("res://scripts/combat_event.gd")
 const RunStateScript = preload("res://scripts/run_state.gd")
 const RunApiClientScript = preload("res://scripts/run_api_client.gd")
+const LocalRunStoreScript = preload("res://scripts/local_run_store.gd")
 const BOARD_COLUMNS := 3
 const BOARD_ROWS := 8
 const CELL_WIDTH := 340.0
@@ -31,6 +32,7 @@ var resume_run_button: Button
 var refresh_shop_button: Button
 var start_round_button: Button
 var run_state = RunStateScript.new()
+var local_run_store = LocalRunStoreScript.new()
 var run_api_client
 var _unknown_event_types: Dictionary = {}
 var _scheduler
@@ -45,6 +47,7 @@ signal command_requested(payload: Dictionary)
 func _ready() -> void:
 	_create_controls()
 	attach_run_api(RunApiClientScript.new())
+	_resume_local_run()
 	load_replay(_replay_path)
 	queue_redraw()
 
@@ -110,7 +113,11 @@ func apply_event(event) -> void:
 				print("Ignoring presentation-unsupported event: %s" % event.type)
 
 func apply_run_view(view: Dictionary) -> void:
-	run_state.apply_server_view(view)
+	run_state.apply_public_view(view)
+	if run_state.state == "COMPLETE":
+		local_run_store.clear_run()
+	else:
+		local_run_store.save_run(view)
 	if run_state.state != "REWARD":
 		_reward_selections.clear()
 		_acknowledged_reveals.clear()
@@ -127,6 +134,7 @@ func request_start_round() -> void:
 	command_requested.emit(build_command_payload("client-start-%s" % run_state.revision, "START_ROUND"))
 
 func request_new_run(requested_run_id: String = "") -> void:
+	local_run_store.clear_run()
 	if run_api_client == null:
 		_set_status("Run API is not connected")
 		return
@@ -142,6 +150,17 @@ func request_resume_run(requested_run_id: String = "") -> void:
 		_set_status("Enter a run ID to resume")
 		return
 	run_api_client.resume_run(run_id)
+
+func _resume_local_run() -> void:
+	var cached_view := local_run_store.load_run()
+	if cached_view.is_empty():
+		return
+	var cached_run_id := String(cached_view.get("id", ""))
+	_set_status("Resuming cached run %s" % cached_run_id)
+	if resume_run_input != null:
+		resume_run_input.text = cached_run_id
+	if run_api_client != null:
+		run_api_client.resume_run(cached_run_id)
 
 func request_buy_shop_slot(shop_slot_index: int) -> void:
 	if run_state.state != "PREPARE" or shop_slot_index < 0 or shop_slot_index >= run_state.shop.size():

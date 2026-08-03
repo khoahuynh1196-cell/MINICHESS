@@ -27,6 +27,8 @@ func _init() -> void:
 	_expect(state.can_start_round(), "a PREPARE run with a board hero must allow START_ROUND")
 	_expect(state.command_payload("cmd-start", "START_ROUND") == { "command_id": "cmd-start", "expected_run_revision": 7, "type": "START_ROUND" }, "command payload must carry the authoritative revision")
 	_expect(state.round_reward_plan.get("round", 0) == 3 and state.round_reward_plan.get("offers", []).size() == 1, "round reward plan must retain the server object and its selectable offers")
+	state.apply_public_view({ "id": "run-local-view", "state": "PREPARE", "round": 4, "revision": 8, "gold": 12, "health": 25, "shop": [], "bench": [], "board": [] })
+	_expect(state.run_id == "run-local-view" and state.round == 4 and state.revision == 8, "a previously accepted public view must restore client presentation state without resolving gameplay")
 
 	state.apply_server_view({ "id": "run-alpha", "state": "COMBAT", "round": 3, "revision": 8, "gold": 11, "health": 26, "level": 10, "experience": 0, "experienceToNext": 0, "boardCap": 6, "shop": [], "bench": [], "board": [] })
 	_expect(not state.can_start_round(), "COMBAT state must disable prepare commands")
