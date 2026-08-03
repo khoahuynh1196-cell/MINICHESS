@@ -1,7 +1,7 @@
-import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { compileContentBundle, type CompiledContentBundle } from "@auto-battler/game-core";
 import { createInMemoryRunRepository, type CreateRunInput, type RunRepository, type ShopGenerator } from "./application/run-commands.js";
+import { createShopPool, rollShop, type ShopPool } from "./application/shop-pool.js";
 import { createHttpApp, type ContentManifestRepository } from "./http/app.js";
 
 export interface RuntimeOptions {
@@ -11,25 +11,14 @@ export interface RuntimeOptions {
   readonly repository?: RunRepository;
 }
 
-function rankHero(contentHash: string, runId: string, stream: string, heroId: string): string {
-  return createHash("sha256").update(`${contentHash}:${runId}:${stream}:${heroId}`).digest("hex");
-}
-
 export function loadCompiledContent(contentPath: string): CompiledContentBundle {
   return compileContentBundle(JSON.parse(readFileSync(contentPath, "utf8")));
 }
 
 export function createContentShopGenerator(content: CompiledContentBundle): ShopGenerator {
-  const heroes = [...content.heroesById.values()];
-  const draw = (runId: string, stream: string) => Object.freeze(
-    [...heroes]
-      .sort((left, right) => rankHero(content.contentHash, runId, stream, left.id).localeCompare(rankHero(content.contentHash, runId, stream, right.id)) || left.id.localeCompare(right.id))
-      .slice(0, 4)
-      .map((hero) => Object.freeze({ heroId: hero.id, cost: hero.cost })),
-  );
   return Object.freeze({
-    initialShop: (input: Pick<CreateRunInput, "id" | "contentVersion">) => draw(input.id, "shop:initial"),
-    refreshShop: (input: Pick<CreateRunInput, "id" | "contentVersion"> & { readonly refreshNumber: number }) => draw(input.id, `shop:refresh:${input.refreshNumber}`),
+    createPool: (input: Pick<CreateRunInput, "id" | "contentVersion"> & { readonly runSeed: string }) => createShopPool(content, input.runSeed),
+    rollShop: (pool: ShopPool, input: { readonly round: number; readonly refreshNumber: number; readonly level: number }) => rollShop(pool, input.level, `shop:${input.round}:${input.refreshNumber}`),
   });
 }
 

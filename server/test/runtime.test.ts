@@ -15,15 +15,18 @@ describe("runtime composition", () => {
     await app.close();
   });
 
-  it("derives repeatable four-slot shops from the compiled hero content", async () => {
+  it("derives repeatable five-slot shops from the compiled hero pool", async () => {
     const { loadCompiledContent, createContentShopGenerator } = await import("../src/runtime.js");
     const content = loadCompiledContent(bundlePath);
     const shop = createContentShopGenerator(content);
-    const initial = shop.initialShop({ id: "run-runtime", contentVersion: content.version });
+    const runSeed = "000102030405060708090a0b0c0d0e0f";
+    const firstPool = shop.createPool!({ id: "run-runtime", contentVersion: content.version, runSeed });
+    const secondPool = shop.createPool!({ id: "run-runtime", contentVersion: content.version, runSeed });
+    const initial = shop.rollShop!(firstPool, { round: 1, refreshNumber: 0, level: 1 });
 
-    expect(initial).toHaveLength(4);
-    expect(shop.initialShop({ id: "run-runtime", contentVersion: content.version })).toEqual(initial);
-    expect(shop.refreshShop?.({ id: "run-runtime", contentVersion: content.version, refreshNumber: 1 })).toHaveLength(4);
+    expect(initial).toHaveLength(5);
+    expect(shop.rollShop!(secondPool, { round: 1, refreshNumber: 0, level: 1 })).toEqual(initial);
+    expect(shop.rollShop!(firstPool, { round: 1, refreshNumber: 1, level: 1 })).toHaveLength(5);
     expect(initial.every((slot) => content.heroesById.get(slot.heroId)?.cost === slot.cost)).toBe(true);
   });
 });

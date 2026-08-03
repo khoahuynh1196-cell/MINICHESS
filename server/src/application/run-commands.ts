@@ -2,7 +2,10 @@ import { randomBytes } from "node:crypto";
 import type { CombatEvent } from "@auto-battler/game-core";
 import { claimResolvedRoundReward } from "./round-lifecycle.js";
 import type { RoundRewardPlan, RewardSelection } from "./reward-selection.js";
+import { cloneShopPool, returnHeroToShopPool, returnShopSlots, type ShopPool, type ShopSlot } from "./shop-pool.js";
 import { selectRunUniqueId } from "./unique-selection.js";
+
+export type { ShopSlot } from "./shop-pool.js";
 
 export interface RunRecord {
   readonly id: string;
@@ -22,6 +25,8 @@ export interface RunRecord {
   readonly commandResponses: Readonly<Record<string, RunCommandResult>>;
   readonly commandRequests?: Readonly<Record<string, string>>;
   readonly shop?: readonly (ShopSlot | null)[];
+  /** Private, authoritative pool state; never include this in a public run view. */
+  readonly shopPool?: ShopPool;
   readonly shopRefreshes?: number;
   /** Content-awarded shop refreshes that must be consumed before gold. */
   readonly freeRefreshes?: number;
@@ -47,7 +52,6 @@ export interface CombatRecord {
   readonly events: readonly CombatEvent[];
 }
 
-export interface ShopSlot { readonly heroId: string; readonly cost: number; }
 export interface HeroInstance { readonly instanceId: string; readonly heroId: string; readonly cost: number; readonly stars?: 1 | 2 | 3; }
 export interface ItemInstance { readonly instanceId: string; readonly itemId: string; readonly kind: "normal" | "unique"; readonly equippedHeroInstanceId?: string; }
 export interface LockedRoundSnapshot {
@@ -89,7 +93,11 @@ export interface RunRepository {
 }
 
 export interface ShopGenerator {
-  initialShop(input: Pick<CreateRunInput, "id" | "contentVersion">): readonly ShopSlot[];
+  /** New generators create and mutate a persisted per-run shop pool. */
+  createPool?(input: Pick<CreateRunInput, "id" | "contentVersion"> & { readonly runSeed: string }): ShopPool;
+  rollShop?(pool: ShopPool, input: { readonly round: number; readonly refreshNumber: number; readonly level: number }): readonly ShopSlot[];
+  /** Legacy adapter retained while independently injected tests migrate. */
+  initialShop?(input: Pick<CreateRunInput, "id" | "contentVersion">): readonly ShopSlot[];
   refreshShop?(input: Pick<CreateRunInput, "id" | "contentVersion"> & { readonly refreshNumber: number }): readonly ShopSlot[];
 }
 
@@ -184,8 +192,8 @@ function mergeEligibleHeroes(boardInput: readonly (HeroInstance | null)[], bench
   return { board, bench, items };
 }
 
-function assertValidShop(shop: unknown): asserts shop is readonly ShopSlot[] {
-  if (!Array.isArray(shop) || shop.length !== 4 || shop.some((slot) =>
+function assertValidShop(shop: unknown, slotCount = 4): asserts shop is readonly ShopSlot[] {
+  if (!Array.isArray(shop) || shop.length !== slotCount || shop.some((slot) =>
     typeof slot?.heroId !== "string" || slot.heroId !== slot.heroId.trim() || slot.heroId.length === 0 || !Number.isInteger(slot.cost) || slot.cost < 1 || slot.cost > 3,
   )) throw new Error("GAME_RULE_VIOLATION");
 }
@@ -212,9 +220,14 @@ export function createInMemoryRunRepository(): RunRepository {
 
 export async function createRun(input: CreateRunInput, repository: RunRepository, shopGenerator?: ShopGenerator, setup?: CreateRunSetup): Promise<RunRecord> {
   if (await repository.findActiveByTenant(input.tenantId) !== undefined) throw new Error("ACTIVE_RUN_EXISTS");
-  const shop = shopGenerator?.initialShop({ id: input.id, contentVersion: input.contentVersion });
-  if (shop !== undefined) assertValidShop(shop);
   const runSeed = setup?.runSeed ?? randomBytes(32).toString("hex");
+  const shopPool = shopGenerator?.createPool?.({ id: input.id, contentVersion: input.contentVersion, runSeed });
+  const initialPoolRoll = shopGenerator?.rollShop;
+  if (shopPool !== undefined && initialPoolRoll === undefined) throw new Error("GAME_RULE_VIOLATION");
+  const shop = shopPool === undefined
+    ? shopGenerator?.initialShop?.({ id: input.id, contentVersion: input.contentVersion })
+    : initialPoolRoll!(shopPool, { round: 1, refreshNumber: 0, level: 1 });
+  if (shop !== undefined) assertValidShop(shop, shopPool === undefined ? 4 : 5);
   const preselectedUniqueId = setup?.uniqueItemIds === undefined ? undefined : selectRunUniqueId(runSeed, setup.uniqueItemIds);
   const run: RunRecord = {
     id: input.id,
@@ -231,6 +244,7 @@ export async function createRun(input: CreateRunInput, repository: RunRepository
     bench: [],
     board: Array(12).fill(null),
     ...(shop === undefined ? {} : { shop }),
+    ...(shopPool === undefined ? {} : { shopPool }),
   };
   await repository.save(run);
   return run;
@@ -304,9 +318,15 @@ export async function applyRunCommand(input: RunCommandInput, repository: RunRep
   if (input.type === "MOVE_HERO" && benchSourceIndex !== -1 && displacedHero === null && currentBoard.filter((hero) => hero !== null).length >= playerBoardCap(run.round)) throw new Error("GAME_RULE_VIOLATION");
   const result: RunCommandResult = { runRevision: run.revision + 1, status: "APPLIED" };
   const refreshNumber = (run.shopRefreshes ?? 0) + 1;
-  const refreshShop = input.type === "REFRESH_SHOP" ? shopGenerator?.refreshShop : undefined;
-  const refreshedShop = refreshShop?.({ id: run.id, contentVersion: run.contentVersion, refreshNumber });
-  if (refreshShop !== undefined) assertValidShop(refreshedShop);
+  const pooledRefresh = input.type === "REFRESH_SHOP" && run.shopPool !== undefined;
+  if (pooledRefresh && shopGenerator?.rollShop === undefined) throw new Error("GAME_RULE_VIOLATION");
+  const refreshedPool = pooledRefresh ? cloneShopPool(run.shopPool!) : undefined;
+  if (refreshedPool !== undefined) returnShopSlots(refreshedPool, run.shop ?? []);
+  const refreshShop = input.type === "REFRESH_SHOP" && refreshedPool === undefined ? shopGenerator?.refreshShop : undefined;
+  const refreshedShop = refreshedPool === undefined
+    ? refreshShop?.({ id: run.id, contentVersion: run.contentVersion, refreshNumber })
+    : shopGenerator!.rollShop!(refreshedPool, { round: run.round ?? 1, refreshNumber, level: 1 });
+  if (refreshedShop !== undefined) assertValidShop(refreshedShop, refreshedPool === undefined ? 4 : 5);
   const shop = input.type === "BUY_SHOP_HERO" ? (run.shop ?? []).map((slot, index) => index === input.shopSlotIndex ? null : slot) : refreshedShop ?? run.shop;
   const movedBoard = input.type === "MOVE_HERO"
     ? currentBoard.map((hero, index) => index === destinationIndex ? movingHero! : index === boardSourceIndex ? displacedHero! : hero)
@@ -320,6 +340,8 @@ export async function applyRunCommand(input: RunCommandInput, repository: RunRep
       : input.type === "MOVE_HERO" ? (benchSourceIndex !== -1 ? [...currentBench.filter((hero) => hero.instanceId !== input.heroInstanceId), ...(displacedHero === null ? [] : [displacedHero])] : currentBench) : run.bench;
   const gold = input.type === "REFRESH_SHOP" ? (usesFreeRefresh ? run.gold : run.gold - 2) : input.type === "BUY_SHOP_HERO" ? run.gold - purchasedSlot!.cost : input.type === "SELL_HERO" ? run.gold + soldHero!.cost : run.gold;
   const freeRefreshes = input.type === "REFRESH_SHOP" && usesFreeRefresh ? (run.freeRefreshes ?? 0) - 1 : run.freeRefreshes;
+  const shopPool = input.type === "SELL_HERO" && run.shopPool !== undefined ? cloneShopPool(run.shopPool) : refreshedPool ?? run.shopPool;
+  if (input.type === "SELL_HERO" && shopPool !== undefined) returnHeroToShopPool(shopPool, soldHero!.heroId);
   const items = input.type === "EQUIP_ITEM"
     ? currentItems.map((item) => item.instanceId === input.itemInstanceId ? { ...item, equippedHeroInstanceId: input.heroInstanceId! } : item)
     : input.type === "UNEQUIP_ITEM"
@@ -339,6 +361,7 @@ export async function applyRunCommand(input: RunCommandInput, repository: RunRep
     ...run,
     gold,
     ...(shop === undefined ? {} : { shop }),
+    ...(shopPool === undefined ? {} : { shopPool }),
     ...(input.type === "REFRESH_SHOP" ? { shopRefreshes: refreshNumber } : run.shopRefreshes === undefined ? {} : { shopRefreshes: run.shopRefreshes }),
     ...(freeRefreshes === undefined ? {} : { freeRefreshes }),
     ...(bench === undefined ? {} : { bench: mergedRoster?.bench ?? bench }),

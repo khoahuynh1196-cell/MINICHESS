@@ -1123,6 +1123,45 @@ describe("run commands", () => {
       .resolves.toMatchObject({ shop: [{ heroId: "H01", cost: 1 }, { heroId: "H02", cost: 2 }, { heroId: "H03", cost: 1 }, { heroId: "H04", cost: 3 }] });
   });
 
+  it("persists the five-slot pool and conserves a bought then sold hero across a free refresh", async () => {
+    const module = await import(modulePath) as typeof import("../src/application/run-commands.js");
+    const poolModule = await import("../src/application/shop-pool.js") as typeof import("../src/application/shop-pool.js");
+    const repository = module.createInMemoryRunRepository();
+    const content = { heroesById: new Map([["H01", { id: "H01", cost: 1, rarity: 1 as const, is_unique_hero: false }]]) };
+    const shopGenerator = {
+      createPool: ({ runSeed }: { runSeed: string }) => poolModule.createShopPool(content as never, runSeed),
+      rollShop: (pool: import("../src/application/shop-pool.js").ShopPool, input: { round: number; refreshNumber: number; level: number }) => poolModule.rollShop(pool, input.level, `shop:${input.round}:${input.refreshNumber}`),
+    };
+
+    const created = await module.createRun(
+      { id: "run-pooled-shop", tenantId: "tenant-a", contentVersion: "alpha-0.3.0" },
+      repository,
+      shopGenerator as never,
+      { runSeed: "000102030405060708090a0b0c0d0e0f" },
+    );
+    expect(created.shop).toHaveLength(5);
+    expect(created.shopPool?.heroes.H01?.remainingCopies).toBe(24);
+
+    await module.applyRunCommand({ actorId: "actor-a", tenantId: "tenant-a", runId: created.id, commandId: "cmd-pooled-buy", expectedRevision: 0, type: "BUY_SHOP_HERO", shopSlotIndex: 0 }, repository, shopGenerator as never);
+    const afterBuy = await repository.get(created.id, "tenant-a");
+    expect(afterBuy?.shopPool?.heroes.H01?.remainingCopies).toBe(24);
+    const heroInstanceId = afterBuy?.bench?.[0]?.instanceId;
+    expect(heroInstanceId).toBeDefined();
+    if (heroInstanceId === undefined) throw new Error("expected bought hero instance");
+
+    await module.applyRunCommand({ actorId: "actor-a", tenantId: "tenant-a", runId: created.id, commandId: "cmd-pooled-sell", expectedRevision: 1, type: "SELL_HERO", heroInstanceId }, repository, shopGenerator as never);
+    await repository.save({ ...(await repository.get(created.id, "tenant-a"))!, freeRefreshes: 1 });
+    await module.applyRunCommand({ actorId: "actor-a", tenantId: "tenant-a", runId: created.id, commandId: "cmd-pooled-free-refresh", expectedRevision: 2, type: "REFRESH_SHOP" }, repository, shopGenerator as never);
+
+    await expect(repository.get(created.id, "tenant-a")).resolves.toMatchObject({
+      gold: 8,
+      freeRefreshes: 0,
+      shopRefreshes: 1,
+      shop: Array(5).fill({ heroId: "H01", cost: 1 }),
+      shopPool: { heroes: { H01: { remainingCopies: 24 } } },
+    });
+  });
+
   it.each(invalidShops)("rejects an initial shop that $name", async ({ shop }) => {
     const module = await import(modulePath) as typeof import("../src/application/run-commands.js");
     const repository = module.createInMemoryRunRepository();
