@@ -361,7 +361,10 @@ export async function applyRunCommand(input: RunCommandInput, repository: RunRep
   const gold = input.type === "REFRESH_SHOP" ? (usesFreeRefresh ? run.gold : run.gold - 2) : input.type === "BUY_SHOP_HERO" ? run.gold - purchasedSlot!.cost : input.type === "SELL_HERO" ? run.gold + soldHero!.cost : run.gold;
   const freeRefreshes = input.type === "REFRESH_SHOP" && usesFreeRefresh ? (run.freeRefreshes ?? 0) - 1 : run.freeRefreshes;
   const shopPool = input.type === "SELL_HERO" && run.shopPool !== undefined ? cloneShopPool(run.shopPool) : refreshedPool ?? run.shopPool;
-  if (input.type === "SELL_HERO" && shopPool !== undefined) returnHeroToShopPool(shopPool, soldHero!.heroId, reservedPoolCopies(soldHero!));
+  if (input.type === "SELL_HERO" && shopPool !== undefined) {
+    const copies = reservedPoolCopies(soldHero!);
+    if (copies > 0) returnHeroToShopPool(shopPool, soldHero!.heroId, copies);
+  }
   const items = input.type === "EQUIP_ITEM"
     ? currentItems.map((item) => item.instanceId === input.itemInstanceId ? { ...item, equippedHeroInstanceId: input.heroInstanceId! } : item)
     : input.type === "UNEQUIP_ITEM"

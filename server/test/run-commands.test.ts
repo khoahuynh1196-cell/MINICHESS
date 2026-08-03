@@ -240,6 +240,22 @@ describe("run commands", () => {
     await expect(repository.get("legacy-run", "tenant-a")).resolves.toMatchObject({ bench: [], shopPool: { heroes: { H01: { remainingCopies: 29 } } } });
   });
 
+  it("sells a directly claimed legacy reward without returning a zero reservation", async () => {
+    const module = await import(modulePath) as typeof import("../src/application/run-commands.js");
+    const shopPool = await import("../src/application/shop-pool.js") as typeof import("../src/application/shop-pool.js");
+    const repository = module.createInMemoryRunRepository();
+    const pool = shopPool.createShopPool({ heroesById: new Map([["H01", { id: "H01", cost: 1, rarity: 1 as const, is_unique_hero: false }]]) } as never, "000102030405060708090a0b0c0d0e0f");
+    const legacyReward = { instanceId: "reward:legacy-direct:4:reward:4:hero_choice:0:H01", heroId: "H01", cost: 1, stars: 1 as const };
+    await repository.save({
+      id: "legacy-direct", tenantId: "tenant-a", contentVersion: "alpha-0.3.0", state: "PREPARE", round: 4, revision: 0, gold: 10, commandResponses: {}, shopPool: pool,
+      bench: [], rewardHeroes: [legacyReward],
+    });
+
+    await module.applyRunCommand({ actorId: "actor-a", tenantId: "tenant-a", runId: "legacy-direct", commandId: "cmd-claim-legacy-direct", expectedRevision: 0, type: "CLAIM_REWARD_HERO", heroInstanceId: legacyReward.instanceId }, repository);
+    await expect(module.applyRunCommand({ actorId: "actor-a", tenantId: "tenant-a", runId: "legacy-direct", commandId: "cmd-sell-legacy-direct", expectedRevision: 1, type: "SELL_HERO", heroInstanceId: legacyReward.instanceId }, repository)).resolves.toEqual({ runRevision: 2, status: "APPLIED" });
+    await expect(repository.get("legacy-direct", "tenant-a")).resolves.toMatchObject({ bench: [], shopPool: { heroes: { H01: { remainingCopies: 29 } } } });
+  });
+
   it("acknowledges a revealed Unique without changing reward or inventory", async () => {
     const module = await import(modulePath) as typeof import("../src/application/run-commands.js");
     const repository = module.createInMemoryRunRepository();
