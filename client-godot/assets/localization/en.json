@@ -1,0 +1,17 @@
+{
+  "screen.lobby": "Moonfall Tactics",
+  "screen.map": "PvE Expedition",
+  "screen.prepare": "Prepare Your Party",
+  "screen.combat": "Battle Replay",
+  "screen.reward": "Round Rewards",
+  "screen.recap": "Run Recap",
+  "screen.collection": "Collection",
+  "screen.settings": "Settings",
+  "settings.language": "Language: {language}",
+  "language.en": "English",
+  "language.vi": "Vietnamese",
+  "feedback.hero_selected": "Hero selected. Tap a board or bench tile to move it.",
+  "feedback.select_hero": "Select a hero first",
+  "feedback.item_selected": "Choose a hero for the item",
+  "feedback.item_cleared": "Item selection cleared"
+}

@@ -28,13 +28,12 @@ Open the scene in Godot 4:
 godot --editor --path client-godot
 ```
 
-Run the local headless checks:
+Run all local headless checks (the `--quit` flag is required on Godot 4.7):
 
 ```powershell
-godot --headless --path client-godot --script res://test/replay_loader_test.gd
-godot --headless --path client-godot --script res://test/replay_scheduler_test.gd
-godot --headless --path client-godot --script res://test/battle_controller_test.gd
-godot --headless --path client-godot --script res://test/main_scene_smoke_test.gd
+Get-ChildItem client-godot/test/*_test.gd | ForEach-Object {
+  godot --headless --path client-godot --script "res://test/$($_.Name)" --quit
+}
 ```
 
 The main scene provides Play, Pause, Restart, 1× and 2× controls. Event

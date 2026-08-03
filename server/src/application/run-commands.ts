@@ -370,11 +370,22 @@ export async function applyRunCommand(input: RunCommandInput, repository: RunRep
   if (input.type === "UNEQUIP_ITEM" && (equippedItem === undefined || equippedItem.equippedHeroInstanceId === undefined)) throw new Error("GAME_RULE_VIOLATION");
   const benchSourceIndex = input.type === "MOVE_HERO" ? currentBench.findIndex((hero) => hero.instanceId === input.heroInstanceId) : -1;
   const boardSourceIndex = input.type === "MOVE_HERO" ? currentBoard.findIndex((hero) => hero?.instanceId === input.heroInstanceId) : -1;
-  const destinationIndex = input.type === "MOVE_HERO" ? (input.destination ?? -1) - 12 : -1;
-  if (input.type === "MOVE_HERO" && (!Number.isInteger(input.destination) || destinationIndex < 0 || destinationIndex >= 12 || (benchSourceIndex === -1 && boardSourceIndex === -1) || destinationIndex === boardSourceIndex)) throw new Error("GAME_RULE_VIOLATION");
+  const destination = input.type === "MOVE_HERO" ? input.destination ?? -1 : -1;
+  const destinationIndex = destination - 12;
+  const destinationIsBoard = destinationIndex >= 0 && destinationIndex < 12;
+  const destinationIsBench = destination >= 0 && destination < 8;
+  if (input.type === "MOVE_HERO" && (
+    !Number.isInteger(input.destination)
+    || (!destinationIsBoard && !destinationIsBench)
+    || (benchSourceIndex === -1 && boardSourceIndex === -1)
+    || (destinationIsBoard && destinationIndex === boardSourceIndex)
+    || (destinationIsBench && benchSourceIndex === destination)
+    || (destinationIsBench && boardSourceIndex !== -1 && currentBench.length >= 8)
+    || (destinationIsBench && destination > (benchSourceIndex === -1 ? currentBench.length : currentBench.length - 1))
+  )) throw new Error("GAME_RULE_VIOLATION");
   const movingHero = input.type === "MOVE_HERO" ? (benchSourceIndex !== -1 ? currentBench[benchSourceIndex] : currentBoard[boardSourceIndex]) : undefined;
-  const displacedHero = input.type === "MOVE_HERO" ? currentBoard[destinationIndex] : undefined;
-  if (input.type === "MOVE_HERO" && benchSourceIndex !== -1 && displacedHero === null && currentBoard.filter((hero) => hero !== null).length >= progression.boardCap) throw new Error("GAME_RULE_VIOLATION");
+  const displacedHero = input.type === "MOVE_HERO" && destinationIsBoard ? currentBoard[destinationIndex] : undefined;
+  if (input.type === "MOVE_HERO" && destinationIsBoard && benchSourceIndex !== -1 && displacedHero === null && currentBoard.filter((hero) => hero !== null).length >= progression.boardCap) throw new Error("GAME_RULE_VIOLATION");
   const result: RunCommandResult = { runRevision: run.revision + 1, status: "APPLIED" };
   const refreshNumber = (run.shopRefreshes ?? 0) + 1;
   const pooledRefresh = input.type === "REFRESH_SHOP" && run.shopPool !== undefined;
@@ -388,7 +399,9 @@ export async function applyRunCommand(input: RunCommandInput, repository: RunRep
   if (refreshedShop !== undefined) assertValidShop(refreshedShop, refreshedPool === undefined ? 4 : 5);
   const shop = input.type === "BUY_SHOP_HERO" ? (run.shop ?? []).map((slot, index) => index === input.shopSlotIndex ? null : slot) : refreshedShop ?? run.shop;
   const movedBoard = input.type === "MOVE_HERO"
-    ? currentBoard.map((hero, index) => index === destinationIndex ? movingHero! : index === boardSourceIndex ? displacedHero! : hero)
+    ? destinationIsBoard
+      ? currentBoard.map((hero, index) => index === destinationIndex ? movingHero! : index === boardSourceIndex ? displacedHero! : hero)
+      : currentBoard.map((hero, index) => index === boardSourceIndex ? null : hero)
     : input.type === "SELL_HERO" && run.board !== undefined
       ? currentBoard.map((hero) => hero?.instanceId === input.heroInstanceId ? null : hero)
       : run.board;
@@ -396,7 +409,14 @@ export async function applyRunCommand(input: RunCommandInput, repository: RunRep
     ? [...(run.bench ?? []), { instanceId: `hero:${run.id}:${input.commandId}`, heroId: purchasedSlot!.heroId, cost: purchasedSlot!.cost, stars: 1 as const, poolCopies: 1 }]
     : input.type === "CLAIM_REWARD_HERO" ? [...currentBench, claimedRewardHero!]
     : input.type === "SELL_HERO" ? (run.bench ?? []).filter((hero) => hero.instanceId !== input.heroInstanceId)
-      : input.type === "MOVE_HERO" ? (benchSourceIndex !== -1 ? [...currentBench.filter((hero) => hero.instanceId !== input.heroInstanceId), ...(displacedHero === null ? [] : [displacedHero])] : currentBench) : run.bench;
+      : input.type === "MOVE_HERO"
+        ? (() => {
+          const nextBench = benchSourceIndex !== -1 ? currentBench.filter((hero) => hero.instanceId !== input.heroInstanceId) : [...currentBench];
+          if (destinationIsBench) nextBench.splice(destination, 0, movingHero!);
+          else if (benchSourceIndex !== -1 && displacedHero !== null && displacedHero !== undefined) nextBench.push(displacedHero);
+          return nextBench;
+        })()
+        : run.bench;
   const gold = input.type === "REFRESH_SHOP" ? (usesFreeRefresh ? run.gold : run.gold - 2) : input.type === "BUY_XP" ? run.gold - 4 : input.type === "BUY_SHOP_HERO" ? run.gold - purchasedSlot!.cost : input.type === "SELL_HERO" ? run.gold + soldHero!.cost : run.gold;
   const updatedProgression = input.type === "BUY_XP" ? buyExperience(progression) : progression;
   const freeRefreshes = input.type === "REFRESH_SHOP" && usesFreeRefresh ? (run.freeRefreshes ?? 0) - 1 : run.freeRefreshes;

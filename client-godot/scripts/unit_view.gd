@@ -1,5 +1,6 @@
 extends Node2D
 
+const HeroRigScript = preload("res://scripts/presentation/hero_rig_2d.gd")
 const CELL_WIDTH := 340.0
 const CELL_HEIGHT := 130.0
 const HERO_PORTRAITS := {
@@ -32,9 +33,11 @@ var side := "player"
 var is_defeated := false
 var animation_state := "idle"
 var portrait: Sprite2D
+var hero_rig
 var hero_id := ""
 var unique_item_id := ""
 var _animation_elapsed := 0.0
+var reduced_motion := false
 
 const UNIQUE_VISUALS := {
 	"U01": { "color": Color("#f9c74f"), "anchor": Vector2(0.0, -66.0) },
@@ -66,15 +69,19 @@ func configure(unit_side: String, position_index: int, unit_max_hp: int, hero_id
 	_update_position()
 	queue_redraw()
 
+func set_reduced_motion(enabled: bool) -> void:
+	reduced_motion = enabled
+	if hero_rig != null:
+		hero_rig.set_reduced_motion(enabled)
+
 func _process(delta: float) -> void:
 	_animation_elapsed += delta
-	if portrait == null:
+	if animation_state != "death" and animation_state != "idle" and _animation_elapsed >= 0.18:
+		present("idle")
+	if hero_rig != null or portrait == null:
 		return
 	if animation_state == "idle":
 		portrait.position.y = -5.0 + sin(_animation_elapsed * 4.0) * 2.0
-		return
-	if animation_state != "death" and _animation_elapsed >= 0.18:
-		present("idle")
 
 func _add_portrait(hero_id: String) -> void:
 	if not HERO_PORTRAITS.has(hero_id):
@@ -86,6 +93,14 @@ func _add_portrait(hero_id: String) -> void:
 	portrait.scale = Vector2(0.055, 0.055)
 	portrait.z_index = 1
 	add_child(portrait)
+	hero_rig = HeroRigScript.new()
+	hero_rig.name = "HeroRig"
+	hero_rig.z_index = 2
+	hero_rig.configure(hero_id, portrait.texture, side == "player")
+	hero_rig.set_reduced_motion(reduced_motion)
+	add_child(hero_rig)
+	# Retain the named texture node for fixture compatibility; the rig is visible.
+	portrait.visible = false
 
 func _add_unique_accessory() -> void:
 	if not UNIQUE_ACCESSORIES.has(unique_item_id):
@@ -115,6 +130,17 @@ func present(next_animation_state: String) -> void:
 		return
 	animation_state = next_animation_state
 	_animation_elapsed = 0.0
+	if hero_rig != null:
+		var rig_action: String = String({
+			"basic_attack": "basic_attack",
+			"hit": "hit",
+			"skill": "skill_cast",
+			"move": "move",
+			"death": "death",
+		}.get(animation_state, "idle"))
+		hero_rig.play_action(rig_action)
+		queue_redraw()
+		return
 	if portrait == null:
 		queue_redraw()
 		return

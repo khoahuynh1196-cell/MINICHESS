@@ -1,0 +1,42 @@
+{
+  "version": "alpha-0.3.0",
+  "hero_sprites": {
+    "H01": "res://assets/sprites/h01-cotton-shield-cat-chibi-v2.png",
+    "H02": "res://assets/sprites/h02-ember-duelist-cat-chibi-v2.png",
+    "H03": "res://assets/sprites/h03-forest-ranger-cat-chibi-v2.png",
+    "H04": "res://assets/sprites/h04-frost-mage-cat-chibi-v2.png",
+    "H05": "res://assets/sprites/h05-lantern-healer-cat-chibi-v2.png",
+    "H06": "res://assets/sprites/h06-moonshield-dog-chibi-v2.png",
+    "H07": "res://assets/sprites/h07-scarf-brawler-dog-chibi-v2.png",
+    "H08": "res://assets/sprites/h08-hooded-ranger-dog-chibi-v2.png",
+    "H09": "res://assets/sprites/h09-star-mage-dog-chibi-v2.png",
+    "H10": "res://assets/sprites/h10-medic-dog-chibi-v2.png",
+    "H11": "res://assets/sprites/h11-dashing-rabbit-fighter-chibi-v2.png",
+    "H12": "res://assets/sprites/h12-hooded-rabbit-ranger-chibi-v2.png",
+    "H13": "res://assets/sprites/h13-potion-rabbit-mage-chibi-v2.png",
+    "H14": "res://assets/sprites/h14-rabbit-healer-chibi-v2.png",
+    "H15": "res://assets/sprites/h15-bulwark-cow-chibi-v2.png",
+    "H16": "res://assets/sprites/h16-hammer-cow-fighter-chibi-v2.png",
+    "H17": "res://assets/sprites/h17-lantern-cow-support-chibi-v2.png",
+    "H18": "res://assets/sprites/h18-red-panda-ranger-chibi-v2.png",
+    "H19": "res://assets/sprites/h19-owl-mage-chibi-v2.png",
+    "H20": "res://assets/sprites/h20-capybara-guardian-chibi-v3.png"
+  },
+  "portraits": {
+    "H01": "res://assets/portraits/h01-cotton-shield-cat-v1.png",
+    "H02": "res://assets/portraits/h02-ember-duelist-cat-v1.png"
+  },
+  "unique_transformations": {
+    "U01": "res://assets/transformations/u01-lion-crown-v1.png",
+    "U02": "res://assets/transformations/u02-white-wolf-claw-v1.png",
+    "U03": "res://assets/transformations/u03-turtle-shell-v1.png",
+    "U04": "res://assets/transformations/u04-unicorn-horn-v1.png",
+    "U05": "res://assets/transformations/u05-fox-mask-v1.png",
+    "U06": "res://assets/transformations/u06-phoenix-feather-v1.png"
+  },
+  "procedural_presentation": {
+    "weapons": "res://scripts/presentation/weapon_silhouette_2d.gd",
+    "vfx": "res://scripts/presentation/combat_vfx_2d.gd",
+    "sfx": "res://scripts/presentation/hero_sfx_bus.gd"
+  }
+}

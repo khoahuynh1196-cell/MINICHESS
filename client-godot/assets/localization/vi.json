@@ -1,0 +1,17 @@
+{
+  "screen.lobby": "Chien Thuat Moonfall",
+  "screen.map": "Thu Thach PvE",
+  "screen.prepare": "Chuan Bi Doi Hinh",
+  "screen.combat": "Xem Lai Tran Dau",
+  "screen.reward": "Phan Thuong Vong",
+  "screen.recap": "Tong Ket Chuyen Di",
+  "screen.collection": "Bo Suu Tap",
+  "screen.settings": "Cai Dat",
+  "settings.language": "Ngon ngu: {language}",
+  "language.en": "Tieng Anh",
+  "language.vi": "Tieng Viet",
+  "feedback.hero_selected": "Da chon tuong. Cham o Board hoac Bench de di chuyen.",
+  "feedback.select_hero": "Hay chon mot tuong truoc",
+  "feedback.item_selected": "Hay chon tuong de trang bi vat pham",
+  "feedback.item_cleared": "Da bo chon vat pham"
+}
