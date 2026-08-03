@@ -2,6 +2,7 @@ class_name FormationSlotButton
 extends Button
 
 signal move_dropped(hero_instance_id: String, destination: int)
+signal item_equip_dropped(item_instance_id: String, hero_instance_id: String)
 
 var hero_instance_id := ""
 var destination := -1
@@ -25,13 +26,18 @@ func _get_drag_data(_at_position: Vector2) -> Variant:
 	return { "hero_instance_id": hero_instance_id, "origin": destination }
 
 func _can_drop_data(_at_position: Vector2, data: Variant) -> bool:
-	var valid := not disabled and data is Dictionary and String(data.get("hero_instance_id", "")) != "" and int(data.get("origin", -1)) != destination
+	var is_hero_move := data is Dictionary and String(data.get("hero_instance_id", "")) != "" and int(data.get("origin", -1)) != destination
+	var is_item_equip := data is Dictionary and not hero_instance_id.is_empty() and String(data.get("item_instance_id", "")) != ""
+	var valid := not disabled and (is_hero_move or is_item_equip)
 	_set_drop_highlight(valid)
 	return valid
 
 func _drop_data(at_position: Vector2, data: Variant) -> void:
 	if _can_drop_data(at_position, data):
-		move_dropped.emit(String(data.get("hero_instance_id", "")), destination)
+		if String(data.get("item_instance_id", "")).is_empty():
+			move_dropped.emit(String(data.get("hero_instance_id", "")), destination)
+		else:
+			item_equip_dropped.emit(String(data.get("item_instance_id", "")), hero_instance_id)
 	_clear_drop_highlight()
 
 func is_drop_highlighted() -> bool:

@@ -25,7 +25,7 @@ func _init() -> void:
 	combined_view["reducedMotion"] = true
 	screen.bind_run(combined_view)
 	var star_upgrade := screen.find_child("StarUpgradePresentation", true, false)
-	_expect(star_upgrade != null and not bool(star_upgrade.get_meta("animated", true)) and _label(screen, "StarUpgradeMessage").contains("Three copies combined"), "three-copy star upgrades must use the reduced-motion presentation")
+	_expect(star_upgrade != null and screen.find_child("StarUpgradePulse", true, false) == null and _label(screen, "StarUpgradeMessage").contains("Three copies combined"), "three-copy star upgrades must use the reduced-motion presentation")
 
 	var intents: Array = []
 	screen.buy_shop_slot.connect(func(index: int) -> void: intents.append(["buy", index]))

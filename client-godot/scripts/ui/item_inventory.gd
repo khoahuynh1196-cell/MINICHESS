@@ -2,27 +2,9 @@ class_name ItemInventory
 extends Control
 
 const ThemeTokensScript = preload("res://scripts/ui/theme_tokens.gd")
+const ItemMetadataCatalogScript = preload("res://scripts/ui/item_metadata_catalog.gd")
+const ItemDragButtonScript = preload("res://scripts/ui/item_drag_button.gd")
 const MAX_ITEMS_PER_HERO := 2
-const ITEM_CONTENT := {
-	"I01": { "name": "Iron Blade", "detail": "+100% Attack Damage" },
-	"I02": { "name": "Swift Bow", "detail": "+150% Attack Speed" },
-	"I03": { "name": "Arcane Tome", "detail": "+150 Skill Power" },
-	"I04": { "name": "Focus Core", "detail": "+150 Starting Mana" },
-	"I05": { "name": "Guardian Plate", "detail": "+200 Armor" },
-	"I06": { "name": "Spirit Cloak", "detail": "+200 Magic Resist" },
-	"I07": { "name": "Vital Belt", "detail": "+150% Max Health" },
-	"I08": { "name": "Hunter Gloves", "detail": "+15% Critical Chance" },
-	"I09": { "name": "Blood Charm", "detail": "+15% Lifesteal" },
-	"I10": { "name": "Dawn Crest", "detail": "Gain a shield at combat start" },
-	"I11": { "name": "Spark Orb", "detail": "Damages the target after a skill" },
-	"I12": { "name": "Frost Sigil", "detail": "Basic attacks periodically slow targets" },
-	"U01": { "name": "Lion Crown", "detail": "+150% Max Health; stuns adjacent foes below half health" },
-	"U02": { "name": "White Wolf Claw", "detail": "+150% Attack Speed; every third attack strikes harder" },
-	"U03": { "name": "Ancient Turtle Shell", "detail": "+200% Armor and Magic Resist; gains a combat-start shield" },
-	"U04": { "name": "Star Unicorn Horn", "detail": "+150 Starting Mana; first cast heals the weakest ally" },
-	"U05": { "name": "Nine-Tail Fox Mask", "detail": "+100% Skill Power; first cast summons a decoy" },
-	"U06": { "name": "Red Phoenix Feather", "detail": "+100% Attack Damage and Skill Power; cleanses and shields at low health" },
-}
 
 signal item_selected(item_instance_id: String)
 signal equip_requested(item_instance_id: String, hero_instance_id: String)
@@ -45,7 +27,13 @@ func bind_inventory(items: Array, heroes: Array, selected_item_instance_id: Stri
 		var row := index / 5
 		var equipped := item.has("equippedHeroInstanceId")
 		var selected := String(item.get("instanceId", "")) == selected_item_instance_id
-		var button := Button.new()
+		var button: Button
+		if equipped:
+			button = Button.new()
+		else:
+			var drag_button = ItemDragButtonScript.new()
+			drag_button.configure_item(String(item.get("instanceId", "")))
+			button = drag_button
 		button.name = "InventoryItem%d" % index
 		button.text = ("Unequip " if equipped else "Use ") + item_label(item)
 		button.position = Vector2(205.0 + column * 153.0, 52.0 + row * 48.0)
@@ -111,10 +99,21 @@ static func equip_result(items: Array, item_instance_id: String, hero_instance_i
 
 static func item_label(item: Dictionary) -> String:
 	var item_id := String(item.get("itemId", "?"))
-	return String(Dictionary(ITEM_CONTENT.get(item_id, {})).get("name", item_id))
+	return String(ItemMetadataCatalogScript.item_metadata(item_id).get("name", item_id))
 
 static func item_tooltip(item: Dictionary) -> String:
 	var item_id := String(item.get("itemId", "?"))
-	var authored: Dictionary = Dictionary(ITEM_CONTENT.get(item_id, {}))
-	var rarity := "Unique item" if String(item.get("kind", "")) == "unique" else "Normal item"
-	return "%s\n%s\n%s\nSelect it, then tap a hero to equip." % [String(authored.get("name", item_id)), rarity, String(authored.get("detail", "Authored effect unavailable"))]
+	var authored := ItemMetadataCatalogScript.item_metadata(item_id)
+	var kind := String(authored.get("kind", item.get("kind", "normal"))).capitalize()
+	var category := String(authored.get("category", ""))
+	var details: Array[String] = []
+	for modifier in Array(authored.get("stat_modifiers", [])):
+		var value := int(modifier.get("value", 0))
+		var suffix := "%" if String(modifier.get("mode", "")) == "percent" else ""
+		details.append("%s: +%d%s" % [_humanize(String(modifier.get("stat", ""))), value, suffix])
+	if not Array(authored.get("triggers", [])).is_empty():
+		details.append("%d combat trigger%s" % [Array(authored.get("triggers", [])).size(), "s" if Array(authored.get("triggers", [])).size() != 1 else ""])
+	return "%s\n%s item • %s\n%s\nSelect it, then tap or drag to a hero to equip." % [String(authored.get("name", item_id)), kind, category, "; ".join(details) if not details.is_empty() else "No authored effects"]
+
+static func _humanize(value: String) -> String:
+	return value.capitalize().replace("_", " ")

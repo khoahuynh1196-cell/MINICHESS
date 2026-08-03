@@ -1,0 +1,406 @@
+{
+  "source_version": "alpha-0.3.0",
+  "items": {
+    "I01": {
+      "name": "Iron Blade",
+      "kind": "normal",
+      "category": "offensive",
+      "stat_modifiers": [
+        {
+          "stat": "attack_damage",
+          "mode": "percent",
+          "value": 100
+        }
+      ],
+      "triggers": [],
+      "suggested_holder_tags": []
+    },
+    "I02": {
+      "name": "Swift Bow",
+      "kind": "normal",
+      "category": "offensive",
+      "stat_modifiers": [
+        {
+          "stat": "attack_speed",
+          "mode": "percent",
+          "value": 150
+        }
+      ],
+      "triggers": [],
+      "suggested_holder_tags": []
+    },
+    "I03": {
+      "name": "Arcane Tome",
+      "kind": "normal",
+      "category": "offensive",
+      "stat_modifiers": [
+        {
+          "stat": "skill_power",
+          "mode": "flat",
+          "value": 150
+        }
+      ],
+      "triggers": [],
+      "suggested_holder_tags": []
+    },
+    "I04": {
+      "name": "Focus Core",
+      "kind": "normal",
+      "category": "offensive",
+      "stat_modifiers": [
+        {
+          "stat": "starting_mana",
+          "mode": "flat",
+          "value": 15000
+        }
+      ],
+      "triggers": [],
+      "suggested_holder_tags": []
+    },
+    "I05": {
+      "name": "Guardian Plate",
+      "kind": "normal",
+      "category": "defensive",
+      "stat_modifiers": [
+        {
+          "stat": "armor",
+          "mode": "flat",
+          "value": 20000
+        }
+      ],
+      "triggers": [],
+      "suggested_holder_tags": []
+    },
+    "I06": {
+      "name": "Spirit Cloak",
+      "kind": "normal",
+      "category": "defensive",
+      "stat_modifiers": [
+        {
+          "stat": "magic_resist",
+          "mode": "flat",
+          "value": 20000
+        }
+      ],
+      "triggers": [],
+      "suggested_holder_tags": []
+    },
+    "I07": {
+      "name": "Vital Belt",
+      "kind": "normal",
+      "category": "defensive",
+      "stat_modifiers": [
+        {
+          "stat": "max_hp",
+          "mode": "percent",
+          "value": 150
+        }
+      ],
+      "triggers": [],
+      "suggested_holder_tags": []
+    },
+    "I08": {
+      "name": "Hunter Gloves",
+      "kind": "normal",
+      "category": "defensive",
+      "stat_modifiers": [
+        {
+          "stat": "crit_chance",
+          "mode": "flat",
+          "value": 150
+        }
+      ],
+      "triggers": [],
+      "suggested_holder_tags": []
+    },
+    "I09": {
+      "name": "Blood Charm",
+      "kind": "normal",
+      "category": "utility",
+      "stat_modifiers": [],
+      "triggers": [
+        {
+          "trigger": "basic_attack_damage",
+          "kind": "lifesteal",
+          "value": 150
+        }
+      ],
+      "suggested_holder_tags": []
+    },
+    "I10": {
+      "name": "Dawn Crest",
+      "kind": "normal",
+      "category": "utility",
+      "stat_modifiers": [],
+      "triggers": [
+        {
+          "when": "combat_start",
+          "effects": [
+            {
+              "id": "E_I10",
+              "primitive": "shield",
+              "target": "self",
+              "base_value": 12000,
+              "duration_ticks": 120
+            }
+          ]
+        }
+      ],
+      "suggested_holder_tags": []
+    },
+    "I11": {
+      "name": "Spark Orb",
+      "kind": "normal",
+      "category": "utility",
+      "stat_modifiers": [],
+      "triggers": [
+        {
+          "when": "skill_cast",
+          "effects": [
+            {
+              "id": "E_I11",
+              "primitive": "deal_damage",
+              "target": "locked_target",
+              "base_value": 6000,
+              "damage_type": "magic"
+            }
+          ]
+        }
+      ],
+      "suggested_holder_tags": []
+    },
+    "I12": {
+      "name": "Frost Sigil",
+      "kind": "normal",
+      "category": "utility",
+      "stat_modifiers": [],
+      "triggers": [
+        {
+          "when": "basic_attack",
+          "cooldown_ticks": 60,
+          "effects": [
+            {
+              "id": "E_I12",
+              "primitive": "slow",
+              "target": "locked_target",
+              "base_value": 250,
+              "duration_ticks": 40
+            }
+          ]
+        }
+      ],
+      "suggested_holder_tags": []
+    },
+    "U01": {
+      "name": "Lion Crown",
+      "kind": "unique",
+      "category": "unique",
+      "stat_modifiers": [
+        {
+          "stat": "max_hp",
+          "mode": "percent",
+          "value": 150
+        }
+      ],
+      "triggers": [
+        {
+          "when": "hp_below_percent",
+          "threshold": 500,
+          "target": "adjacent_enemies",
+          "effects": [
+            {
+              "id": "E_U01",
+              "primitive": "stun",
+              "target": "adjacent_enemies",
+              "duration_ticks": 20
+            }
+          ],
+          "once_per_combat": true
+        }
+      ],
+      "suggested_holder_tags": [
+        "guardian",
+        "fighter",
+        "support"
+      ]
+    },
+    "U02": {
+      "name": "White Wolf Claw",
+      "kind": "unique",
+      "category": "unique",
+      "stat_modifiers": [
+        {
+          "stat": "attack_speed",
+          "mode": "percent",
+          "value": 150
+        }
+      ],
+      "triggers": [
+        {
+          "when": "every_third_basic_attack",
+          "effects": [
+            {
+              "id": "E_U02",
+              "primitive": "deal_damage",
+              "target": "locked_target",
+              "base_value": 350,
+              "damage_type": "physical"
+            }
+          ]
+        }
+      ],
+      "suggested_holder_tags": [
+        "fighter",
+        "ranger",
+        "guardian"
+      ]
+    },
+    "U03": {
+      "name": "Ancient Turtle Shell",
+      "kind": "unique",
+      "category": "unique",
+      "stat_modifiers": [
+        {
+          "stat": "armor",
+          "mode": "percent",
+          "value": 200
+        },
+        {
+          "stat": "magic_resist",
+          "mode": "percent",
+          "value": 200
+        }
+      ],
+      "triggers": [
+        {
+          "when": "combat_start",
+          "effects": [
+            {
+              "id": "E_U03",
+              "primitive": "shield",
+              "target": "self",
+              "base_value": 120,
+              "duration_ticks": 120,
+              "scales_with_max_hp": true
+            }
+          ]
+        }
+      ],
+      "suggested_holder_tags": [
+        "guardian",
+        "support",
+        "fighter"
+      ]
+    },
+    "U04": {
+      "name": "Star Unicorn Horn",
+      "kind": "unique",
+      "category": "unique",
+      "stat_modifiers": [
+        {
+          "stat": "starting_mana",
+          "mode": "flat",
+          "value": 15000
+        }
+      ],
+      "triggers": [
+        {
+          "when": "first_skill_cast",
+          "effects": [
+            {
+              "id": "E_U04",
+              "primitive": "heal",
+              "target": "lowest_hp_ally",
+              "base_value": 120,
+              "scales_with_max_hp": true
+            }
+          ]
+        }
+      ],
+      "suggested_holder_tags": [
+        "mage",
+        "support",
+        "ranger"
+      ]
+    },
+    "U05": {
+      "name": "Nine-Tail Fox Mask",
+      "kind": "unique",
+      "category": "unique",
+      "stat_modifiers": [
+        {
+          "stat": "skill_power",
+          "mode": "percent",
+          "value": 100
+        }
+      ],
+      "triggers": [
+        {
+          "when": "first_skill_cast",
+          "effects": [
+            {
+              "id": "E_U05",
+              "primitive": "summon",
+              "target": "self",
+              "summon": {
+                "id": "decoy",
+                "max_hp": 250,
+                "duration_ticks": 80
+              },
+              "scales_with_max_hp": true
+            }
+          ]
+        }
+      ],
+      "suggested_holder_tags": [
+        "mage",
+        "ranger",
+        "support"
+      ]
+    },
+    "U06": {
+      "name": "Red Phoenix Feather",
+      "kind": "unique",
+      "category": "unique",
+      "stat_modifiers": [
+        {
+          "stat": "attack_damage",
+          "mode": "percent",
+          "value": 100
+        },
+        {
+          "stat": "skill_power",
+          "mode": "percent",
+          "value": 100
+        }
+      ],
+      "triggers": [
+        {
+          "when": "hp_below_percent",
+          "threshold": 300,
+          "once_per_combat": true,
+          "effects": [
+            {
+              "id": "E_U06A",
+              "primitive": "cleanse",
+              "target": "self"
+            },
+            {
+              "id": "E_U06B",
+              "primitive": "shield",
+              "target": "self",
+              "base_value": 150,
+              "duration_ticks": 80,
+              "scales_with_max_hp": true
+            }
+          ]
+        }
+      ],
+      "suggested_holder_tags": [
+        "guardian",
+        "fighter",
+        "mage"
+      ]
+    }
+  }
+}

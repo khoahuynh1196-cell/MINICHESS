@@ -100,6 +100,7 @@ func _board() -> void:
 		var selected := hero != null and String(hero.get("instanceId", "")) == _selected_hero_instance_id
 		var cell := _formation_slot("BoardCell%02d" % index, text, Rect2(60.0 + column * 325.0, 230.0 + row * 56.0, 310.0, 48.0), ThemeTokensScript.GOLD if selected else ThemeTokensScript.STONE_RAISED if hero != null else ThemeTokensScript.PLAYER, String(hero.get("instanceId", "")) if hero != null else "", 12 + index)
 		cell.move_dropped.connect(func(instance_id: String, destination: int) -> void: formation_drag_dropped.emit(instance_id, destination))
+		cell.item_equip_dropped.connect(func(item_instance_id: String, hero_instance_id: String) -> void: item_equip_requested.emit(item_instance_id, hero_instance_id))
 		if hero == null:
 			cell.pressed.connect(_emit_formation_destination.bind(12 + index))
 		else:
@@ -116,6 +117,7 @@ func _bench() -> void:
 		if hero == null:
 			button.tooltip_text = "Empty bench slot %d" % (index + 1)
 		button.move_dropped.connect(func(instance_id: String, destination: int) -> void: formation_drag_dropped.emit(instance_id, destination))
+		button.item_equip_dropped.connect(func(item_instance_id: String, hero_instance_id: String) -> void: item_equip_requested.emit(item_instance_id, hero_instance_id))
 		if hero == null:
 			button.pressed.connect(_emit_formation_destination.bind(index))
 		else:
@@ -260,7 +262,6 @@ func _star_upgrade_presentation() -> void:
 	panel.position = Vector2(565.0, 182.0)
 	panel.size = Vector2(450.0, 46.0)
 	panel.add_theme_stylebox_override("panel", ThemeTokensScript.panel_style(ThemeTokensScript.GOLD))
-	panel.set_meta("animated", not _reduced_motion)
 	add_child(panel)
 	var label := Label.new()
 	label.name = "StarUpgradeMessage"
@@ -272,9 +273,16 @@ func _star_upgrade_presentation() -> void:
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	panel.add_child(label)
 	if not _reduced_motion:
-		panel.modulate.a = 0.0
+		var pulse := ColorRect.new()
+		pulse.name = "StarUpgradePulse"
+		pulse.color = Color(ThemeTokensScript.PARCHMENT, 0.28)
+		pulse.position = Vector2(4.0, 4.0)
+		pulse.size = panel.size - Vector2(8.0, 8.0)
+		pulse.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		panel.add_child(pulse)
 		var tween := create_tween()
-		tween.tween_property(panel, "modulate:a", 1.0, ThemeTokensScript.motion_duration(0.18, false))
+		tween.tween_property(pulse, "modulate:a", 0.15, ThemeTokensScript.motion_duration(0.18, false))
+		tween.tween_property(pulse, "modulate:a", 1.0, ThemeTokensScript.motion_duration(0.18, false))
 
 func _shop_catalog() -> Dictionary:
 	var catalog := {}

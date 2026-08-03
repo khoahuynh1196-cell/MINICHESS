@@ -46,6 +46,15 @@ func _init() -> void:
 	controller.prepare_screen.find_child("BenchSlot00", true, false).pressed.emit()
 	var equip_command: Dictionary = commands[1] if commands.size() > 1 else {}
 	_expect(String(equip_command.get("type", "")) == "EQUIP_ITEM", "selected item flow must emit an EQUIP_ITEM command")
+	commands.clear()
+	var item_source: Control = controller.prepare_screen.find_child("InventoryItem0", true, false) as Control
+	var item_target: FormationSlotButton = controller.prepare_screen.find_child("BoardCell00", true, false) as FormationSlotButton
+	var pre_drag_items: Array = controller.run_state.items.duplicate(true)
+	var pre_drag_board: Array = controller.run_state.board.duplicate(true)
+	if item_source != null and item_target != null and item_source.has_method("_get_drag_data"):
+		item_target._drop_data(Vector2.ZERO, item_source._get_drag_data(Vector2.ZERO))
+	_expect(commands.size() == 1 and String(commands[0].get("type", "")) == "EQUIP_ITEM" and String(commands[0].get("item_instance_id", "")) == "item-a" and String(commands[0].get("hero_instance_id", "")) == "board-a", "dragging an item onto a hero must emit the authoritative EQUIP_ITEM intent")
+	_expect(controller.run_state.items == pre_drag_items and controller.run_state.board == pre_drag_board, "item drag equip must not mutate local run state before the authoritative response")
 	controller.prepare_screen.find_child("ViewCollection", true, false).pressed.emit()
 	_expect(controller.screen_router.current_screen_id == "collection", "collection remains reachable after Prepare interaction")
 	commands.clear()

@@ -1,6 +1,7 @@
 extends SceneTree
 
 const ItemInventoryScript = preload("res://scripts/ui/item_inventory.gd")
+const ItemMetadataCatalogScript = preload("res://scripts/ui/item_metadata_catalog.gd")
 
 var _failed := false
 
@@ -21,6 +22,11 @@ func _init() -> void:
 	_expect(bool(ItemInventoryScript.equip_result([{ "instanceId": "free", "itemId": "I01", "kind": "normal" }], "free", "hero-b").allowed), "free item must be equipable")
 	_expect(ItemInventoryScript.item_label({ "instanceId": "free", "itemId": "I01", "kind": "normal" }) == "Iron Blade", "item labels must use authored content names")
 	_expect(ItemInventoryScript.item_tooltip({ "instanceId": "free", "itemId": "I01", "kind": "normal" }).contains("Iron Blade") and ItemInventoryScript.item_tooltip({ "instanceId": "free", "itemId": "I01", "kind": "normal" }).contains("Attack Damage"), "item tooltips must include authored names and effects")
+	var iron_blade_source := _authoritative_item("I01")
+	_expect(ItemInventoryScript.item_tooltip({ "instanceId": "free", "itemId": "I01", "kind": "normal" }).contains(String(iron_blade_source.get("category", ""))), "item tooltip category must be derived from the authoritative content bundle")
+	for source_item in _authoritative_items():
+		var exported_item := ItemMetadataCatalogScript.item_metadata(String(source_item.get("id", "")))
+		_expect(String(exported_item.get("name", "")) == String(source_item.get("name", "")) and String(exported_item.get("kind", "")) == String(source_item.get("kind", "")) and String(exported_item.get("category", "unique")) == String(source_item.get("category", "unique")) and Array(exported_item.get("stat_modifiers", [])) == Array(source_item.get("stat_modifiers", [])), "client item metadata must stay generated from authoritative item content")
 	var inventory := ItemInventoryScript.new()
 	var equip_intents: Array = []
 	inventory.equip_requested.connect(func(item_instance_id: String, hero_instance_id: String) -> void: equip_intents.append([item_instance_id, hero_instance_id]))
@@ -41,3 +47,20 @@ func _expect(condition: bool, message: String) -> void:
 	if not condition:
 		_failed = true
 		push_error(message)
+
+func _authoritative_item(item_id: String) -> Dictionary:
+	for item in _authoritative_items():
+		if String(item.get("id", "")) == item_id:
+			return item
+	return {}
+
+func _authoritative_items() -> Array:
+	var workspace_root := ProjectSettings.globalize_path("res://")
+	var file := FileAccess.open(workspace_root.path_join("../content/alpha-0.3.0/bundle.json").simplify_path(), FileAccess.READ)
+	if file == null:
+		return []
+	var bundle = JSON.parse_string(file.get_as_text())
+	file.close()
+	if typeof(bundle) != TYPE_DICTIONARY:
+		return []
+	return Array(bundle.get("normal_items", [])) + Array(bundle.get("unique_items", []))

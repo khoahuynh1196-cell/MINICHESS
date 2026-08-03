@@ -3,9 +3,12 @@ extends SceneTree
 const CONTROLLER_PATH := "res://scripts/battle_controller.gd"
 const CombatEventScript = preload("res://scripts/combat_event.gd")
 const AssetManifestScript = preload("res://scripts/presentation/asset_manifest.gd")
+const PrepareScreenScript = preload("res://scripts/ui/prepare_screen.gd")
+
+var _failed := false
 
 func _init() -> void:
-	set_meta("failed", false)
+	_failed = false
 	var controller_script := load(CONTROLLER_PATH)
 	if controller_script == null:
 		_fail("BattleController script is missing")
@@ -113,9 +116,33 @@ func _init() -> void:
 	var exotic_guardian_portrait = controller.unit_views["player:H20:1"].get_node_or_null("Portrait")
 	_expect(exotic_guardian_portrait != null and exotic_guardian_portrait.texture != null and exotic_guardian_portrait.texture.resource_path == "res://assets/sprites/h20-capybara-guardian-chibi-v3.png", "H20 spawn must render the capybara guardian texture")
 	_expect(controller.unit_views["player:H01:1"].hp == 75000, "damage must update rendered HP")
+	var normal_combine = controller_script.new()
+	normal_combine._create_mobile_ui()
+	normal_combine.settings["reduced_motion"] = false
+	normal_combine.apply_run_view(_combine_view(1))
+	normal_combine.apply_run_view(_combine_view(2))
+	var normal_screen = PrepareScreenScript.new()
+	normal_screen.bind_run(normal_combine._prepare_screen_view())
+	var normal_celebration = normal_screen.find_child("StarUpgradePresentation", true, false) as Panel
+	var normal_pulse = normal_screen.find_child("StarUpgradePulse", true, false) as ColorRect
+	_expect(normal_celebration != null and normal_pulse != null and normal_pulse.color.a > 0.0 and String((normal_screen.find_child("StarUpgradeMessage", true, false) as Label).text).contains("Three copies combined"), "an authoritative one-to-two star increase must render a visible animated combine celebration")
+	var reduced_combine = controller_script.new()
+	reduced_combine._create_mobile_ui()
+	reduced_combine.settings["reduced_motion"] = true
+	reduced_combine.apply_run_view(_combine_view(1))
+	reduced_combine.apply_run_view(_combine_view(2))
+	var reduced_screen = PrepareScreenScript.new()
+	reduced_screen.bind_run(reduced_combine._prepare_screen_view())
+	var reduced_celebration = reduced_screen.find_child("StarUpgradePresentation", true, false) as Panel
+	_expect(reduced_celebration != null and reduced_screen.find_child("StarUpgradePulse", true, false) == null and String((reduced_screen.find_child("StarUpgradeMessage", true, false) as Label).text).contains("Cotton Bulwark"), "reduced motion must render an immediate readable combine result without animation")
+	normal_screen.free()
+	reduced_screen.free()
+	normal_combine.free()
+	reduced_combine.free()
 	controller.free()
-	if bool(get_meta("failed")):
+	if _failed:
 		quit(1)
+		return
 	print("PASS battle_controller_test")
 	quit(0)
 
@@ -134,7 +161,7 @@ func _expect(condition: bool, message: String) -> void:
 		_fail(message)
 
 func _fail(message: String) -> void:
-	set_meta("failed", true)
+	_failed = true
 	push_error(message)
 
 func _texture_key(texture: Texture2D) -> String:
@@ -142,3 +169,14 @@ func _texture_key(texture: Texture2D) -> String:
 	if atlas != null:
 		return "%s:%s" % [atlas.atlas.resource_path, atlas.region]
 	return texture.resource_path if texture != null else ""
+
+func _combine_view(stars: int) -> Dictionary:
+	var board: Array = []
+	board.resize(12)
+	board.fill(null)
+	board[0] = { "instanceId": "combine-survivor", "heroId": "H01", "cost": 1, "stars": stars }
+	return {
+		"id": "combine-run", "state": "PREPARE", "round": 1, "revision": stars,
+		"gold": 8, "health": 30, "level": 3, "experience": 0, "experienceToNext": 6, "boardCap": 3,
+		"shop": [], "bench": [], "board": board, "items": [],
+	}
