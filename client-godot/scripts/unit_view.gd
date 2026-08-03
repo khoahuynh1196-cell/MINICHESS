@@ -1,30 +1,9 @@
 extends Node2D
 
 const HeroRigScript = preload("res://scripts/presentation/hero_rig_2d.gd")
+const AssetManifestScript = preload("res://scripts/presentation/asset_manifest.gd")
 const CELL_WIDTH := 340.0
 const CELL_HEIGHT := 130.0
-const HERO_PORTRAITS := {
-	"H01": preload("res://assets/sprites/h01-cotton-shield-cat-chibi-v2.png"),
-	"H02": preload("res://assets/sprites/h02-ember-duelist-cat-chibi-v2.png"),
-	"H03": preload("res://assets/sprites/h03-forest-ranger-cat-chibi-v2.png"),
-	"H04": preload("res://assets/sprites/h04-frost-mage-cat-chibi-v2.png"),
-	"H05": preload("res://assets/sprites/h05-lantern-healer-cat-chibi-v2.png"),
-	"H06": preload("res://assets/sprites/h06-moonshield-dog-chibi-v2.png"),
-	"H07": preload("res://assets/sprites/h07-scarf-brawler-dog-chibi-v2.png"),
-	"H08": preload("res://assets/sprites/h08-hooded-ranger-dog-chibi-v2.png"),
-	"H09": preload("res://assets/sprites/h09-star-mage-dog-chibi-v2.png"),
-	"H10": preload("res://assets/sprites/h10-medic-dog-chibi-v2.png"),
-	"H11": preload("res://assets/sprites/h11-dashing-rabbit-fighter-chibi-v2.png"),
-	"H12": preload("res://assets/sprites/h12-hooded-rabbit-ranger-chibi-v2.png"),
-	"H13": preload("res://assets/sprites/h13-potion-rabbit-mage-chibi-v2.png"),
-	"H14": preload("res://assets/sprites/h14-rabbit-healer-chibi-v2.png"),
-	"H15": preload("res://assets/sprites/h15-bulwark-cow-chibi-v2.png"),
-	"H16": preload("res://assets/sprites/h16-hammer-cow-fighter-chibi-v2.png"),
-	"H17": preload("res://assets/sprites/h17-lantern-cow-support-chibi-v2.png"),
-	"H18": preload("res://assets/sprites/h18-red-panda-ranger-chibi-v2.png"),
-	"H19": preload("res://assets/sprites/h19-owl-mage-chibi-v2.png"),
-	"H20": preload("res://assets/sprites/h20-capybara-guardian-chibi-v3.png"),
-}
 
 var grid_index := 0
 var hp := 100000
@@ -84,11 +63,12 @@ func _process(delta: float) -> void:
 		portrait.position.y = -5.0 + sin(_animation_elapsed * 4.0) * 2.0
 
 func _add_portrait(hero_id: String) -> void:
-	if not HERO_PORTRAITS.has(hero_id):
+	var manifest_texture := AssetManifestScript.resolve_hero_texture(hero_id)
+	if manifest_texture == null:
 		return
 	portrait = Sprite2D.new()
 	portrait.name = "Portrait"
-	portrait.texture = HERO_PORTRAITS[hero_id]
+	portrait.texture = manifest_texture
 	portrait.position = Vector2(0.0, -5.0)
 	portrait.scale = Vector2(0.055, 0.055)
 	portrait.z_index = 1
@@ -96,7 +76,7 @@ func _add_portrait(hero_id: String) -> void:
 	hero_rig = HeroRigScript.new()
 	hero_rig.name = "HeroRig"
 	hero_rig.z_index = 2
-	hero_rig.configure(hero_id, portrait.texture, side == "player")
+	hero_rig.configure(hero_id, manifest_texture, side == "player")
 	hero_rig.set_reduced_motion(reduced_motion)
 	add_child(hero_rig)
 	# Retain the named texture node for fixture compatibility; the rig is visible.

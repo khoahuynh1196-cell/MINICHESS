@@ -25,6 +25,11 @@ func _init() -> void:
 	_expect(controller.unit_views.has("player:H01:1"), "spawn must create a unit view")
 	_expect(controller.unit_views["player:H01:1"].grid_index == 22, "spawn must place the unit on its grid index")
 	_expect(controller.unit_views["player:H01:1"].get("hero_id") == "H01", "spawn must retain the hero ID for a readable board label")
+	controller.apply_event(_event("UNIT_SPAWNED", "enemy:H15:1", "", { "side": "enemy", "position": 1, "max_hp": 90000 }))
+	var monster = controller.unit_views["enemy:H15:1"]
+	_expect(monster.get("monster_id") == "meadow", "enemy spawn must map to a biome monster view")
+	var monster_cutout = monster.get_node_or_null("Cutout")
+	_expect(monster_cutout != null and monster_cutout.texture != null and monster_cutout.texture.resource_path == "res://assets/monsters/meadow-moss-goblin-scout-v1.png", "enemy spawn must use the individual meadow cutout")
 	var portrait = controller.unit_views["player:H01:1"].get_node_or_null("Portrait")
 	_expect(portrait != null and portrait.texture != null and portrait.texture.resource_path == "res://assets/sprites/h01-cotton-shield-cat-chibi-v2.png", "H01 spawn must render the chibi full-body character texture")
 	controller.apply_event(_event("UNIT_SPAWNED", "player:H02:1", "", { "side": "player", "position": 21, "max_hp": 100000 }))

@@ -40,3 +40,57 @@ Built-in image generation was used (no fallback CLI). Final workspace paths are 
 - `pnpm test -- alpha-bundle.test.ts` passed: game-core 100 tests and server 140 tests.
 - A direct `res://` manifest path scan reported `assets: 252`, `profiles: 20`, `missing: []`.
 - Visual inspection completed at native resolution for the hero roster, item/VFX/UI atlas, and four-board biome atlas.
+
+## 2026-08-04 cutout-runtime correction
+
+The card-style hero roster and monster HUD atlases listed above are rejected
+references, not runtime inputs. `asset_manifest.json` now maps H01–H20 through
+their individual `assets/sprites/h01-...` through `h20-...` alpha cutouts;
+`UnitView` and `HeroRig2D` resolve them through `AssetManifest` rather than a
+hard-coded portrait table. The manifest contains no
+`hero-roster-atlas-v1.png` or `monster-hud-vfx-atlas-v2.png` runtime path.
+
+`MonsterView` is a reusable manifest consumer, used for `side == "enemy"`
+spawns in `BattleController`. It owns the ground ellipse, HP bar, nameplate,
+defeat tint, and an elite/boss marker in Godot code; no UI or status pixels are
+baked into monster art. Board dimensions and replay event semantics were not
+changed.
+
+### Monster source inventory
+
+- Ten distinct generated, chroma-removed alpha cutouts are present under
+  `client-godot/assets/monsters/`: four normal biome enemies, four elites,
+  Meadow's Briar King boss, and Ruins' Lich Archivist boss.
+- Six explicit manifest records remain
+  `engine_marker_over_base_pending_cutout`: Frost boss/family and Ember
+  boss/family plus Meadow/Ruins boss-family. They are registered and visibly
+  tier-marked at runtime, but do **not** satisfy the strict requirement for
+  sixteen distinct monster source cutouts. This is an open art-production gap,
+  not a passed acceptance gate.
+
+### Verification run
+
+Godot 4.7.1 console executable:
+
+`C:\Users\Admin\AppData\Local\Microsoft\WinGet\Packages\GodotEngine.GodotEngine_Microsoft.Winget.Source_8wekyb3d8bbwe\Godot_v4.7.1-stable_win64_console.exe`
+
+- `--headless --path D:\CODE\client-godot --editor --quit` imported all ten
+  monster PNGs successfully through the mobile project configuration.
+- `--headless --path D:\CODE\client-godot --script res://test/asset_manifest_test.gd`
+  passed, including all H01–H20 and all sixteen declared monster IDs.
+- `--headless --path D:\CODE\client-godot --script res://test/monster_view_test.gd`
+  passed.
+- `--headless --path D:\CODE\client-godot --script res://test/battle_controller_test.gd`
+  passed, including an enemy `MonsterView` spawn that resolves the Meadow
+  cutout.
+- `--headless --path D:\CODE\client-godot --script res://test/unit_view_animation_test.gd`
+  passed.
+
+### Open capture gate
+
+A dedicated `SceneTree` capture helper was attempted twice with the same
+Godot console invocation. Both runs timed out at 64 seconds before producing
+a viewport frame, so no screenshot was retained and no visual-inspection claim
+is made for a 1080 × 1920 live combat capture. Capture should be performed
+from an interactive or device-backed Godot run before the full visual
+acceptance gate is signed off.

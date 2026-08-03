@@ -1,6 +1,7 @@
 extends Node2D
 
 const UnitViewScript = preload("res://scripts/unit_view.gd")
+const MonsterViewScript = preload("res://scripts/presentation/monster_view.gd")
 const ReplayLoaderScript = preload("res://scripts/replay_loader.gd")
 const ReplaySchedulerScript = preload("res://scripts/replay_scheduler.gd")
 const CombatEventScript = preload("res://scripts/combat_event.gd")
@@ -419,14 +420,24 @@ func _spawn_unit(event) -> void:
 	var unit_id: String = String(event.source_unit_id)
 	if unit_id.is_empty() or unit_views.has(unit_id):
 		return
-	var unit = UnitViewScript.new()
-	unit.configure(
-		String(event.payload.get("side", "player")),
-		int(event.payload.get("position", 0)),
-		int(event.payload.get("max_hp", 100000)),
-		_hero_id_from_unit_id(unit_id),
-		_unique_item_id_from_unit_id(unit_id),
-	)
+	var side := String(event.payload.get("side", "player"))
+	var unit
+	if side == "enemy":
+		unit = MonsterViewScript.new()
+		unit.configure(
+			_monster_id_from_unit_id(unit_id),
+			int(event.payload.get("max_hp", 100000)),
+			int(event.payload.get("position", 0)),
+		)
+	else:
+		unit = UnitViewScript.new()
+		unit.configure(
+			side,
+			int(event.payload.get("position", 0)),
+			int(event.payload.get("max_hp", 100000)),
+			_hero_id_from_unit_id(unit_id),
+			_unique_item_id_from_unit_id(unit_id),
+		)
 	unit.set_reduced_motion(bool(settings.get("reduced_motion", false)))
 	unit_views[unit_id] = unit
 	add_child(unit)
@@ -472,6 +483,18 @@ func _hero_id_from_unit_id(unit_id: String) -> String:
 			return String(hero.get("heroId", ""))
 	var parts := unit_id.split(":")
 	return parts[1] if parts.size() >= 2 else ""
+
+func _monster_id_from_unit_id(unit_id: String) -> String:
+	# The combat protocol remains unit-ID based; this maps its fixture enemies to
+	# manifest-backed biome silhouettes without changing board/replay geometry.
+	var hero_id := _hero_id_from_unit_id(unit_id)
+	var fixture_biomes := {
+		"H15": "meadow",
+		"H16": "ruins",
+		"H19": "frost_keep",
+		"H17": "ember_citadel"
+	}
+	return String(fixture_biomes.get(hero_id, "meadow"))
 
 func _unique_item_id_from_unit_id(unit_id: String) -> String:
 	var instance_id := unit_id.trim_prefix("player:")
