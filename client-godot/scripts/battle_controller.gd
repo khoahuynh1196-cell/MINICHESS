@@ -217,12 +217,14 @@ func request_buy_shop_slot(shop_slot_index: int) -> void:
 	audio_feedback.request_haptic("buy")
 
 func request_refresh_shop() -> void:
-	if run_state.state != "PREPARE" or (run_state.free_refreshes <= 0 and run_state.gold < 2):
+	if run_state.state != "PREPARE" or run_state.shop_locked or (run_state.free_refreshes <= 0 and run_state.gold < 2):
 		return
 	command_requested.emit(build_command_payload("client-refresh-%s" % run_state.revision, "REFRESH_SHOP"))
 
 func request_lock_shop() -> void:
-	_set_status("Shop locking is not supported by the server yet")
+	if run_state.state != "PREPARE":
+		return
+	command_requested.emit(build_command_payload("client-lock-%s" % run_state.revision, "LOCK_SHOP"))
 
 func request_buy_xp() -> void:
 	if not run_state.can_buy_xp():

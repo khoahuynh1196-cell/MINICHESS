@@ -29,6 +29,8 @@ export interface RunRecord {
   readonly commandResponses: Readonly<Record<string, RunCommandResult>>;
   readonly commandRequests?: Readonly<Record<string, string>>;
   readonly shop?: readonly (ShopSlot | null)[];
+  /** The server-owned shop lock state. A locked shop cannot be refreshed. */
+  readonly shopLocked?: boolean;
   /** Private, authoritative pool state; never include this in a public run view. */
   readonly shopPool?: ShopPool;
   readonly shopRefreshes?: number;
@@ -87,7 +89,7 @@ export interface RunCommandInput {
   readonly runId: string;
   readonly commandId: string;
   readonly expectedRevision: number;
-  readonly type: "REFRESH_SHOP" | "ABANDON_RUN" | "BUY_XP" | "BUY_SHOP_HERO" | "SELL_HERO" | "MOVE_HERO" | "EQUIP_ITEM" | "UNEQUIP_ITEM" | "START_ROUND" | "CLAIM_ROUND_REWARD" | "ACK_UNIQUE_REVEAL" | "CLAIM_REWARD_HERO";
+  readonly type: "REFRESH_SHOP" | "LOCK_SHOP" | "ABANDON_RUN" | "BUY_XP" | "BUY_SHOP_HERO" | "SELL_HERO" | "MOVE_HERO" | "EQUIP_ITEM" | "UNEQUIP_ITEM" | "START_ROUND" | "CLAIM_ROUND_REWARD" | "ACK_UNIQUE_REVEAL" | "CLAIM_REWARD_HERO";
   readonly shopSlotIndex?: number;
   readonly heroInstanceId?: string;
   readonly itemInstanceId?: string;
@@ -345,6 +347,7 @@ export async function applyRunCommand(input: RunCommandInput, repository: RunRep
   }
   if (run.state !== "PREPARE") throw new Error("COMMAND_NOT_ALLOWED");
   const progression = progressionForRun(run);
+  if (input.type === "REFRESH_SHOP" && run.shopLocked === true) throw new Error("COMMAND_NOT_ALLOWED");
   const usesFreeRefresh = input.type === "REFRESH_SHOP" && (run.freeRefreshes ?? 0) > 0;
   if (input.type === "REFRESH_SHOP" && !usesFreeRefresh && run.gold < 2) throw new Error("GAME_RULE_VIOLATION");
   if (input.type === "BUY_XP" && (run.gold < 4 || progression.level === MAX_PLAYER_LEVEL)) throw new Error("GAME_RULE_VIOLATION");
@@ -446,6 +449,7 @@ export async function applyRunCommand(input: RunCommandInput, repository: RunRep
     level: updatedProgression.level,
     experience: updatedProgression.experience,
     ...(shop === undefined ? {} : { shop }),
+    ...(input.type === "LOCK_SHOP" ? { shopLocked: run.shopLocked !== true } : run.shopLocked === undefined ? {} : { shopLocked: run.shopLocked }),
     ...(shopPool === undefined ? {} : { shopPool }),
     ...(input.type === "REFRESH_SHOP" ? { shopRefreshes: refreshNumber } : run.shopRefreshes === undefined ? {} : { shopRefreshes: run.shopRefreshes }),
     ...(freeRefreshes === undefined ? {} : { freeRefreshes }),

@@ -59,15 +59,18 @@ func _rebuild() -> void:
 		elif not card.is_unique_offer:
 			card.pressed.connect(func() -> void: buy_shop_slot.emit(index))
 		add_child(card)
-	_add_label("TierOdds", _odds_text(), Rect2(20.0, 196.0, 650.0, 30.0), 17, ThemeTokensScript.PARCHMENT)
+	_add_label("TierOdds", _odds_text(), Rect2(20.0, 198.0, 435.0, 30.0), 16, ThemeTokensScript.PARCHMENT)
 	var refresh_cost := "Free refresh" if _free_refreshes > 0 else "Refresh • 2 Gold"
-	var refresh := _button("RefreshShop", refresh_cost, Rect2(710.0, 192.0, 270.0, 44.0), ThemeTokensScript.PLAYER)
-	refresh.disabled = not _prepare_enabled or (_free_refreshes <= 0 and _gold < 2)
-	refresh.tooltip_text = "Ask the server for five new shop offers."
+	var refresh := _button("RefreshShop", refresh_cost, Rect2(680.0, 192.0, 300.0, 44.0), ThemeTokensScript.PLAYER)
+	refresh.disabled = not _prepare_enabled or _locked or (_free_refreshes <= 0 and _gold < 2)
+	refresh.tooltip_text = "Shop is locked by the server. Unlock it before refreshing." if _locked else "Ask the server for five new shop offers."
 	if not refresh.disabled:
 		refresh.pressed.connect(func() -> void: refresh_shop.emit())
-	var lock_text := "Shop locked by server" if _locked else "Lock unavailable: server support pending"
-	_add_label("LockUnavailable", lock_text, Rect2(20.0, 222.0, 650.0, 20.0), 14, ThemeTokensScript.MUTED)
+	var lock := _button("LockShop", "Unlock shop" if _locked else "Lock shop", Rect2(465.0, 192.0, 205.0, 44.0), ThemeTokensScript.GOLD)
+	lock.disabled = not _prepare_enabled
+	lock.tooltip_text = "Ask the server to unlock the current shop." if _locked else "Ask the server to preserve the current shop."
+	if not lock.disabled:
+		lock.pressed.connect(func() -> void: lock_shop.emit())
 
 func _purchase_disabled_reason(slot) -> String:
 	if slot == null or Dictionary(slot).is_empty():

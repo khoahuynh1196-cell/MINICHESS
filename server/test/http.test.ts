@@ -17,7 +17,7 @@ describe("HTTP adapter", () => {
     const app = createHttpApp({ actorId: "actor-a", tenantId: "tenant-a" });
     const response = await app.inject({ method: "POST", url: "/v1/runs", payload: { id: "run-http", content_version: "alpha-0.3.0", tenant_id: "tenant-b" } });
     expect(response.statusCode).toBe(201);
-    expect(response.json()).toMatchObject({ data: { id: "run-http", contentVersion: "alpha-0.3.0", state: "PREPARE", revision: 0, gold: 8, round: 1, level: 3, experience: 0, experienceToNext: 10, boardCap: 3, bench: [], board: Array(12).fill(null) } });
+    expect(response.json()).toMatchObject({ data: { id: "run-http", contentVersion: "alpha-0.3.0", state: "PREPARE", revision: 0, gold: 8, round: 1, level: 3, experience: 0, experienceToNext: 10, boardCap: 3, shopOdds: { tier1: 55, tier2: 35, tier3: 10, tier4: 0, tier5: 0 }, shopLocked: false, bench: [], board: Array(12).fill(null) } });
     expect(response.json()).toMatchObject({
       request_id: expect.stringMatching(/^[0-9a-f-]{36}$/),
       server_time: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T/),
@@ -195,6 +195,18 @@ describe("HTTP adapter", () => {
     const response = await app.inject({ method: "POST", url: "/v1/runs/run-command/commands", payload: { command_id: "cmd-http", expected_run_revision: 0, type: "REFRESH_SHOP" } });
     expect(response.statusCode).toBe(200);
     expect(response.json()).toMatchObject({ data: { runRevision: 1, status: "APPLIED" } });
+  });
+
+  it("exposes a server-backed shop lock after the lock command", async () => {
+    const { createHttpApp } = await import("../src/http/app.js");
+    const app = createHttpApp({ actorId: "actor-a", tenantId: "tenant-a" });
+    await app.inject({ method: "POST", url: "/v1/runs", payload: { id: "run-shop-lock", content_version: "alpha-0.3.0" } });
+
+    const command = await app.inject({ method: "POST", url: "/v1/runs/run-shop-lock/commands", payload: { command_id: "cmd-lock-shop", expected_run_revision: 0, type: "LOCK_SHOP" } });
+    const view = await app.inject({ method: "GET", url: "/v1/runs/run-shop-lock" });
+
+    expect(command.statusCode).toBe(200);
+    expect(view.json()).toMatchObject({ data: { revision: 1, shopLocked: true, shopOdds: { tier1: 55, tier2: 35, tier3: 10, tier4: 0, tier5: 0 } } });
   });
 
   it("accepts a snake-case reward selection without exposing the private run seed", async () => {

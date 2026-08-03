@@ -31,6 +31,7 @@ var _view: Dictionary = {}
 var _prepare_enabled := false
 var _selected_hero_instance_id := ""
 var _selected_item_instance_id := ""
+var _sell_feedback := ""
 
 func _init() -> void:
 	name = "PrepareScreen"
@@ -40,6 +41,7 @@ func _init() -> void:
 
 func bind_run(view: Dictionary) -> void:
 	_view = view.duplicate(true)
+	_sell_feedback = ""
 	_prepare_enabled = String(_view.get("state", "")) == "PREPARE"
 	_selected_hero_instance_id = String(_view.get("selectedHeroInstanceId", ""))
 	_selected_item_instance_id = String(_view.get("selectedItemInstanceId", ""))
@@ -102,7 +104,9 @@ func _bench() -> void:
 	for index in BENCH_SLOT_COUNT:
 		var hero = bench[index] if index < bench.size() else null
 		var selected := hero != null and String(hero.get("instanceId", "")) == _selected_hero_instance_id
-		var button := _formation_slot("BenchSlot%02d" % index, "Open bench" if hero == null else _hero_name(hero), Rect2(60.0 + index * 123.0, 775.0, 116.0, 58.0), ThemeTokensScript.GOLD if selected else ThemeTokensScript.STONE_RAISED if hero != null else ThemeTokensScript.PLAYER, String(hero.get("instanceId", "")) if hero != null else "", index)
+		var button := _formation_slot("BenchSlot%02d" % index, "Empty" if hero == null else _hero_name(hero), Rect2(60.0 + index * 123.0, 775.0, 116.0, 58.0), ThemeTokensScript.GOLD if selected else ThemeTokensScript.STONE_RAISED if hero != null else ThemeTokensScript.PLAYER, String(hero.get("instanceId", "")) if hero != null else "", index)
+		if hero == null:
+			button.tooltip_text = "Empty bench slot %d" % (index + 1)
 		button.move_dropped.connect(func(instance_id: String, destination: int) -> void: formation_drag_dropped.emit(instance_id, destination))
 		if hero == null:
 			button.pressed.connect(_emit_formation_destination.bind(index))
@@ -155,10 +159,11 @@ func _action_rail() -> void:
 	start.pressed.connect(func() -> void: start_round.emit())
 	var sell := _button("SellSelected", "Sell selected", Rect2(440.0, 1435.0, 180.0, 56.0), ThemeTokensScript.DANGER)
 	sell.disabled = not _prepare_enabled or _selected_hero_instance_id.is_empty()
-	sell.pressed.connect(func() -> void: sell_hero.emit(_selected_hero_instance_id))
+	sell.pressed.connect(_request_sell_selected)
 	var collection := _button("ViewCollection", "Collection", Rect2(640.0, 1435.0, 180.0, 56.0), ThemeTokensScript.GOLD)
 	collection.disabled = not _prepare_enabled
 	collection.pressed.connect(func() -> void: collection_requested.emit())
+	_label("SellFeedback", _sell_feedback, Rect2(64.0, 1498.0, 920.0, 18.0), 14, ThemeTokensScript.MUTED)
 
 func _panel(node_name: String, rect: Rect2, color: Color = ThemeTokensScript.STONE) -> Panel:
 	var panel := Panel.new()
@@ -213,6 +218,13 @@ func _emit_formation_hero(instance_id: String, destination: int) -> void:
 
 func _emit_formation_destination(destination: int) -> void:
 	formation_destination_selected.emit(destination)
+
+func _request_sell_selected() -> void:
+	_sell_feedback = "Sell requested; awaiting server confirmation."
+	var feedback: Label = find_child("SellFeedback", true, false) as Label
+	if feedback != null:
+		feedback.text = _sell_feedback
+	sell_hero.emit(_selected_hero_instance_id)
 
 func _deployed_count() -> int:
 	return Array(_view.get("board", [])).filter(func(hero): return hero != null).size()

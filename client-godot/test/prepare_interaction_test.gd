@@ -49,6 +49,13 @@ func _init() -> void:
 	controller.prepare_screen.find_child("ViewCollection", true, false).pressed.emit()
 	_expect(controller.screen_router.current_screen_id == "collection", "collection remains reachable after Prepare interaction")
 	commands.clear()
+	var lock_button = controller.prepare_screen.find_child("LockShop", true, false) as Button
+	_expect(lock_button != null and not lock_button.disabled, "Prepare must expose a server-backed lock control")
+	if lock_button != null:
+		lock_button.pressed.emit()
+	_expect(commands.size() == 1 and String(commands[0].get("type", "")) == "LOCK_SHOP", "locking the shop must bridge a LOCK_SHOP command without local mutation")
+	_expect(not controller.run_state.shop_locked, "lock intent must not optimistically mutate the authoritative client run state")
+	commands.clear()
 	var combat_view := _run_view("COMBAT")
 	controller.apply_run_view(combat_view)
 	controller.request_drag_formation_move("board-a", 13)

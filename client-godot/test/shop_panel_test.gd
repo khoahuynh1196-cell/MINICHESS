@@ -2,6 +2,7 @@ extends SceneTree
 
 const HeroCardScript = preload("res://scripts/ui/hero_card.gd")
 const ShopPanelScript = preload("res://scripts/ui/shop_panel.gd")
+const ThemeTokensScript = preload("res://scripts/ui/theme_tokens.gd")
 
 var _failed := false
 
@@ -23,16 +24,28 @@ func _init() -> void:
 	_expect(third != null and third.cost_text == "3 Gold" and third.rarity_text == "Tier 3" and third.star_text == "★★★", "Hero cards must represent the authoritative cost, rarity, and star tier")
 	var hero_name: Label = third.find_child("HeroName", true, false) as Label
 	var faction_class: Label = third.find_child("FactionClass", true, false) as Label
-	_expect(hero_name.autowrap_mode == TextServer.AUTOWRAP_OFF and hero_name.clip_text and hero_name.position.y + hero_name.size.y <= faction_class.position.y, "Hero name and faction/class labels must reserve separate vertical space on compact cards")
+	_expect(hero_name.autowrap_mode == TextServer.AUTOWRAP_WORD_SMART and not hero_name.clip_text and hero_name.position.y + hero_name.size.y <= faction_class.position.y, "Hero name and faction/class labels must reserve separate vertical space on compact cards")
+	var capybara = panel.find_child("BuySlot4", true, false)
+	var capybara_name: Label = capybara.find_child("HeroName", true, false) as Label
+	var capybara_faction: Label = capybara.find_child("FactionClass", true, false) as Label
+	_expect(capybara_name.text == "Capybara Guardian" and not capybara_name.clip_text and capybara_faction.text == "exotic  /  guardian" and not capybara_faction.clip_text, "Five-card layout must show the full hero identity, faction, and class without clipping")
+	_expect(capybara.tooltip_text.contains("Capybara Guardian") and capybara.tooltip_text.contains("exotic") and capybara.tooltip_text.contains("guardian"), "Focusable hero cards must expose the full identity in accessible tooltip text")
 	_expect(_label(panel, "TierOdds") == "T1 45%  T2 35%  T3 18%  T4 2%  T5 0%", "Shop must render server-provided tier odds")
-	_expect(panel.find_child("LockShop", true, false) == null and _label(panel, "LockUnavailable") == "Lock unavailable: server support pending", "Unsupported shop locking must be explained without a fake interactive control")
+	var lock_button: Button = panel.find_child("LockShop", true, false) as Button
+	_expect(lock_button != null and not lock_button.disabled and lock_button.text == "Lock shop" and (lock_button.get_theme_stylebox("normal") as StyleBoxFlat).bg_color == ThemeTokensScript.GOLD, "Server-backed shop locking must be exposed as a high-contrast enabled control")
 
 	var intents: Array = []
 	panel.buy_shop_slot.connect(func(index: int) -> void: intents.append(["buy", index]))
 	panel.refresh_shop.connect(func() -> void: intents.append(["refresh"]))
+	panel.lock_shop.connect(func() -> void: intents.append(["lock"]))
 	(panel.find_child("BuySlot0", true, false) as Button).pressed.emit()
 	(panel.find_child("RefreshShop", true, false) as Button).pressed.emit()
-	_expect(intents == [["buy", 0], ["refresh"]], "Shop controls must emit presentation intents instead of mutating economy or pool state")
+	if lock_button != null:
+		lock_button.pressed.emit()
+	_expect(intents == [["buy", 0], ["refresh"], ["lock"]], "Shop controls must emit presentation intents instead of mutating economy or pool state")
+	panel.bind_shop(_five_slots(), { "tier1": 45, "tier2": 35, "tier3": 18, "tier4": 2, "tier5": 0 }, true)
+	var locked_button: Button = panel.find_child("LockShop", true, false) as Button
+	_expect(locked_button != null and locked_button.text == "Unlock shop" and (panel.find_child("RefreshShop", true, false) as Button).disabled, "The authoritative locked state must relabel lock and prevent a refresh request")
 
 	panel.set_purchase_context(2, 1, true, 0)
 	_expect((panel.find_child("BuySlot2", true, false) as Button).disabled, "A hero must be disabled when authoritative gold is insufficient")

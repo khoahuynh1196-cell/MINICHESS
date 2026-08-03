@@ -35,6 +35,14 @@ const TIER_ODDS_BY_LEVEL: readonly (readonly number[])[] = [
   [1, 2, 12, 45, 40],
 ];
 
+export interface ShopTierOdds {
+  readonly tier1: number;
+  readonly tier2: number;
+  readonly tier3: number;
+  readonly tier4: number;
+  readonly tier5: number;
+}
+
 function assertRunSeed(runSeed: string): void {
   if (!RUN_SEED_HEX.test(runSeed) || runSeed.length % 2 !== 0) throw new Error("GAME_RULE_VIOLATION");
 }
@@ -51,6 +59,12 @@ function randomBelow(pool: ShopPool, stream: string, counter: number, upperExclu
 function oddsForLevel(level: number): readonly number[] {
   if (!Number.isInteger(level) || level < 1) throw new Error("GAME_RULE_VIOLATION");
   return TIER_ODDS_BY_LEVEL[Math.min(level, TIER_ODDS_BY_LEVEL.length - 1)]!;
+}
+
+/** Public, server-derived tier probabilities for the current player level. */
+export function shopOddsForLevel(level: number): ShopTierOdds {
+  const odds = oddsForLevel(level);
+  return Object.freeze({ tier1: odds[0]!, tier2: odds[1]!, tier3: odds[2]!, tier4: odds[3]!, tier5: odds[4]! });
 }
 
 function chooseWeightedIndex(weights: readonly number[], random: number): number {

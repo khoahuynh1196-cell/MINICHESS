@@ -14,8 +14,12 @@ func _init() -> void:
 	controller.apply_run_view({
 		"id": "run-mobile-accessibility", "state": "PREPARE", "round": 1, "revision": 0,
 		"gold": 8, "health": 30, "level": 3, "experience": 0, "experienceToNext": 6, "boardCap": 3,
-		"shop": [], "bench": [], "board": _board(), "items": [],
+		"shopOdds": { "tier1": 55, "tier2": 35, "tier3": 10, "tier4": 0, "tier5": 0 },
+		"shop": _shop(), "bench": [], "board": _board(), "items": [],
 	})
+	_expect_touch_targets(controller.screen_router.screen_root("prepare"))
+	var card: Button = controller.screen_router.screen_root("prepare").find_child("BuySlot4", true, false) as Button
+	_expect(card != null and card.text.strip_edges().is_empty() and card.tooltip_text.contains("Capybara Guardian"), "Prepare hero cards must have accessible full text even when the visible card uses custom labels")
 	controller.show_mobile_screen("map")
 	var disabled_count := _disabled_button_count(controller.screen_router.screen_root("map"))
 	_expect(disabled_count == 7, "future encounter nodes must be visibly disabled")
@@ -32,7 +36,7 @@ func _expect_touch_targets(root: Node) -> void:
 	for child in root.get_children():
 		if child is BaseButton:
 			_expect(child.custom_minimum_size.y >= TOUCH_TARGET, "%s must have a 44px touch target" % child.text)
-			_expect(not child.text.strip_edges().is_empty(), "touch controls must have a text alternative")
+			_expect(not child.text.strip_edges().is_empty() or not child.tooltip_text.strip_edges().is_empty(), "touch controls must have a text alternative")
 		_expect_touch_targets(child)
 
 func _disabled_button_count(root: Node) -> int:
@@ -48,6 +52,11 @@ func _board() -> Array:
 	board.resize(12)
 	board.fill(null)
 	return board
+
+func _shop() -> Array:
+	return [
+		{ "heroId": "H01", "cost": 1 }, { "heroId": "H02", "cost": 2 }, { "heroId": "H03", "cost": 3 }, { "heroId": "H04", "cost": 4 }, { "heroId": "H20", "cost": 5 },
+	]
 
 func _expect(condition: bool, message: String) -> void:
 	if not condition:

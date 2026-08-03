@@ -5,7 +5,7 @@ const SAVE_PATH := "user://local_pve_run.json"
 const PUBLIC_FIELDS := [
 	"id", "contentVersion", "state", "round", "revision", "gold", "health", "level",
 	"experience", "experienceToNext", "boardCap", "shop", "bench", "board", "items",
-	"freeRefreshes", "roundRewardPlan", "rewardHeroes",
+	"freeRefreshes", "shopOdds", "shopLocked", "roundRewardPlan", "rewardHeroes",
 ]
 const RESUMABLE_STATES := ["PREPARE", "COMBAT", "REWARD"]
 const ROSTER_IDS := [

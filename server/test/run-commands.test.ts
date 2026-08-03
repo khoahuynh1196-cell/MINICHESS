@@ -6,6 +6,20 @@ import type { CombatSnapshot } from "@auto-battler/game-core";
 const modulePath = "../src/application/run-commands.js";
 
 describe("run commands", () => {
+	it("toggles a persisted shop lock and refuses refresh while the server lock is active", async () => {
+		const module = await import(modulePath) as typeof import("../src/application/run-commands.js");
+		const repository = module.createInMemoryRunRepository();
+		await module.createRun({ id: "run-lock-shop", tenantId: "tenant-a", contentVersion: "alpha-0.3.0" }, repository);
+
+		await expect(module.applyRunCommand({ actorId: "actor-a", tenantId: "tenant-a", runId: "run-lock-shop", commandId: "cmd-lock", expectedRevision: 0, type: "LOCK_SHOP" as never }, repository))
+			.resolves.toEqual({ runRevision: 1, status: "APPLIED" });
+		await expect(repository.get("run-lock-shop", "tenant-a")).resolves.toMatchObject({ shopLocked: true, gold: 8, revision: 1 });
+		await expect(module.applyRunCommand({ actorId: "actor-a", tenantId: "tenant-a", runId: "run-lock-shop", commandId: "cmd-locked-refresh", expectedRevision: 1, type: "REFRESH_SHOP" }, repository))
+			.rejects.toThrow("COMMAND_NOT_ALLOWED");
+		await expect(module.applyRunCommand({ actorId: "actor-a", tenantId: "tenant-a", runId: "run-lock-shop", commandId: "cmd-unlock", expectedRevision: 1, type: "LOCK_SHOP" as never }, repository))
+			.resolves.toEqual({ runRevision: 2, status: "APPLIED" });
+		await expect(repository.get("run-lock-shop", "tenant-a")).resolves.toMatchObject({ shopLocked: false, gold: 8, revision: 2 });
+	});
   it("spends four gold for four experience without advancing before the threshold", async () => {
     const module = await import(modulePath) as typeof import("../src/application/run-commands.js");
     const repository = module.createInMemoryRunRepository();

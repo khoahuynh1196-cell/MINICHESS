@@ -9,6 +9,7 @@ var rarity_text := ""
 var star_text := ""
 var is_unique_offer := false
 var _availability_reason := ""
+var _identity_text := ""
 
 func _init() -> void:
 	focus_mode = Control.FOCUS_ALL
@@ -24,6 +25,7 @@ func configure(hero: Dictionary, catalog: Dictionary) -> void:
 	var faction_label := _label("FactionClass")
 	var portrait := get_node("Portrait") as TextureRect
 	if hero_id.is_empty():
+		_identity_text = "Sold offer"
 		cost_text = ""
 		rarity_text = ""
 		star_text = ""
@@ -33,6 +35,7 @@ func configure(hero: Dictionary, catalog: Dictionary) -> void:
 		set_purchase_enabled(false, "This offer has already been taken.")
 		return
 	if is_unique_offer:
+		_identity_text = "Unique heroes are not sold here"
 		cost_text = ""
 		rarity_text = ""
 		star_text = ""
@@ -48,6 +51,7 @@ func configure(hero: Dictionary, catalog: Dictionary) -> void:
 	star_text = "★".repeat(maxi(rarity, 0))
 	name_label.text = String(profile.get("display_name", hero_id))
 	faction_label.text = "%s  /  %s" % [String(profile.get("species", "Unknown")), String(profile.get("role", "Unknown"))]
+	_identity_text = "%s — %s / %s — %s, %s" % [name_label.text, String(profile.get("species", "Unknown")), String(profile.get("role", "Unknown")), cost_text, rarity_text]
 	_label("Cost").text = cost_text
 	_label("Rarity").text = rarity_text
 	_label("Stars").text = star_text
@@ -62,17 +66,17 @@ func set_purchase_enabled(available: bool, reason: String = "") -> void:
 func _build_content() -> void:
 	var portrait := TextureRect.new()
 	portrait.name = "Portrait"
-	portrait.position = Vector2(12.0, 14.0)
-	portrait.size = Vector2(58.0, 72.0)
+	portrait.position = Vector2(12.0, 44.0)
+	portrait.size = Vector2(48.0, 52.0)
 	portrait.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	portrait.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(portrait)
-	_add_label("HeroName", Rect2(76.0, 12.0, 94.0, 24.0), 17, ThemeTokensScript.INK)
-	_add_label("FactionClass", Rect2(76.0, 42.0, 94.0, 20.0), 13, ThemeTokensScript.INK)
-	_add_label("Cost", Rect2(12.0, 88.0, 76.0, 24.0), 16, ThemeTokensScript.INK)
-	_add_label("Rarity", Rect2(88.0, 88.0, 80.0, 24.0), 16, ThemeTokensScript.INK)
-	_add_label("Stars", Rect2(12.0, 112.0, 156.0, 22.0), 15, ThemeTokensScript.INK)
+	_add_label("HeroName", Rect2(10.0, 6.0, 160.0, 32.0), 15, ThemeTokensScript.INK, true)
+	_add_label("FactionClass", Rect2(70.0, 44.0, 98.0, 48.0), 13, ThemeTokensScript.INK, true)
+	_add_label("Cost", Rect2(12.0, 98.0, 76.0, 20.0), 15, ThemeTokensScript.INK)
+	_add_label("Rarity", Rect2(88.0, 98.0, 80.0, 20.0), 15, ThemeTokensScript.INK)
+	_add_label("Stars", Rect2(12.0, 118.0, 156.0, 18.0), 14, ThemeTokensScript.INK)
 
 func _add_label(node_name: String, rect: Rect2, font_size: int, color: Color, wrap: bool = false) -> void:
 	var label := Label.new()
@@ -94,6 +98,4 @@ func _load_portrait(portrait: TextureRect, sprite_name: String) -> void:
 	portrait.texture = load(path) as Texture2D if not sprite_name.is_empty() and ResourceLoader.exists(path) else null
 
 func _tooltip_text() -> String:
-	if not _availability_reason.is_empty():
-		return _availability_reason
-	return "%s — %s, %s" % [hero_id, cost_text, rarity_text]
+	return _identity_text if _availability_reason.is_empty() else "%s\n%s" % [_identity_text, _availability_reason]

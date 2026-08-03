@@ -13,17 +13,24 @@ func _init() -> void:
 	_expect(_all_core_controls_fit(screen), "Prepare core controls must fit within the 1080 x 1920 portrait viewport")
 	_expect(not _button(screen, "BuySlot0").disabled and not _button(screen, "BuyXp").disabled and not _button(screen, "StartRound").disabled, "Prepare controls must be available during PREPARE")
 	_expect(_label(screen, "TierOdds") == "T1 45%  T2 35%  T3 18%  T4 2%  T5 0%", "Prepare must pass authoritative shop odds into its presentation panel")
-	_expect(_button(screen, "LockShop") == null and _label(screen, "LockUnavailable") == "Lock unavailable: server support pending", "Prepare must not offer a fake lock action before the server supports one")
+	_expect(_button(screen, "LockShop") != null and not _button(screen, "LockShop").disabled, "Prepare must offer the server-backed shop lock control")
+	for index in range(1, 8):
+		var bench_button := _button(screen, "BenchSlot%02d" % index)
+		_expect(bench_button.text == "Empty" and bench_button.tooltip_text == "Empty bench slot %d" % (index + 1) and bench_button.get_rect().end.x <= 1080.0, "Empty bench controls must use short labels that fit without collision")
 	_expect(_board_cell_count(screen) == 12 and _button(screen, "BoardCell11") != null and _button(screen, "BoardCell12") == null, "Prepare must render exactly the 12 legal player-half board slots")
 
 	var intents: Array = []
 	screen.buy_shop_slot.connect(func(index: int) -> void: intents.append(["buy", index]))
 	screen.buy_xp.connect(func() -> void: intents.append(["xp"]))
+	screen.lock_shop.connect(func() -> void: intents.append(["lock"]))
 	screen.start_round.connect(func() -> void: intents.append(["start"]))
 	_button(screen, "BuySlot0").pressed.emit()
 	_button(screen, "BuyXp").pressed.emit()
+	var lock_control := _button(screen, "LockShop")
+	if lock_control != null:
+		lock_control.pressed.emit()
 	_button(screen, "StartRound").pressed.emit()
-	_expect(intents == [["buy", 0], ["xp"], ["start"]], "Prepare controls must emit typed presentation intents")
+	_expect(intents == [["buy", 0], ["xp"], ["lock"], ["start"]], "Prepare controls must emit typed presentation intents")
 	var interaction_intents: Array = []
 	if screen.has_signal("formation_hero_pressed"):
 		screen.connect("formation_hero_pressed", func(instance_id: String, destination: int) -> void: interaction_intents.append(["hero", instance_id, destination]))
@@ -52,6 +59,9 @@ func _init() -> void:
 	if sell_button != null:
 		sell_button.pressed.emit()
 	_expect(sell_intents == ["bench-h02"], "Prepare sell action must emit the selected immutable hero instance ID")
+	_expect(_label(screen, "SellFeedback") == "Sell requested; awaiting server confirmation.", "Selling must provide immediate non-economic feedback while awaiting the server")
+	screen.bind_run(selected_view)
+	_expect(_label(screen, "SellFeedback").is_empty(), "A new authoritative run view must clear pending sell feedback")
 
 	var combat_view := _prepare_view()
 	combat_view["state"] = "COMBAT"
