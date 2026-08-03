@@ -1,0 +1,2742 @@
+{
+  "version": "alpha-0.3.0",
+  "traits": [
+    {
+      "id": "R_CAT",
+      "breakpoints": [
+        {
+          "count": 2,
+          "effects": [
+            {
+              "id": "E_R_CAT_2_1",
+              "primitive": "buff_stat",
+              "target": "all_trait_holders",
+              "stat": "crit_chance",
+              "mode": "flat",
+              "base_value": 100,
+              "duration_ticks": 3600
+            }
+          ]
+        },
+        {
+          "count": 4,
+          "effects": [
+            {
+              "id": "E_R_CAT_4_1",
+              "primitive": "buff_stat",
+              "target": "all_trait_holders",
+              "stat": "crit_chance",
+              "mode": "flat",
+              "base_value": 100,
+              "duration_ticks": 3600
+            }
+          ],
+          "triggers": [
+            {
+              "id": "T_R_CAT_4_FIRST_CRIT",
+              "trigger": "on_critical_basic_attack",
+              "once_per_combat": true,
+              "effects": [
+                {
+                  "id": "E_R_CAT_4_CRIT_MOVE",
+                  "primitive": "buff_stat",
+                  "target": "self",
+                  "stat": "move_speed",
+                  "mode": "percent",
+                  "base_value": 200,
+                  "duration_ticks": 80
+                },
+                {
+                  "id": "E_R_CAT_4_CRIT_SPEED",
+                  "primitive": "buff_stat",
+                  "target": "self",
+                  "stat": "attack_speed",
+                  "mode": "percent",
+                  "base_value": 150,
+                  "duration_ticks": 80
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "count": 5,
+          "effects": [
+            {
+              "id": "E_R_CAT_5_CRIT_CHANCE",
+              "primitive": "buff_stat",
+              "target": "all_trait_holders",
+              "stat": "crit_chance",
+              "mode": "flat",
+              "base_value": 100,
+              "duration_ticks": 3600
+            }
+          ],
+          "triggers": [
+            {
+              "id": "T_R_CAT_5_FIRST_CRIT",
+              "trigger": "on_critical_basic_attack",
+              "once_per_combat": true,
+              "effects": [
+                {
+                  "id": "E_R_CAT_5_CRIT_MOVE",
+                  "primitive": "buff_stat",
+                  "target": "self",
+                  "stat": "move_speed",
+                  "mode": "percent",
+                  "base_value": 200,
+                  "duration_ticks": 80
+                },
+                {
+                  "id": "E_R_CAT_5_CRIT_SPEED",
+                  "primitive": "buff_stat",
+                  "target": "self",
+                  "stat": "attack_speed",
+                  "mode": "percent",
+                  "base_value": 150,
+                  "duration_ticks": 80
+                },
+                {
+                  "id": "E_R_CAT_5_CRIT_DAMAGE",
+                  "primitive": "deal_damage",
+                  "target": "locked_target",
+                  "base_value": 250,
+                  "damage_type": "physical",
+                  "scales_with_attack_damage": true
+                },
+                {
+                  "id": "E_R_CAT_5_CRIT_MANA",
+                  "primitive": "restore_mana",
+                  "target": "self",
+                  "base_value": 10000
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "kind": "species"
+    },
+    {
+      "id": "R_DOG",
+      "breakpoints": [
+        {
+          "count": 2,
+          "effects": [],
+          "triggers": [
+            {
+              "id": "T_R_DOG_ADJACENT_REDUCTION",
+              "trigger": "on_combat_start",
+              "effects": [
+                {
+                  "id": "E_R_DOG_ADJACENT_REDUCTION",
+                  "primitive": "damage_reduction",
+                  "target": "adjacent_trait_allies",
+                  "base_value": 40,
+                  "duration_ticks": 3600,
+                  "max_stacks": 2
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "count": 4,
+          "effects": [],
+          "triggers": [
+            {
+              "id": "T_R_DOG_ADJACENT_REDUCTION",
+              "trigger": "on_combat_start",
+              "effects": [
+                {
+                  "id": "E_R_DOG_ADJACENT_REDUCTION",
+                  "primitive": "damage_reduction",
+                  "target": "adjacent_trait_allies",
+                  "base_value": 40,
+                  "duration_ticks": 3600,
+                  "max_stacks": 2
+                }
+              ]
+            },
+            {
+              "id": "T_R_DOG_4_FIRST_LOW_HP_AID",
+              "trigger": "on_hp_below",
+              "threshold_percent": 500,
+              "once_per_combat": true,
+              "effects": [
+                {
+                  "id": "E_R_DOG_4_NEAREST_ALLY_SPEED",
+                  "primitive": "buff_stat",
+                  "target": "nearest_trait_ally",
+                  "stat": "attack_speed",
+                  "mode": "percent",
+                  "base_value": 150,
+                  "duration_ticks": 80
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "count": 5,
+          "effects": [],
+          "triggers": [
+            {
+              "id": "T_R_DOG_ADJACENT_REDUCTION",
+              "trigger": "on_combat_start",
+              "effects": [
+                {
+                  "id": "E_R_DOG_ADJACENT_REDUCTION",
+                  "primitive": "damage_reduction",
+                  "target": "adjacent_trait_allies",
+                  "base_value": 40,
+                  "duration_ticks": 3600,
+                  "max_stacks": 2
+                }
+              ]
+            },
+            {
+              "id": "T_R_DOG_4_FIRST_LOW_HP_AID",
+              "trigger": "on_hp_below",
+              "threshold_percent": 500,
+              "once_per_combat": true,
+              "effects": [
+                {
+                  "id": "E_R_DOG_4_NEAREST_ALLY_SPEED",
+                  "primitive": "buff_stat",
+                  "target": "nearest_trait_ally",
+                  "stat": "attack_speed",
+                  "mode": "percent",
+                  "base_value": 150,
+                  "duration_ticks": 80
+                }
+              ]
+            },
+            {
+              "id": "T_R_DOG_5_FIRST_DEATH_HEAL",
+              "trigger": "on_death",
+              "once_per_owner_per_combat": true,
+              "effects": [
+                {
+                  "id": "E_R_DOG_5_SURVIVOR_HEAL",
+                  "primitive": "heal",
+                  "target": "all_trait_allies",
+                  "base_value": 100,
+                  "scales_with_target_max_hp": true
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "kind": "species"
+    },
+    {
+      "id": "R_RABBIT",
+      "breakpoints": [
+        {
+          "count": 2,
+          "effects": [
+            {
+              "id": "E_R_RABBIT_2_STARTING_MANA",
+              "primitive": "buff_stat",
+              "target": "all_trait_holders",
+              "stat": "starting_mana",
+              "mode": "flat",
+              "base_value": 10000,
+              "duration_ticks": 3600
+            }
+          ]
+        },
+        {
+          "count": 4,
+          "effects": [
+            {
+              "id": "E_R_RABBIT_4_STARTING_MANA",
+              "primitive": "buff_stat",
+              "target": "all_trait_holders",
+              "stat": "starting_mana",
+              "mode": "flat",
+              "base_value": 10000,
+              "duration_ticks": 3600
+            }
+          ],
+          "triggers": [
+            {
+              "id": "T_R_RABBIT_4_POST_CAST_KITE",
+              "trigger": "on_cast_resolve",
+              "effects": [
+                {
+                  "id": "E_R_RABBIT_4_CAST_ATTACK_SPEED",
+                  "primitive": "buff_stat",
+                  "target": "self",
+                  "stat": "attack_speed",
+                  "mode": "percent",
+                  "base_value": 250,
+                  "duration_ticks": 80
+                },
+                {
+                  "id": "E_R_RABBIT_4_RETREAT",
+                  "primitive": "retreat",
+                  "target": "self",
+                  "distance": 1,
+                  "only_when_engaged": true
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "kind": "species"
+    },
+    {
+      "id": "R_COW",
+      "breakpoints": [
+        {
+          "count": 2,
+          "effects": [
+            {
+              "id": "E_R_COW_2_MAX_HP",
+              "primitive": "buff_stat",
+              "target": "all_trait_holders",
+              "stat": "max_hp",
+              "mode": "percent",
+              "base_value": 120,
+              "duration_ticks": 3600
+            }
+          ]
+        },
+        {
+          "count": 3,
+          "immunities": [
+            "knockback"
+          ],
+          "effects": [
+            {
+              "id": "E_R_COW_3_MAX_HP",
+              "primitive": "buff_stat",
+              "target": "all_trait_holders",
+              "stat": "max_hp",
+              "mode": "percent",
+              "base_value": 120,
+              "duration_ticks": 3600
+            }
+          ],
+          "triggers": [
+            {
+              "id": "T_R_COW_3_LOW_HP_SHIELD",
+              "trigger": "on_hp_below",
+              "threshold_percent": 500,
+              "once_per_combat": true,
+              "effects": [
+                {
+                  "id": "E_R_COW_3_LOW_HP_SHIELD",
+                  "primitive": "shield",
+                  "target": "self",
+                  "base_value": 150,
+                  "duration_ticks": 80,
+                  "scales_with_max_hp": true
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "kind": "species"
+    },
+    {
+      "id": "R_EXOTIC",
+      "breakpoints": [
+        {
+          "count": 1,
+          "effects": [
+            {
+              "id": "E_R_EXOTIC_H19_STARTING_MANA",
+              "holder_hero_ids": ["H19"],
+              "primitive": "buff_stat",
+              "target": "all_trait_holders",
+              "stat": "starting_mana",
+              "mode": "flat",
+              "base_value": 10000,
+              "duration_ticks": 3600
+            }
+          ],
+          "triggers": [
+            {
+              "id": "T_R_EXOTIC_H18_FIRST_BOUNCE",
+              "holder_hero_ids": ["H18"],
+              "trigger": "on_basic_attack",
+              "once_per_combat": true,
+              "effects": [
+                {
+                  "id": "E_R_EXOTIC_H18_FIRST_BOUNCE",
+                  "primitive": "deal_damage",
+                  "target": "nearest_other_enemy",
+                  "base_value": 500,
+                  "scales_with_attack_damage": true,
+                  "damage_type": "physical"
+                }
+              ]
+            },
+            {
+              "id": "T_R_EXOTIC_H20_ADJACENT_GUARD",
+              "holder_hero_ids": ["H20"],
+              "trigger": "on_combat_start",
+              "effects": [
+                {
+                  "id": "E_R_EXOTIC_H20_ADJACENT_GUARD",
+                  "primitive": "damage_reduction",
+                  "target": "adjacent_allies",
+                  "base_value": 50,
+                  "duration_ticks": 100,
+                  "max_stacks": 1
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "count": 2,
+          "effects": [
+            {
+              "id": "E_R_EXOTIC_H19_STARTING_MANA",
+              "holder_hero_ids": ["H19"],
+              "primitive": "buff_stat",
+              "target": "all_trait_holders",
+              "stat": "starting_mana",
+              "mode": "flat",
+              "base_value": 12500,
+              "duration_ticks": 3600
+            }
+          ],
+          "triggers": [
+            {
+              "id": "T_R_EXOTIC_H18_FIRST_BOUNCE",
+              "holder_hero_ids": ["H18"],
+              "trigger": "on_basic_attack",
+              "once_per_combat": true,
+              "effects": [{ "id": "E_R_EXOTIC_H18_FIRST_BOUNCE", "primitive": "deal_damage", "target": "nearest_other_enemy", "base_value": 625, "scales_with_attack_damage": true, "damage_type": "physical" }]
+            },
+            {
+              "id": "T_R_EXOTIC_H20_ADJACENT_GUARD",
+              "holder_hero_ids": ["H20"],
+              "trigger": "on_combat_start",
+              "effects": [{ "id": "E_R_EXOTIC_H20_ADJACENT_GUARD", "primitive": "damage_reduction", "target": "adjacent_allies", "base_value": 62, "duration_ticks": 100, "max_stacks": 1 }]
+            }
+          ]
+        },
+        {
+          "count": 3,
+          "effects": [
+            {
+              "id": "E_R_EXOTIC_H19_STARTING_MANA",
+              "holder_hero_ids": ["H19"],
+              "primitive": "buff_stat",
+              "target": "all_trait_holders",
+              "stat": "starting_mana",
+              "mode": "flat",
+              "base_value": 12500,
+              "duration_ticks": 3600
+            }
+          ],
+          "triggers": [
+            {
+              "id": "T_R_EXOTIC_H18_FIRST_BOUNCE",
+              "holder_hero_ids": ["H18"],
+              "trigger": "on_basic_attack",
+              "once_per_combat": true,
+              "effects": [{ "id": "E_R_EXOTIC_H18_FIRST_BOUNCE", "primitive": "deal_damage", "target": "nearest_other_enemy", "base_value": 625, "scales_with_attack_damage": true, "damage_type": "physical" }]
+            },
+            {
+              "id": "T_R_EXOTIC_H20_ADJACENT_GUARD",
+              "holder_hero_ids": ["H20"],
+              "trigger": "on_combat_start",
+              "effects": [{ "id": "E_R_EXOTIC_H20_ADJACENT_GUARD", "primitive": "damage_reduction", "target": "adjacent_allies", "base_value": 62, "duration_ticks": 100, "max_stacks": 1 }]
+            },
+            {
+              "id": "T_R_EXOTIC_3_FIRST_CAST_GIFT",
+              "trigger": "on_cast_resolve",
+              "once_per_owner_per_combat": true,
+              "effects": [
+                { "id": "E_R_EXOTIC_3_SHARED_MANA", "primitive": "restore_mana", "target": "all_trait_allies", "base_value": 10000 },
+                { "id": "E_R_EXOTIC_3_SHARED_SHIELD", "primitive": "shield", "target": "all_trait_allies", "base_value": 50, "scales_with_target_max_hp": true, "duration_ticks": 100 }
+              ]
+            }
+          ]
+        }
+      ],
+      "kind": "species"
+    },
+    {
+      "id": "C_GUARDIAN",
+      "breakpoints": [
+        {
+          "count": 2,
+          "effects": [
+            {
+              "id": "E_C_GUARDIAN_2_1",
+              "primitive": "buff_stat",
+              "target": "all_trait_holders",
+              "stat": "armor",
+              "mode": "flat",
+              "base_value": 20000,
+              "duration_ticks": 3600
+            },
+            {
+              "id": "E_C_GUARDIAN_2_2",
+              "primitive": "buff_stat",
+              "target": "all_trait_holders",
+              "stat": "magic_resist",
+              "mode": "flat",
+              "base_value": 20000,
+              "duration_ticks": 3600
+            }
+          ]
+        },
+        {
+          "count": 4,
+          "effects": [
+            {
+              "id": "E_C_GUARDIAN_4_1",
+              "primitive": "buff_stat",
+              "target": "all_trait_holders",
+              "stat": "armor",
+              "mode": "flat",
+              "base_value": 20000,
+              "duration_ticks": 3600
+            },
+            {
+              "id": "E_C_GUARDIAN_4_2",
+              "primitive": "buff_stat",
+              "target": "all_trait_holders",
+              "stat": "magic_resist",
+              "mode": "flat",
+              "base_value": 20000,
+              "duration_ticks": 3600
+            }
+          ],
+          "triggers": [
+            {
+              "id": "T_C_GUARDIAN_4_START_SHIELDS",
+              "trigger": "on_combat_start",
+              "effects": [
+                {
+                  "id": "E_C_GUARDIAN_4_SELF_SHIELD",
+                  "primitive": "shield",
+                  "target": "self",
+                  "base_value": 100,
+                  "duration_ticks": 100,
+                  "scales_with_max_hp": true
+                },
+                {
+                  "id": "E_C_GUARDIAN_4_REAR_SHIELD",
+                  "primitive": "shield",
+                  "target": "rear_ally",
+                  "base_value": 100,
+                  "duration_ticks": 100,
+                  "scales_with_max_hp": true
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "kind": "class"
+    },
+    {
+      "id": "C_FIGHTER",
+      "breakpoints": [
+        {
+          "count": 2,
+          "effects": [],
+          "triggers": [
+            {
+              "id": "T_C_FIGHTER_2_THIRD_HIT",
+              "trigger": "on_every_nth_basic_attack",
+              "attack_count": 3,
+              "effects": [
+                {
+                  "id": "E_C_FIGHTER_2_THIRD_HIT",
+                  "primitive": "deal_damage",
+                  "target": "locked_target",
+                  "base_value": 200,
+                  "scales_with_attack_damage": true,
+                  "damage_type": "physical"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "count": 4,
+          "effects": [],
+          "triggers": [
+            {
+              "id": "T_C_FIGHTER_4_THIRD_HIT",
+              "trigger": "on_every_nth_basic_attack",
+              "attack_count": 3,
+              "effects": [
+                {
+                  "id": "E_C_FIGHTER_4_THIRD_HIT",
+                  "primitive": "deal_damage",
+                  "target": "locked_target",
+                  "base_value": 350,
+                  "scales_with_attack_damage": true,
+                  "damage_type": "physical"
+                }
+              ]
+            },
+            {
+              "id": "T_C_FIGHTER_4_KILL_SPEED",
+              "trigger": "on_kill",
+              "effects": [
+                {
+                  "id": "E_C_FIGHTER_4_KILL_SPEED",
+                  "primitive": "buff_stat",
+                  "target": "self",
+                  "stat": "attack_speed",
+                  "mode": "percent",
+                  "base_value": 150,
+                  "duration_ticks": 80
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "kind": "class"
+    },
+    {
+      "id": "C_RANGER",
+      "breakpoints": [
+        {
+          "count": 2,
+          "effects": [],
+          "triggers": [
+            {
+              "id": "T_C_RANGER_2_STATIONARY_DAMAGE",
+              "trigger": "on_stationary_interval",
+              "stationary_interval_ticks": 80,
+              "effects": [
+                {
+                  "id": "E_C_RANGER_2_STATIONARY_DAMAGE",
+                  "primitive": "buff_stat",
+                  "target": "self",
+                  "stat": "attack_damage",
+                  "mode": "percent",
+                  "base_value": 80,
+                  "duration_ticks": 3600,
+                  "max_stacks": 2,
+                  "remove_on_move": true
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "count": 4,
+          "effects": [],
+          "triggers": [
+            {
+              "id": "T_C_RANGER_4_STATIONARY_DAMAGE",
+              "trigger": "on_stationary_interval",
+              "stationary_interval_ticks": 60,
+              "effects": [
+                {
+                  "id": "E_C_RANGER_4_STATIONARY_DAMAGE",
+                  "primitive": "buff_stat",
+                  "target": "self",
+                  "stat": "attack_damage",
+                  "mode": "percent",
+                  "base_value": 80,
+                  "duration_ticks": 3600,
+                  "max_stacks": 3,
+                  "remove_on_move": true
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "kind": "class"
+    },
+    {
+      "id": "C_MAGE",
+      "breakpoints": [
+        {
+          "count": 2,
+          "effects": [
+            {
+              "id": "E_C_MAGE_2_1",
+              "primitive": "buff_stat",
+              "target": "all_trait_holders",
+              "stat": "skill_power",
+              "mode": "flat",
+              "base_value": 100,
+              "duration_ticks": 3600
+            },
+            {
+              "id": "E_C_MAGE_2_STARTING_MANA",
+              "primitive": "buff_stat",
+              "target": "all_trait_holders",
+              "stat": "starting_mana",
+              "mode": "flat",
+              "base_value": 10000,
+              "duration_ticks": 3600
+            }
+          ]
+        },
+        {
+          "count": 4,
+          "effects": [
+            {
+              "id": "E_C_MAGE_4_1",
+              "primitive": "buff_stat",
+              "target": "all_trait_holders",
+              "stat": "skill_power",
+              "mode": "flat",
+              "base_value": 100,
+              "duration_ticks": 3600
+            }
+            ,
+            {
+              "id": "E_C_MAGE_4_STARTING_MANA",
+              "primitive": "buff_stat",
+              "target": "all_trait_holders",
+              "stat": "starting_mana",
+              "mode": "flat",
+              "base_value": 10000,
+              "duration_ticks": 3600
+            }
+          ],
+          "triggers": [
+            {
+              "id": "T_C_MAGE_4_FIRST_CAST_MANA",
+              "trigger": "on_cast_resolve",
+              "once_per_combat": true,
+              "effects": [
+                {
+                  "id": "E_C_MAGE_4_MANA_RETURN",
+                  "primitive": "restore_mana",
+                  "target": "self",
+                  "base_value": 20000
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "kind": "class"
+    },
+    {
+      "id": "C_SUPPORT",
+      "breakpoints": [
+        {
+          "count": 2,
+          "effects": [
+            {
+              "id": "E_C_SUPPORT_2_AMPLIFY_HEAL_SHIELD",
+              "primitive": "amplify_heal_shield",
+              "target": "all_trait_holders",
+              "base_value": 150
+            }
+          ]
+        },
+        {
+          "count": 4,
+          "effects": [{
+            "id": "E_C_SUPPORT_4_AMPLIFY_HEAL_SHIELD",
+            "primitive": "amplify_heal_shield",
+            "target": "all_trait_holders",
+            "base_value": 150
+          }],
+          "triggers": [
+            {
+              "id": "T_C_SUPPORT_4_RECIPIENT_PROTECTION",
+              "trigger": "on_heal_or_shield",
+              "effects": [
+                {
+                  "id": "E_C_SUPPORT_4_RECIPIENT_PROTECTION",
+                  "primitive": "damage_reduction",
+                  "target": "locked_target",
+                  "base_value": 100,
+                  "duration_ticks": 60,
+                  "max_stacks": 1
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "kind": "class"
+    }
+  ],
+  "heroes": [
+    {
+      "id": "H01",
+      "species_trait_id": "R_CAT",
+      "class_trait_id": "C_GUARDIAN",
+      "cost": 1,
+      "base_stats": {
+        "max_hp": 90000,
+        "attack_damage": 5000,
+        "attack_speed": 1000,
+        "armor": 20000,
+        "magic_resist": 20000,
+        "attack_range": 1,
+        "move_speed": 1000,
+        "starting_mana": 0,
+        "max_mana": 100000,
+        "crit_chance": 0,
+        "crit_multiplier": 1500,
+        "skill_power": 0
+      },
+      "star_multipliers": {
+        "two": {
+          "max_hp": 1600,
+          "attack_damage": 1500
+        },
+        "three": {
+          "max_hp": 2500,
+          "attack_damage": 2300
+        }
+      },
+      "skill_id": "S_H01",
+      "visual_profile_id": "VP_H01",
+      "display_key": "hero.h01.name"
+    },
+    {
+      "id": "H02",
+      "species_trait_id": "R_CAT",
+      "class_trait_id": "C_FIGHTER",
+      "cost": 2,
+      "base_stats": {
+        "max_hp": 80000,
+        "attack_damage": 6000,
+        "attack_speed": 1100,
+        "armor": 15000,
+        "magic_resist": 15000,
+        "attack_range": 1,
+        "move_speed": 1100,
+        "starting_mana": 0,
+        "max_mana": 100000,
+        "crit_chance": 0,
+        "crit_multiplier": 1500,
+        "skill_power": 0
+      },
+      "star_multipliers": {
+        "two": {
+          "max_hp": 1600,
+          "attack_damage": 1500
+        },
+        "three": {
+          "max_hp": 2500,
+          "attack_damage": 2300
+        }
+      },
+      "skill_id": "S_H02",
+      "visual_profile_id": "VP_H02",
+      "display_key": "hero.h02.name"
+    },
+    {
+      "id": "H03",
+      "species_trait_id": "R_CAT",
+      "class_trait_id": "C_RANGER",
+      "cost": 1,
+      "base_stats": {
+        "max_hp": 65000,
+        "attack_damage": 6500,
+        "attack_speed": 1100,
+        "armor": 10000,
+        "magic_resist": 10000,
+        "attack_range": 3,
+        "move_speed": 1000,
+        "starting_mana": 0,
+        "max_mana": 100000,
+        "crit_chance": 0,
+        "crit_multiplier": 1500,
+        "skill_power": 0
+      },
+      "star_multipliers": {
+        "two": {
+          "max_hp": 1600,
+          "attack_damage": 1500
+        },
+        "three": {
+          "max_hp": 2500,
+          "attack_damage": 2300
+        }
+      },
+      "skill_id": "S_H03",
+      "visual_profile_id": "VP_H03",
+      "display_key": "hero.h03.name"
+    },
+    {
+      "id": "H04",
+      "species_trait_id": "R_CAT",
+      "class_trait_id": "C_MAGE",
+      "cost": 3,
+      "base_stats": {
+        "max_hp": 70000,
+        "attack_damage": 4500,
+        "attack_speed": 1000,
+        "armor": 10000,
+        "magic_resist": 15000,
+        "attack_range": 3,
+        "move_speed": 1000,
+        "starting_mana": 0,
+        "max_mana": 100000,
+        "crit_chance": 0,
+        "crit_multiplier": 1500,
+        "skill_power": 100
+      },
+      "star_multipliers": {
+        "two": {
+          "max_hp": 1600,
+          "attack_damage": 1500
+        },
+        "three": {
+          "max_hp": 2500,
+          "attack_damage": 2300
+        }
+      },
+      "skill_id": "S_H04",
+      "visual_profile_id": "VP_H04",
+      "display_key": "hero.h04.name"
+    },
+    {
+      "id": "H05",
+      "species_trait_id": "R_CAT",
+      "class_trait_id": "C_SUPPORT",
+      "cost": 2,
+      "base_stats": {
+        "max_hp": 70000,
+        "attack_damage": 4000,
+        "attack_speed": 1000,
+        "armor": 12000,
+        "magic_resist": 12000,
+        "attack_range": 2,
+        "move_speed": 1000,
+        "starting_mana": 0,
+        "max_mana": 100000,
+        "crit_chance": 0,
+        "crit_multiplier": 1500,
+        "skill_power": 100
+      },
+      "star_multipliers": {
+        "two": {
+          "max_hp": 1600,
+          "attack_damage": 1500
+        },
+        "three": {
+          "max_hp": 2500,
+          "attack_damage": 2300
+        }
+      },
+      "skill_id": "S_H05",
+      "visual_profile_id": "VP_H05",
+      "display_key": "hero.h05.name"
+    },
+    {
+      "id": "H06",
+      "species_trait_id": "R_DOG",
+      "class_trait_id": "C_GUARDIAN",
+      "cost": 1,
+      "base_stats": {
+        "max_hp": 95000,
+        "attack_damage": 4500,
+        "attack_speed": 900,
+        "armor": 22000,
+        "magic_resist": 18000,
+        "attack_range": 1,
+        "move_speed": 900,
+        "starting_mana": 0,
+        "max_mana": 100000,
+        "crit_chance": 0,
+        "crit_multiplier": 1500,
+        "skill_power": 0
+      },
+      "star_multipliers": {
+        "two": {
+          "max_hp": 1600,
+          "attack_damage": 1500
+        },
+        "three": {
+          "max_hp": 2500,
+          "attack_damage": 2300
+        }
+      },
+      "skill_id": "S_H06",
+      "visual_profile_id": "VP_H06",
+      "display_key": "hero.h06.name"
+    },
+    {
+      "id": "H07",
+      "species_trait_id": "R_DOG",
+      "class_trait_id": "C_FIGHTER",
+      "cost": 2,
+      "base_stats": {
+        "max_hp": 85000,
+        "attack_damage": 6000,
+        "attack_speed": 1000,
+        "armor": 18000,
+        "magic_resist": 12000,
+        "attack_range": 1,
+        "move_speed": 1000,
+        "starting_mana": 0,
+        "max_mana": 100000,
+        "crit_chance": 0,
+        "crit_multiplier": 1500,
+        "skill_power": 0
+      },
+      "star_multipliers": {
+        "two": {
+          "max_hp": 1600,
+          "attack_damage": 1500
+        },
+        "three": {
+          "max_hp": 2500,
+          "attack_damage": 2300
+        }
+      },
+      "skill_id": "S_H07",
+      "visual_profile_id": "VP_H07",
+      "display_key": "hero.h07.name"
+    },
+    {
+      "id": "H08",
+      "species_trait_id": "R_DOG",
+      "class_trait_id": "C_RANGER",
+      "cost": 2,
+      "base_stats": {
+        "max_hp": 65000,
+        "attack_damage": 7000,
+        "attack_speed": 1100,
+        "armor": 10000,
+        "magic_resist": 10000,
+        "attack_range": 3,
+        "move_speed": 1000,
+        "starting_mana": 0,
+        "max_mana": 100000,
+        "crit_chance": 0,
+        "crit_multiplier": 1500,
+        "skill_power": 0
+      },
+      "star_multipliers": {
+        "two": {
+          "max_hp": 1600,
+          "attack_damage": 1500
+        },
+        "three": {
+          "max_hp": 2500,
+          "attack_damage": 2300
+        }
+      },
+      "skill_id": "S_H08",
+      "visual_profile_id": "VP_H08",
+      "display_key": "hero.h08.name"
+    },
+    {
+      "id": "H09",
+      "species_trait_id": "R_DOG",
+      "class_trait_id": "C_MAGE",
+      "cost": 3,
+      "base_stats": {
+        "max_hp": 70000,
+        "attack_damage": 4500,
+        "attack_speed": 1000,
+        "armor": 10000,
+        "magic_resist": 15000,
+        "attack_range": 3,
+        "move_speed": 1000,
+        "starting_mana": 0,
+        "max_mana": 100000,
+        "crit_chance": 0,
+        "crit_multiplier": 1500,
+        "skill_power": 150
+      },
+      "star_multipliers": {
+        "two": {
+          "max_hp": 1600,
+          "attack_damage": 1500
+        },
+        "three": {
+          "max_hp": 2500,
+          "attack_damage": 2300
+        }
+      },
+      "skill_id": "S_H09",
+      "visual_profile_id": "VP_H09",
+      "display_key": "hero.h09.name"
+    },
+    {
+      "id": "H10",
+      "species_trait_id": "R_DOG",
+      "class_trait_id": "C_SUPPORT",
+      "cost": 2,
+      "base_stats": {
+        "max_hp": 75000,
+        "attack_damage": 4000,
+        "attack_speed": 1000,
+        "armor": 15000,
+        "magic_resist": 15000,
+        "attack_range": 2,
+        "move_speed": 1000,
+        "starting_mana": 0,
+        "max_mana": 100000,
+        "crit_chance": 0,
+        "crit_multiplier": 1500,
+        "skill_power": 100
+      },
+      "star_multipliers": {
+        "two": {
+          "max_hp": 1600,
+          "attack_damage": 1500
+        },
+        "three": {
+          "max_hp": 2500,
+          "attack_damage": 2300
+        }
+      },
+      "skill_id": "S_H10",
+      "visual_profile_id": "VP_H10",
+      "display_key": "hero.h10.name"
+    },
+    {
+      "id": "H11",
+      "species_trait_id": "R_RABBIT",
+      "class_trait_id": "C_FIGHTER",
+      "cost": 1,
+      "base_stats": {
+        "max_hp": 70000,
+        "attack_damage": 6000,
+        "attack_speed": 1200,
+        "armor": 12000,
+        "magic_resist": 12000,
+        "attack_range": 1,
+        "move_speed": 1200,
+        "starting_mana": 0,
+        "max_mana": 100000,
+        "crit_chance": 0,
+        "crit_multiplier": 1500,
+        "skill_power": 0
+      },
+      "star_multipliers": {
+        "two": {
+          "max_hp": 1600,
+          "attack_damage": 1500
+        },
+        "three": {
+          "max_hp": 2500,
+          "attack_damage": 2300
+        }
+      },
+      "skill_id": "S_H11",
+      "visual_profile_id": "VP_H11",
+      "display_key": "hero.h11.name"
+    },
+    {
+      "id": "H12",
+      "species_trait_id": "R_RABBIT",
+      "class_trait_id": "C_RANGER",
+      "cost": 1,
+      "base_stats": {
+        "max_hp": 60000,
+        "attack_damage": 6500,
+        "attack_speed": 1100,
+        "armor": 8000,
+        "magic_resist": 8000,
+        "attack_range": 3,
+        "move_speed": 1100,
+        "starting_mana": 0,
+        "max_mana": 100000,
+        "crit_chance": 0,
+        "crit_multiplier": 1500,
+        "skill_power": 0
+      },
+      "star_multipliers": {
+        "two": {
+          "max_hp": 1600,
+          "attack_damage": 1500
+        },
+        "three": {
+          "max_hp": 2500,
+          "attack_damage": 2300
+        }
+      },
+      "skill_id": "S_H12",
+      "visual_profile_id": "VP_H12",
+      "display_key": "hero.h12.name"
+    },
+    {
+      "id": "H13",
+      "species_trait_id": "R_RABBIT",
+      "class_trait_id": "C_MAGE",
+      "cost": 3,
+      "base_stats": {
+        "max_hp": 65000,
+        "attack_damage": 4500,
+        "attack_speed": 1000,
+        "armor": 10000,
+        "magic_resist": 15000,
+        "attack_range": 3,
+        "move_speed": 1000,
+        "starting_mana": 0,
+        "max_mana": 100000,
+        "crit_chance": 0,
+        "crit_multiplier": 1500,
+        "skill_power": 150
+      },
+      "star_multipliers": {
+        "two": {
+          "max_hp": 1600,
+          "attack_damage": 1500
+        },
+        "three": {
+          "max_hp": 2500,
+          "attack_damage": 2300
+        }
+      },
+      "skill_id": "S_H13",
+      "visual_profile_id": "VP_H13",
+      "display_key": "hero.h13.name"
+    },
+    {
+      "id": "H14",
+      "species_trait_id": "R_RABBIT",
+      "class_trait_id": "C_SUPPORT",
+      "cost": 2,
+      "base_stats": {
+        "max_hp": 70000,
+        "attack_damage": 4000,
+        "attack_speed": 1000,
+        "armor": 10000,
+        "magic_resist": 15000,
+        "attack_range": 2,
+        "move_speed": 1000,
+        "starting_mana": 0,
+        "max_mana": 100000,
+        "crit_chance": 0,
+        "crit_multiplier": 1500,
+        "skill_power": 120
+      },
+      "star_multipliers": {
+        "two": {
+          "max_hp": 1600,
+          "attack_damage": 1500
+        },
+        "three": {
+          "max_hp": 2500,
+          "attack_damage": 2300
+        }
+      },
+      "skill_id": "S_H14",
+      "visual_profile_id": "VP_H14",
+      "display_key": "hero.h14.name"
+    },
+    {
+      "id": "H15",
+      "species_trait_id": "R_COW",
+      "class_trait_id": "C_GUARDIAN",
+      "cost": 1,
+      "base_stats": {
+        "max_hp": 100000,
+        "attack_damage": 4500,
+        "attack_speed": 900,
+        "armor": 25000,
+        "magic_resist": 18000,
+        "attack_range": 1,
+        "move_speed": 800,
+        "starting_mana": 0,
+        "max_mana": 100000,
+        "crit_chance": 0,
+        "crit_multiplier": 1500,
+        "skill_power": 0
+      },
+      "star_multipliers": {
+        "two": {
+          "max_hp": 1600,
+          "attack_damage": 1500
+        },
+        "three": {
+          "max_hp": 2500,
+          "attack_damage": 2300
+        }
+      },
+      "skill_id": "S_H15",
+      "visual_profile_id": "VP_H15",
+      "display_key": "hero.h15.name"
+    },
+    {
+      "id": "H16",
+      "species_trait_id": "R_COW",
+      "class_trait_id": "C_FIGHTER",
+      "cost": 3,
+      "base_stats": {
+        "max_hp": 100000,
+        "attack_damage": 7500,
+        "attack_speed": 900,
+        "armor": 22000,
+        "magic_resist": 12000,
+        "attack_range": 1,
+        "move_speed": 900,
+        "starting_mana": 0,
+        "max_mana": 100000,
+        "crit_chance": 0,
+        "crit_multiplier": 1500,
+        "skill_power": 0
+      },
+      "star_multipliers": {
+        "two": {
+          "max_hp": 1600,
+          "attack_damage": 1500
+        },
+        "three": {
+          "max_hp": 2500,
+          "attack_damage": 2300
+        }
+      },
+      "skill_id": "S_H16",
+      "visual_profile_id": "VP_H16",
+      "display_key": "hero.h16.name"
+    },
+    {
+      "id": "H17",
+      "species_trait_id": "R_COW",
+      "class_trait_id": "C_SUPPORT",
+      "cost": 2,
+      "base_stats": {
+        "max_hp": 80000,
+        "attack_damage": 4000,
+        "attack_speed": 1000,
+        "armor": 18000,
+        "magic_resist": 16000,
+        "attack_range": 2,
+        "move_speed": 900,
+        "starting_mana": 0,
+        "max_mana": 100000,
+        "crit_chance": 0,
+        "crit_multiplier": 1500,
+        "skill_power": 120
+      },
+      "star_multipliers": {
+        "two": {
+          "max_hp": 1600,
+          "attack_damage": 1500
+        },
+        "three": {
+          "max_hp": 2500,
+          "attack_damage": 2300
+        }
+      },
+      "skill_id": "S_H17",
+      "visual_profile_id": "VP_H17",
+      "display_key": "hero.h17.name"
+    },
+    {
+      "id": "H18",
+      "species_trait_id": "R_EXOTIC",
+      "class_trait_id": "C_RANGER",
+      "cost": 3,
+      "base_stats": {
+        "max_hp": 70000,
+        "attack_damage": 7500,
+        "attack_speed": 1100,
+        "armor": 10000,
+        "magic_resist": 12000,
+        "attack_range": 3,
+        "move_speed": 1000,
+        "starting_mana": 0,
+        "max_mana": 100000,
+        "crit_chance": 0,
+        "crit_multiplier": 1500,
+        "skill_power": 0
+      },
+      "star_multipliers": {
+        "two": {
+          "max_hp": 1600,
+          "attack_damage": 1500
+        },
+        "three": {
+          "max_hp": 2500,
+          "attack_damage": 2300
+        }
+      },
+      "skill_id": "S_H18",
+      "visual_profile_id": "VP_H18",
+      "display_key": "hero.h18.name"
+    },
+    {
+      "id": "H19",
+      "species_trait_id": "R_EXOTIC",
+      "class_trait_id": "C_MAGE",
+      "cost": 3,
+      "base_stats": {
+        "max_hp": 65000,
+        "attack_damage": 4500,
+        "attack_speed": 1000,
+        "armor": 10000,
+        "magic_resist": 15000,
+        "attack_range": 3,
+        "move_speed": 1000,
+        "starting_mana": 10000,
+        "max_mana": 100000,
+        "crit_chance": 0,
+        "crit_multiplier": 1500,
+        "skill_power": 180
+      },
+      "star_multipliers": {
+        "two": {
+          "max_hp": 1600,
+          "attack_damage": 1500
+        },
+        "three": {
+          "max_hp": 2500,
+          "attack_damage": 2300
+        }
+      },
+      "skill_id": "S_H19",
+      "visual_profile_id": "VP_H19",
+      "display_key": "hero.h19.name"
+    },
+    {
+      "id": "H20",
+      "species_trait_id": "R_EXOTIC",
+      "class_trait_id": "C_GUARDIAN",
+      "cost": 3,
+      "base_stats": {
+        "max_hp": 95000,
+        "attack_damage": 4500,
+        "attack_speed": 900,
+        "armor": 22000,
+        "magic_resist": 22000,
+        "attack_range": 1,
+        "move_speed": 900,
+        "starting_mana": 0,
+        "max_mana": 100000,
+        "crit_chance": 0,
+        "crit_multiplier": 1500,
+        "skill_power": 100
+      },
+      "star_multipliers": {
+        "two": {
+          "max_hp": 1600,
+          "attack_damage": 1500
+        },
+        "three": {
+          "max_hp": 2500,
+          "attack_damage": 2300
+        }
+      },
+      "skill_id": "S_H20",
+      "visual_profile_id": "VP_H20",
+      "display_key": "hero.h20.name"
+    }
+  ],
+  "skills": [
+    {
+      "id": "S_H01",
+      "cast_time_ticks": 10,
+      "effects": [
+        {
+          "id": "E_H01",
+          "primitive": "shield",
+          "target": "self",
+          "base_value": 22000,
+          "duration_ticks": 80
+        }
+      ]
+    },
+    {
+      "id": "S_H02",
+      "cast_time_ticks": 10,
+      "effects": [
+        {
+          "id": "E_H02",
+          "primitive": "dash",
+          "target": "self",
+          "distance": 2
+        }
+      ]
+    },
+    {
+      "id": "S_H03",
+      "cast_time_ticks": 10,
+      "effects": [
+        {
+          "id": "E_H03",
+          "primitive": "deal_damage",
+          "target": "locked_target",
+          "base_value": 18000,
+          "damage_type": "physical"
+        }
+      ]
+    },
+    {
+      "id": "S_H04",
+      "cast_time_ticks": 10,
+      "effects": [
+        {
+          "id": "E_H04",
+          "primitive": "slow",
+          "target": "all_enemies",
+          "base_value": 300,
+          "duration_ticks": 60
+        }
+      ]
+    },
+    {
+      "id": "S_H05",
+      "cast_time_ticks": 10,
+      "effects": [
+        {
+          "id": "E_H05",
+          "primitive": "heal",
+          "target": "lowest_hp_ally",
+          "base_value": 18000
+        }
+      ]
+    },
+    {
+      "id": "S_H06",
+      "cast_time_ticks": 10,
+      "effects": [
+        {
+          "id": "E_H06",
+          "primitive": "shield",
+          "target": "self",
+          "base_value": 18000,
+          "duration_ticks": 60
+        }
+      ]
+    },
+    {
+      "id": "S_H07",
+      "cast_time_ticks": 10,
+      "effects": [
+        {
+          "id": "E_H07",
+          "primitive": "stun",
+          "target": "locked_target",
+          "duration_ticks": 20
+        }
+      ]
+    },
+    {
+      "id": "S_H08",
+      "cast_time_ticks": 10,
+      "effects": [
+        {
+          "id": "E_H08",
+          "primitive": "buff_stat",
+          "target": "self",
+          "stat": "attack_damage",
+          "mode": "flat",
+          "base_value": 1500,
+          "duration_ticks": 60
+        }
+      ]
+    },
+    {
+      "id": "S_H09",
+      "cast_time_ticks": 10,
+      "effects": [
+        {
+          "id": "E_H09",
+          "primitive": "deal_damage",
+          "target": "all_enemies",
+          "base_value": 12000,
+          "damage_type": "magic"
+        }
+      ]
+    },
+    {
+      "id": "S_H10",
+      "cast_time_ticks": 10,
+      "effects": [
+        {
+          "id": "E_H10",
+          "primitive": "shield",
+          "target": "lowest_hp_ally",
+          "base_value": 16000,
+          "duration_ticks": 60
+        }
+      ]
+    },
+    {
+      "id": "S_H11",
+      "cast_time_ticks": 10,
+      "effects": [
+        {
+          "id": "E_H11",
+          "primitive": "dash",
+          "target": "self",
+          "distance": 2
+        }
+      ]
+    },
+    {
+      "id": "S_H12",
+      "cast_time_ticks": 10,
+      "effects": [
+        {
+          "id": "E_H12",
+          "primitive": "deal_damage",
+          "target": "locked_target",
+          "base_value": 17000,
+          "damage_type": "physical"
+        }
+      ]
+    },
+    {
+      "id": "S_H13",
+      "cast_time_ticks": 10,
+      "effects": [
+        {
+          "id": "E_H13",
+          "primitive": "apply_dot",
+          "target": "all_enemies",
+          "base_value": 4000,
+          "duration_ticks": 60,
+          "interval_ticks": 20,
+          "damage_type": "magic"
+        }
+      ]
+    },
+    {
+      "id": "S_H14",
+      "cast_time_ticks": 10,
+      "effects": [
+        {
+          "id": "E_H14",
+          "primitive": "heal",
+          "target": "lowest_hp_ally",
+          "base_value": 20000
+        }
+      ]
+    },
+    {
+      "id": "S_H15",
+      "cast_time_ticks": 10,
+      "effects": [
+        {
+          "id": "E_H15",
+          "primitive": "buff_stat",
+          "target": "self",
+          "stat": "max_hp",
+          "mode": "percent",
+          "base_value": 120,
+          "duration_ticks": 80
+        }
+      ]
+    },
+    {
+      "id": "S_H16",
+      "cast_time_ticks": 10,
+      "effects": [
+        {
+          "id": "E_H16",
+          "primitive": "knockback",
+          "target": "locked_target",
+          "distance": 2
+        }
+      ]
+    },
+    {
+      "id": "S_H17",
+      "cast_time_ticks": 10,
+      "effects": [
+        {
+          "id": "E_H17",
+          "primitive": "heal",
+          "target": "lowest_hp_ally",
+          "base_value": 22000
+        }
+      ]
+    },
+    {
+      "id": "S_H18",
+      "cast_time_ticks": 10,
+      "effects": [
+        {
+          "id": "E_H18",
+          "primitive": "deal_damage",
+          "target": "locked_target",
+          "base_value": 22000,
+          "damage_type": "physical"
+        }
+      ]
+    },
+    {
+      "id": "S_H19",
+      "cast_time_ticks": 10,
+      "effects": [
+        {
+          "id": "E_H19",
+          "primitive": "deal_damage",
+          "target": "all_enemies",
+          "base_value": 18000,
+          "damage_type": "magic"
+        }
+      ]
+    },
+    {
+      "id": "S_H20",
+      "cast_time_ticks": 10,
+      "effects": [
+        {
+          "id": "E_H20",
+          "primitive": "shield",
+          "target": "self",
+          "base_value": 20000,
+          "duration_ticks": 60
+        }
+      ]
+    }
+  ],
+  "visual_profiles": [
+    {
+      "id": "VP_H01",
+      "anchors": [
+        "head",
+        "chest",
+        "back",
+        "feet",
+        "weapon"
+      ],
+      "animations": [
+        "idle",
+        "move",
+        "basic_attack",
+        "hit",
+        "skill_cast",
+        "death"
+      ],
+      "sprite_key": "heroes/h01/base",
+      "portrait_key": "heroes/h01/portrait"
+    },
+    {
+      "id": "VP_H02",
+      "anchors": [
+        "head",
+        "chest",
+        "back",
+        "feet",
+        "weapon"
+      ],
+      "animations": [
+        "idle",
+        "move",
+        "basic_attack",
+        "hit",
+        "skill_cast",
+        "death"
+      ],
+      "sprite_key": "heroes/h02/base",
+      "portrait_key": "heroes/h02/portrait"
+    },
+    {
+      "id": "VP_H03",
+      "anchors": [
+        "head",
+        "chest",
+        "back",
+        "feet",
+        "weapon"
+      ],
+      "animations": [
+        "idle",
+        "move",
+        "basic_attack",
+        "hit",
+        "skill_cast",
+        "death"
+      ],
+      "sprite_key": "heroes/h03/base",
+      "portrait_key": "heroes/h03/portrait"
+    },
+    {
+      "id": "VP_H04",
+      "anchors": [
+        "head",
+        "chest",
+        "back",
+        "feet",
+        "weapon"
+      ],
+      "animations": [
+        "idle",
+        "move",
+        "basic_attack",
+        "hit",
+        "skill_cast",
+        "death"
+      ],
+      "sprite_key": "heroes/h04/base",
+      "portrait_key": "heroes/h04/portrait"
+    },
+    {
+      "id": "VP_H05",
+      "anchors": [
+        "head",
+        "chest",
+        "back",
+        "feet",
+        "weapon"
+      ],
+      "animations": [
+        "idle",
+        "move",
+        "basic_attack",
+        "hit",
+        "skill_cast",
+        "death"
+      ],
+      "sprite_key": "heroes/h05/base",
+      "portrait_key": "heroes/h05/portrait"
+    },
+    {
+      "id": "VP_H06",
+      "anchors": [
+        "head",
+        "chest",
+        "back",
+        "feet",
+        "weapon"
+      ],
+      "animations": [
+        "idle",
+        "move",
+        "basic_attack",
+        "hit",
+        "skill_cast",
+        "death"
+      ],
+      "sprite_key": "heroes/h06/base",
+      "portrait_key": "heroes/h06/portrait"
+    },
+    {
+      "id": "VP_H07",
+      "anchors": [
+        "head",
+        "chest",
+        "back",
+        "feet",
+        "weapon"
+      ],
+      "animations": [
+        "idle",
+        "move",
+        "basic_attack",
+        "hit",
+        "skill_cast",
+        "death"
+      ],
+      "sprite_key": "heroes/h07/base",
+      "portrait_key": "heroes/h07/portrait"
+    },
+    {
+      "id": "VP_H08",
+      "anchors": [
+        "head",
+        "chest",
+        "back",
+        "feet",
+        "weapon"
+      ],
+      "animations": [
+        "idle",
+        "move",
+        "basic_attack",
+        "hit",
+        "skill_cast",
+        "death"
+      ],
+      "sprite_key": "heroes/h08/base",
+      "portrait_key": "heroes/h08/portrait"
+    },
+    {
+      "id": "VP_H09",
+      "anchors": [
+        "head",
+        "chest",
+        "back",
+        "feet",
+        "weapon"
+      ],
+      "animations": [
+        "idle",
+        "move",
+        "basic_attack",
+        "hit",
+        "skill_cast",
+        "death"
+      ],
+      "sprite_key": "heroes/h09/base",
+      "portrait_key": "heroes/h09/portrait"
+    },
+    {
+      "id": "VP_H10",
+      "anchors": [
+        "head",
+        "chest",
+        "back",
+        "feet",
+        "weapon"
+      ],
+      "animations": [
+        "idle",
+        "move",
+        "basic_attack",
+        "hit",
+        "skill_cast",
+        "death"
+      ],
+      "sprite_key": "heroes/h10/base",
+      "portrait_key": "heroes/h10/portrait"
+    },
+    {
+      "id": "VP_H11",
+      "anchors": [
+        "head",
+        "chest",
+        "back",
+        "feet",
+        "weapon"
+      ],
+      "animations": [
+        "idle",
+        "move",
+        "basic_attack",
+        "hit",
+        "skill_cast",
+        "death"
+      ],
+      "sprite_key": "heroes/h11/base",
+      "portrait_key": "heroes/h11/portrait"
+    },
+    {
+      "id": "VP_H12",
+      "anchors": [
+        "head",
+        "chest",
+        "back",
+        "feet",
+        "weapon"
+      ],
+      "animations": [
+        "idle",
+        "move",
+        "basic_attack",
+        "hit",
+        "skill_cast",
+        "death"
+      ],
+      "sprite_key": "heroes/h12/base",
+      "portrait_key": "heroes/h12/portrait"
+    },
+    {
+      "id": "VP_H13",
+      "anchors": [
+        "head",
+        "chest",
+        "back",
+        "feet",
+        "weapon"
+      ],
+      "animations": [
+        "idle",
+        "move",
+        "basic_attack",
+        "hit",
+        "skill_cast",
+        "death"
+      ],
+      "sprite_key": "heroes/h13/base",
+      "portrait_key": "heroes/h13/portrait"
+    },
+    {
+      "id": "VP_H14",
+      "anchors": [
+        "head",
+        "chest",
+        "back",
+        "feet",
+        "weapon"
+      ],
+      "animations": [
+        "idle",
+        "move",
+        "basic_attack",
+        "hit",
+        "skill_cast",
+        "death"
+      ],
+      "sprite_key": "heroes/h14/base",
+      "portrait_key": "heroes/h14/portrait"
+    },
+    {
+      "id": "VP_H15",
+      "anchors": [
+        "head",
+        "chest",
+        "back",
+        "feet",
+        "weapon"
+      ],
+      "animations": [
+        "idle",
+        "move",
+        "basic_attack",
+        "hit",
+        "skill_cast",
+        "death"
+      ],
+      "sprite_key": "heroes/h15/base",
+      "portrait_key": "heroes/h15/portrait"
+    },
+    {
+      "id": "VP_H16",
+      "anchors": [
+        "head",
+        "chest",
+        "back",
+        "feet",
+        "weapon"
+      ],
+      "animations": [
+        "idle",
+        "move",
+        "basic_attack",
+        "hit",
+        "skill_cast",
+        "death"
+      ],
+      "sprite_key": "heroes/h16/base",
+      "portrait_key": "heroes/h16/portrait"
+    },
+    {
+      "id": "VP_H17",
+      "anchors": [
+        "head",
+        "chest",
+        "back",
+        "feet",
+        "weapon"
+      ],
+      "animations": [
+        "idle",
+        "move",
+        "basic_attack",
+        "hit",
+        "skill_cast",
+        "death"
+      ],
+      "sprite_key": "heroes/h17/base",
+      "portrait_key": "heroes/h17/portrait"
+    },
+    {
+      "id": "VP_H18",
+      "anchors": [
+        "head",
+        "chest",
+        "back",
+        "feet",
+        "weapon"
+      ],
+      "animations": [
+        "idle",
+        "move",
+        "basic_attack",
+        "hit",
+        "skill_cast",
+        "death"
+      ],
+      "sprite_key": "heroes/h18/base",
+      "portrait_key": "heroes/h18/portrait"
+    },
+    {
+      "id": "VP_H19",
+      "anchors": [
+        "head",
+        "chest",
+        "back",
+        "feet",
+        "weapon"
+      ],
+      "animations": [
+        "idle",
+        "move",
+        "basic_attack",
+        "hit",
+        "skill_cast",
+        "death"
+      ],
+      "sprite_key": "heroes/h19/base",
+      "portrait_key": "heroes/h19/portrait"
+    },
+    {
+      "id": "VP_H20",
+      "anchors": [
+        "head",
+        "chest",
+        "back",
+        "feet",
+        "weapon"
+      ],
+      "animations": [
+        "idle",
+        "move",
+        "basic_attack",
+        "hit",
+        "skill_cast",
+        "death"
+      ],
+      "sprite_key": "heroes/h20/base",
+      "portrait_key": "heroes/h20/portrait"
+    }
+  ],
+  "normal_items": [
+    {
+      "id": "I01",
+      "name": "Iron Blade",
+      "kind": "normal",
+      "display_key": "item.i01.name",
+      "slot_cost": 1,
+      "stat_modifiers": [
+        {
+          "stat": "attack_damage",
+          "mode": "percent",
+          "value": 100
+        }
+      ]
+    },
+    {
+      "id": "I02",
+      "name": "Swift Bow",
+      "kind": "normal",
+      "display_key": "item.i02.name",
+      "slot_cost": 1,
+      "stat_modifiers": [
+        {
+          "stat": "attack_speed",
+          "mode": "percent",
+          "value": 150
+        }
+      ]
+    },
+    {
+      "id": "I03",
+      "name": "Arcane Tome",
+      "kind": "normal",
+      "display_key": "item.i03.name",
+      "slot_cost": 1,
+      "stat_modifiers": [
+        {
+          "stat": "skill_power",
+          "mode": "flat",
+          "value": 150
+        }
+      ]
+    },
+    {
+      "id": "I04",
+      "name": "Focus Core",
+      "kind": "normal",
+      "display_key": "item.i04.name",
+      "slot_cost": 1,
+      "stat_modifiers": [
+        {
+          "stat": "starting_mana",
+          "mode": "flat",
+          "value": 15000
+        }
+      ]
+    },
+    {
+      "id": "I05",
+      "name": "Guardian Plate",
+      "kind": "normal",
+      "display_key": "item.i05.name",
+      "slot_cost": 1,
+      "stat_modifiers": [
+        {
+          "stat": "armor",
+          "mode": "flat",
+          "value": 20000
+        }
+      ]
+    },
+    {
+      "id": "I06",
+      "name": "Spirit Cloak",
+      "kind": "normal",
+      "display_key": "item.i06.name",
+      "slot_cost": 1,
+      "stat_modifiers": [
+        {
+          "stat": "magic_resist",
+          "mode": "flat",
+          "value": 20000
+        }
+      ]
+    },
+    {
+      "id": "I07",
+      "name": "Vital Belt",
+      "kind": "normal",
+      "display_key": "item.i07.name",
+      "slot_cost": 1,
+      "stat_modifiers": [
+        {
+          "stat": "max_hp",
+          "mode": "percent",
+          "value": 150
+        }
+      ]
+    },
+    {
+      "id": "I08",
+      "name": "Hunter Gloves",
+      "kind": "normal",
+      "display_key": "item.i08.name",
+      "slot_cost": 1,
+      "stat_modifiers": [
+        {
+          "stat": "crit_chance",
+          "mode": "flat",
+          "value": 150
+        }
+      ]
+    },
+    {
+      "id": "I09",
+      "name": "Blood Charm",
+      "rules": [
+        {
+          "trigger": "basic_attack_damage",
+          "kind": "lifesteal",
+          "value": 150
+        }
+      ],
+      "kind": "normal",
+      "display_key": "item.i09.name",
+      "slot_cost": 1,
+      "stat_modifiers": []
+    },
+    {
+      "id": "I10",
+      "name": "Dawn Crest",
+      "triggers": [
+        {
+          "when": "combat_start",
+          "effects": [
+            {
+              "id": "E_I10",
+              "primitive": "shield",
+              "target": "self",
+              "base_value": 12000,
+              "duration_ticks": 120
+            }
+          ]
+        }
+      ],
+      "kind": "normal",
+      "display_key": "item.i10.name",
+      "slot_cost": 1,
+      "stat_modifiers": []
+    },
+    {
+      "id": "I11",
+      "name": "Spark Orb",
+      "triggers": [
+        {
+          "when": "skill_cast",
+          "effects": [
+            {
+              "id": "E_I11",
+              "primitive": "deal_damage",
+              "target": "locked_target",
+              "base_value": 6000,
+              "damage_type": "magic"
+            }
+          ]
+        }
+      ],
+      "kind": "normal",
+      "display_key": "item.i11.name",
+      "slot_cost": 1,
+      "stat_modifiers": []
+    },
+    {
+      "id": "I12",
+      "name": "Frost Sigil",
+      "triggers": [
+        {
+          "when": "basic_attack",
+          "cooldown_ticks": 60,
+          "effects": [
+            {
+              "id": "E_I12",
+              "primitive": "slow",
+              "target": "locked_target",
+              "base_value": 250,
+              "duration_ticks": 40
+            }
+          ]
+        }
+      ],
+      "kind": "normal",
+      "display_key": "item.i12.name",
+      "slot_cost": 1,
+      "stat_modifiers": []
+    }
+  ],
+  "unique_items": [
+    {
+      "id": "U01",
+      "name": "Lion Crown",
+      "kind": "unique",
+      "display_key": "item.u01.name",
+      "slot_cost": 1,
+      "stat_modifiers": [
+        {
+          "stat": "max_hp",
+          "mode": "percent",
+          "value": 150
+        }
+      ],
+      "triggers": [
+        {
+          "when": "hp_below_percent",
+          "threshold": 500,
+          "target": "adjacent_enemies",
+          "effects": [
+            {
+              "id": "E_U01",
+              "primitive": "stun",
+              "target": "adjacent_enemies",
+              "duration_ticks": 20
+            }
+          ],
+          "once_per_combat": true
+        }
+      ],
+      "visual_transformation_id": "VT_U01",
+      "suggested_holder_tags": [
+        "guardian",
+        "fighter",
+        "support"
+      ]
+    },
+    {
+      "id": "U02",
+      "name": "White Wolf Claw",
+      "kind": "unique",
+      "display_key": "item.u02.name",
+      "slot_cost": 1,
+      "stat_modifiers": [
+        {
+          "stat": "attack_speed",
+          "mode": "percent",
+          "value": 150
+        }
+      ],
+      "triggers": [
+        {
+          "when": "every_third_basic_attack",
+          "effects": [
+            {
+              "id": "E_U02",
+              "primitive": "deal_damage",
+              "target": "locked_target",
+              "base_value": 350,
+              "damage_type": "physical"
+            }
+          ]
+        }
+      ],
+      "visual_transformation_id": "VT_U02",
+      "suggested_holder_tags": [
+        "fighter",
+        "ranger",
+        "guardian"
+      ]
+    },
+    {
+      "id": "U03",
+      "name": "Ancient Turtle Shell",
+      "kind": "unique",
+      "display_key": "item.u03.name",
+      "slot_cost": 1,
+      "stat_modifiers": [
+        {
+          "stat": "armor",
+          "mode": "percent",
+          "value": 200
+        },
+        {
+          "stat": "magic_resist",
+          "mode": "percent",
+          "value": 200
+        }
+      ],
+      "triggers": [
+        {
+          "when": "combat_start",
+          "effects": [
+            {
+              "id": "E_U03",
+              "primitive": "shield",
+              "target": "self",
+              "base_value": 120,
+              "duration_ticks": 120,
+              "scales_with_max_hp": true
+            }
+          ]
+        }
+      ],
+      "visual_transformation_id": "VT_U03",
+      "suggested_holder_tags": [
+        "guardian",
+        "support",
+        "fighter"
+      ]
+    },
+    {
+      "id": "U04",
+      "name": "Star Unicorn Horn",
+      "kind": "unique",
+      "display_key": "item.u04.name",
+      "slot_cost": 1,
+      "stat_modifiers": [
+        {
+          "stat": "starting_mana",
+          "mode": "flat",
+          "value": 15000
+        }
+      ],
+      "triggers": [
+        {
+          "when": "first_skill_cast",
+          "effects": [
+            {
+              "id": "E_U04",
+              "primitive": "heal",
+              "target": "lowest_hp_ally",
+              "base_value": 120,
+              "scales_with_max_hp": true
+            }
+          ]
+        }
+      ],
+      "visual_transformation_id": "VT_U04",
+      "suggested_holder_tags": [
+        "mage",
+        "support",
+        "ranger"
+      ]
+    },
+    {
+      "id": "U05",
+      "name": "Nine-Tail Fox Mask",
+      "kind": "unique",
+      "display_key": "item.u05.name",
+      "slot_cost": 1,
+      "stat_modifiers": [
+        {
+          "stat": "skill_power",
+          "mode": "percent",
+          "value": 100
+        }
+      ],
+      "triggers": [
+        {
+          "when": "first_skill_cast",
+          "effects": [
+            {
+              "id": "E_U05",
+              "primitive": "summon",
+              "target": "self",
+              "summon": {
+                "id": "decoy",
+                "max_hp": 250,
+                "duration_ticks": 80
+              },
+              "scales_with_max_hp": true
+            }
+          ]
+        }
+      ],
+      "visual_transformation_id": "VT_U05",
+      "suggested_holder_tags": [
+        "mage",
+        "ranger",
+        "support"
+      ]
+    },
+    {
+      "id": "U06",
+      "name": "Red Phoenix Feather",
+      "kind": "unique",
+      "display_key": "item.u06.name",
+      "slot_cost": 1,
+      "stat_modifiers": [
+        {
+          "stat": "attack_damage",
+          "mode": "percent",
+          "value": 100
+        },
+        {
+          "stat": "skill_power",
+          "mode": "percent",
+          "value": 100
+        }
+      ],
+      "triggers": [
+        {
+          "when": "hp_below_percent",
+          "threshold": 300,
+          "once_per_combat": true,
+          "effects": [
+            {
+              "id": "E_U06A",
+              "primitive": "cleanse",
+              "target": "self"
+            },
+            {
+              "id": "E_U06B",
+              "primitive": "shield",
+              "target": "self",
+              "base_value": 150,
+              "duration_ticks": 80,
+              "scales_with_max_hp": true
+            }
+          ]
+        }
+      ],
+      "visual_transformation_id": "VT_U06",
+      "suggested_holder_tags": [
+        "guardian",
+        "fighter",
+        "mage"
+      ]
+    }
+  ],
+  "transformations": [
+    {
+      "id": "VT_U01",
+      "accessory_key": "transformations/lion_crown/accessory",
+      "accessory_anchor": "head",
+      "aura_key": "transformations/lion_crown/aura",
+      "vfx_key": "transformations/lion_crown/vfx",
+      "icon_key": "items/u01/icon",
+      "portrait_badge_key": "items/u01/badge",
+      "tint": null
+    },
+    {
+      "id": "VT_U02",
+      "accessory_key": "transformations/white_wolf_claw/accessory",
+      "accessory_anchor": "weapon",
+      "aura_key": "transformations/white_wolf_claw/aura",
+      "vfx_key": "transformations/white_wolf_claw/vfx",
+      "icon_key": "items/u02/icon",
+      "portrait_badge_key": "items/u02/badge",
+      "tint": null
+    },
+    {
+      "id": "VT_U03",
+      "accessory_key": "transformations/ancient_turtle_shell/accessory",
+      "accessory_anchor": "back",
+      "aura_key": "transformations/ancient_turtle_shell/aura",
+      "vfx_key": "transformations/ancient_turtle_shell/vfx",
+      "icon_key": "items/u03/icon",
+      "portrait_badge_key": "items/u03/badge",
+      "tint": null
+    },
+    {
+      "id": "VT_U04",
+      "accessory_key": "transformations/star_unicorn_horn/accessory",
+      "accessory_anchor": "head",
+      "aura_key": "transformations/star_unicorn_horn/aura",
+      "vfx_key": "transformations/star_unicorn_horn/vfx",
+      "icon_key": "items/u04/icon",
+      "portrait_badge_key": "items/u04/badge",
+      "tint": null
+    },
+    {
+      "id": "VT_U05",
+      "accessory_key": "transformations/nine_tail_fox_mask/accessory",
+      "accessory_anchor": "head",
+      "aura_key": "transformations/nine_tail_fox_mask/aura",
+      "vfx_key": "transformations/nine_tail_fox_mask/vfx",
+      "icon_key": "items/u05/icon",
+      "portrait_badge_key": "items/u05/badge",
+      "tint": null
+    },
+    {
+      "id": "VT_U06",
+      "accessory_key": "transformations/red_phoenix_feather/accessory",
+      "accessory_anchor": "back",
+      "aura_key": "transformations/red_phoenix_feather/aura",
+      "vfx_key": "transformations/red_phoenix_feather/vfx",
+      "icon_key": "items/u06/icon",
+      "portrait_badge_key": "items/u06/badge",
+      "tint": null
+    }
+  ],
+  "encounters": [
+    {
+      "id": "PVE_01",
+      "round": 1,
+      "kind": "normal",
+      "enemy_composition": [
+        { "hero_id": "H01", "position": 3, "stat_multiplier": 550 },
+        { "hero_id": "H03", "position": 5, "stat_multiplier": 550 }
+      ],
+      "rewards": [
+        {
+          "kind": "gold",
+          "amount": 2000
+        },
+        {
+          "kind": "shop_refresh"
+        }
+      ]
+    },
+    {
+      "id": "PVE_02",
+      "round": 2,
+      "kind": "normal",
+      "enemy_composition": [
+        { "hero_id": "H06", "position": 0, "stat_multiplier": 700 },
+        { "hero_id": "H08", "position": 4, "stat_multiplier": 700 },
+        { "hero_id": "H12", "position": 7, "stat_multiplier": 700 }
+      ],
+      "rewards": [
+        {
+          "kind": "gold",
+          "amount": 3000
+        },
+        {
+          "kind": "shop_refresh"
+        }
+      ]
+    },
+    {
+      "id": "PVE_03",
+      "round": 3,
+      "kind": "elite",
+      "enemy_composition": [
+        { "hero_id": "H07", "position": 0, "stat_multiplier": 900 },
+        { "hero_id": "H09", "position": 4, "stat_multiplier": 900 },
+        { "hero_id": "H15", "position": 8, "stat_multiplier": 900 }
+      ],
+      "rewards": [
+        {
+          "kind": "normal_item_choice",
+          "options": 3
+        }
+      ]
+    },
+    {
+      "id": "PVE_04",
+      "round": 4,
+      "kind": "boss",
+      "enemy_composition": [
+        { "hero_id": "H16", "position": 0, "stat_multiplier": 1100 },
+        { "hero_id": "H19", "position": 4, "stat_multiplier": 1100 },
+        { "hero_id": "H20", "position": 8, "stat_multiplier": 1100 },
+        { "hero_id": "H03", "position": 10, "stat_multiplier": 1100 }
+      ],
+      "rewards": [
+        {
+          "kind": "unique_reveal"
+        },
+        {
+          "kind": "hero_choice",
+          "options": 3
+        }
+      ]
+    },
+    {
+      "id": "PVE_05",
+      "round": 5,
+      "kind": "affix",
+      "enemy_composition": [
+        { "hero_id": "H06", "position": 0, "stat_multiplier": 1200 },
+        { "hero_id": "H07", "position": 1, "stat_multiplier": 1200 },
+        { "hero_id": "H10", "position": 4, "stat_multiplier": 1200 },
+        { "hero_id": "H13", "position": 8, "stat_multiplier": 1200 }
+      ],
+      "affix": { "kind": "attack_speed_multiplier", "value": 150 },
+      "rewards": [
+        {
+          "kind": "gold",
+          "amount": 5000
+        },
+        {
+          "kind": "free_reroll",
+          "amount": 1
+        }
+      ]
+    },
+    {
+      "id": "PVE_06",
+      "round": 6,
+      "kind": "hard",
+      "enemy_composition": [
+        { "hero_id": "H01", "position": 0, "stat_multiplier": 1350 },
+        { "hero_id": "H04", "position": 4, "stat_multiplier": 1350 },
+        { "hero_id": "H08", "position": 5, "stat_multiplier": 1350 },
+        { "hero_id": "H15", "position": 8, "stat_multiplier": 1350 },
+        { "hero_id": "H18", "position": 11, "stat_multiplier": 1350 }
+      ],
+      "rewards": [
+        {
+          "kind": "hero_choice",
+          "options": 3
+        },
+        {
+          "kind": "upgrade_choice"
+        }
+      ]
+    },
+    {
+      "id": "PVE_07",
+      "round": 7,
+      "kind": "elite",
+      "enemy_composition": [
+        { "hero_id": "H07", "position": 0, "stat_multiplier": 1550 },
+        { "hero_id": "H09", "position": 4, "stat_multiplier": 1550 },
+        { "hero_id": "H12", "position": 5, "stat_multiplier": 1550 },
+        { "hero_id": "H16", "position": 8, "stat_multiplier": 1550 },
+        { "hero_id": "H19", "position": 11, "stat_multiplier": 1550 }
+      ],
+      "rewards": [
+        {
+          "kind": "normal_item_choice",
+          "options": 3
+        }
+      ]
+    },
+    {
+      "id": "PVE_08",
+      "round": 8,
+      "kind": "final_boss",
+      "enemy_composition": [
+        { "hero_id": "H01", "position": 0, "stat_multiplier": 1800 },
+        { "hero_id": "H04", "position": 1, "stat_multiplier": 1800 },
+        { "hero_id": "H07", "position": 4, "stat_multiplier": 1800 },
+        { "hero_id": "H10", "position": 5, "stat_multiplier": 1800 },
+        { "hero_id": "H16", "position": 8, "stat_multiplier": 1800 },
+        { "hero_id": "H18", "position": 11, "stat_multiplier": 1800 }
+      ],
+      "rewards": [
+        {
+          "kind": "final_chest"
+        }
+      ]
+    }
+  ]
+}

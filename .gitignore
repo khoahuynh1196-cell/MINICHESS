@@ -1,0 +1,20 @@
+node_modules/
+dist/
+coverage/
+tmp/
+.env
+.env.*
+!.env.example
+*.log
+
+# Godot generated/editor files
+client-godot/.godot/
+client-godot/.import/
+client-godot/export/
+client-godot/build/
+
+# OS/editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
