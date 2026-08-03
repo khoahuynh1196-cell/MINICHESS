@@ -1496,6 +1496,8 @@
   "skills": [
     {
       "id": "S_H01",
+      "name": "Cotton Bulwark",
+      "target_policy": "self",
       "cast_time_ticks": 10,
       "effects": [
         {
@@ -1509,6 +1511,8 @@
     },
     {
       "id": "S_H02",
+      "name": "Prowler's Leap",
+      "target_policy": "self_toward_locked_target",
       "cast_time_ticks": 10,
       "effects": [
         {
@@ -1521,6 +1525,8 @@
     },
     {
       "id": "S_H03",
+      "name": "Razor Shot",
+      "target_policy": "locked_target",
       "cast_time_ticks": 10,
       "effects": [
         {
@@ -1534,6 +1540,8 @@
     },
     {
       "id": "S_H04",
+      "name": "Winter Howl",
+      "target_policy": "all_enemies",
       "cast_time_ticks": 10,
       "effects": [
         {
@@ -1542,11 +1550,23 @@
           "target": "all_enemies",
           "base_value": 300,
           "duration_ticks": 60
+        },
+        {
+          "id": "E_H04_CHILL",
+          "primitive": "debuff_stat",
+          "target": "all_enemies",
+          "stat": "attack_speed",
+          "mode": "flat",
+          "base_value": 150,
+          "duration_ticks": 60,
+          "cleanseable": true
         }
       ]
     },
     {
       "id": "S_H05",
+      "name": "Kindred Mend",
+      "target_policy": "lowest_hp_ally",
       "cast_time_ticks": 10,
       "effects": [
         {
@@ -1559,6 +1579,8 @@
     },
     {
       "id": "S_H06",
+      "name": "Pack Guard",
+      "target_policy": "self",
       "cast_time_ticks": 10,
       "effects": [
         {
@@ -1572,6 +1594,8 @@
     },
     {
       "id": "S_H07",
+      "name": "Bramble Bash",
+      "target_policy": "locked_target",
       "cast_time_ticks": 10,
       "effects": [
         {
@@ -1584,6 +1608,8 @@
     },
     {
       "id": "S_H08",
+      "name": "Hunter's Focus",
+      "target_policy": "self",
       "cast_time_ticks": 10,
       "effects": [
         {
@@ -1599,6 +1625,8 @@
     },
     {
       "id": "S_H09",
+      "name": "Storm Arc",
+      "target_policy": "all_enemies",
       "cast_time_ticks": 10,
       "effects": [
         {
@@ -1612,6 +1640,8 @@
     },
     {
       "id": "S_H10",
+      "name": "Moonlit Ward",
+      "target_policy": "lowest_hp_ally",
       "cast_time_ticks": 10,
       "effects": [
         {
@@ -1625,6 +1655,8 @@
     },
     {
       "id": "S_H11",
+      "name": "Burrow Charge",
+      "target_policy": "self_toward_locked_target",
       "cast_time_ticks": 10,
       "effects": [
         {
@@ -1637,6 +1669,8 @@
     },
     {
       "id": "S_H12",
+      "name": "Thistle Volley",
+      "target_policy": "locked_target",
       "cast_time_ticks": 10,
       "effects": [
         {
@@ -1650,6 +1684,8 @@
     },
     {
       "id": "S_H13",
+      "name": "Searing Spores",
+      "target_policy": "all_enemies",
       "cast_time_ticks": 10,
       "effects": [
         {
@@ -1665,6 +1701,8 @@
     },
     {
       "id": "S_H14",
+      "name": "Meadow Remedy",
+      "target_policy": "lowest_hp_ally",
       "cast_time_ticks": 10,
       "effects": [
         {
@@ -1677,21 +1715,26 @@
     },
     {
       "id": "S_H15",
+      "name": "Earthen Decoy",
+      "target_policy": "self",
       "cast_time_ticks": 10,
       "effects": [
         {
           "id": "E_H15",
-          "primitive": "buff_stat",
+          "primitive": "summon",
           "target": "self",
-          "stat": "max_hp",
-          "mode": "percent",
-          "base_value": 120,
-          "duration_ticks": 80
+          "summon": {
+            "id": "earthen_decoy",
+            "max_hp": 24000,
+            "duration_ticks": 80
+          }
         }
       ]
     },
     {
       "id": "S_H16",
+      "name": "Hornbreaker",
+      "target_policy": "locked_target",
       "cast_time_ticks": 10,
       "effects": [
         {
@@ -1704,6 +1747,8 @@
     },
     {
       "id": "S_H17",
+      "name": "Purifying Bloom",
+      "target_policy": "self",
       "cast_time_ticks": 10,
       "effects": [
         {
@@ -1711,11 +1756,18 @@
           "primitive": "heal",
           "target": "lowest_hp_ally",
           "base_value": 22000
+        },
+        {
+          "id": "E_H17_CLEANSE",
+          "primitive": "cleanse",
+          "target": "self"
         }
       ]
     },
     {
       "id": "S_H18",
+      "name": "Exotic Ricochet",
+      "target_policy": "locked_target",
       "cast_time_ticks": 10,
       "effects": [
         {
@@ -1729,6 +1781,8 @@
     },
     {
       "id": "S_H19",
+      "name": "Prismatic Burst",
+      "target_policy": "all_enemies",
       "cast_time_ticks": 10,
       "effects": [
         {
@@ -1742,6 +1796,8 @@
     },
     {
       "id": "S_H20",
+      "name": "Last Stand Shell",
+      "target_policy": "self",
       "cast_time_ticks": 10,
       "effects": [
         {
@@ -2200,6 +2256,7 @@
     {
       "id": "I01",
       "name": "Iron Blade",
+      "category": "offensive",
       "kind": "normal",
       "display_key": "item.i01.name",
       "slot_cost": 1,
@@ -2214,6 +2271,7 @@
     {
       "id": "I02",
       "name": "Swift Bow",
+      "category": "offensive",
       "kind": "normal",
       "display_key": "item.i02.name",
       "slot_cost": 1,
@@ -2228,6 +2286,7 @@
     {
       "id": "I03",
       "name": "Arcane Tome",
+      "category": "offensive",
       "kind": "normal",
       "display_key": "item.i03.name",
       "slot_cost": 1,
@@ -2242,6 +2301,7 @@
     {
       "id": "I04",
       "name": "Focus Core",
+      "category": "offensive",
       "kind": "normal",
       "display_key": "item.i04.name",
       "slot_cost": 1,
@@ -2256,6 +2316,7 @@
     {
       "id": "I05",
       "name": "Guardian Plate",
+      "category": "defensive",
       "kind": "normal",
       "display_key": "item.i05.name",
       "slot_cost": 1,
@@ -2270,6 +2331,7 @@
     {
       "id": "I06",
       "name": "Spirit Cloak",
+      "category": "defensive",
       "kind": "normal",
       "display_key": "item.i06.name",
       "slot_cost": 1,
@@ -2284,6 +2346,7 @@
     {
       "id": "I07",
       "name": "Vital Belt",
+      "category": "defensive",
       "kind": "normal",
       "display_key": "item.i07.name",
       "slot_cost": 1,
@@ -2298,6 +2361,7 @@
     {
       "id": "I08",
       "name": "Hunter Gloves",
+      "category": "defensive",
       "kind": "normal",
       "display_key": "item.i08.name",
       "slot_cost": 1,
@@ -2312,6 +2376,7 @@
     {
       "id": "I09",
       "name": "Blood Charm",
+      "category": "utility",
       "rules": [
         {
           "trigger": "basic_attack_damage",
@@ -2327,6 +2392,7 @@
     {
       "id": "I10",
       "name": "Dawn Crest",
+      "category": "utility",
       "triggers": [
         {
           "when": "combat_start",
@@ -2349,6 +2415,7 @@
     {
       "id": "I11",
       "name": "Spark Orb",
+      "category": "utility",
       "triggers": [
         {
           "when": "skill_cast",
@@ -2371,6 +2438,7 @@
     {
       "id": "I12",
       "name": "Frost Sigil",
+      "category": "utility",
       "triggers": [
         {
           "when": "basic_attack",

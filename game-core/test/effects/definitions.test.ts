@@ -1,6 +1,10 @@
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
-import { validateEffectDefinition, type CombatEffect } from "../../src/index.js";
+import { compileContentBundle, validateEffectDefinition, type CombatEffect } from "../../src/index.js";
+
+const bundlePath = fileURLToPath(new URL("../../../content/alpha-0.3.0/bundle.json", import.meta.url));
 
 const validEffects: readonly CombatEffect[] = [
   { id: "damage", primitive: "deal_damage", target: "locked_target", baseValue: 1_000, damageType: "magic" },
@@ -33,5 +37,15 @@ describe("effect definition contract", () => {
         damageType: "magic",
       }),
     ).toThrow(/intervalTicks/);
+  });
+
+  it("normalizes and validates every effect embedded in Alpha item triggers", () => {
+    const content = compileContentBundle(JSON.parse(readFileSync(bundlePath, "utf8")));
+    const itemEffects = [...content.normalItems, ...content.uniqueItems]
+      .flatMap((item) => item.triggers)
+      .flatMap((trigger) => trigger.effects);
+
+    expect(itemEffects.length).toBeGreaterThan(0);
+    expect(() => itemEffects.forEach(validateEffectDefinition)).not.toThrow();
   });
 });

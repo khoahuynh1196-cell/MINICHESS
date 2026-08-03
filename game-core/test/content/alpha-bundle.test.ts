@@ -6,6 +6,9 @@ import { compileContentBundle } from "../../src/index.js";
 
 const bundlePath = fileURLToPath(new URL("../../../content/alpha-0.3.0/bundle.json", import.meta.url));
 const heroIds = Array.from({ length: 20 }, (_value, index) => `H${String(index + 1).padStart(2, "0")}`);
+const requiredSkillPrimitives = [
+  "deal_damage", "heal", "shield", "stun", "slow", "buff_stat", "debuff_stat", "summon", "cleanse", "dash", "knockback",
+] as const;
 
 function countBy(values: readonly { species_trait_id: string; class_trait_id: string }[], key: "species_trait_id" | "class_trait_id"): Record<string, number> {
   return values.reduce<Record<string, number>>((counts, value) => ({ ...counts, [value[key]]: (counts[value[key]] ?? 0) + 1 }), {});
@@ -77,6 +80,44 @@ describe("Alpha content bundle", () => {
     expect(inventory.encounters
       .filter((encounter) => encounter.rewards.some((reward) => reward.kind === "unique_reveal"))
       .map((encounter) => encounter.round)).toEqual([4]);
+  });
+
+  it("ships readable skills with every required PvE effect primitive", () => {
+    if (!existsSync(bundlePath)) throw new Error("Alpha bundle fixture is missing");
+
+    const raw = JSON.parse(readFileSync(bundlePath, "utf8")) as {
+      skills: Array<{ id: string; name?: string; target_policy?: string; effects: Array<{ primitive: string }> }>;
+    };
+
+    expect(raw.skills.map((skill) => skill.id)).toEqual(heroIds.map((heroId) => `S_${heroId}`));
+    expect(raw.skills.every((skill) => skill.name?.length && skill.target_policy?.length && skill.effects.length > 0)).toBe(true);
+    const primitives = new Set(raw.skills.flatMap((skill) => skill.effects.map((effect) => effect.primitive)));
+    expect(requiredSkillPrimitives.every((primitive) => primitives.has(primitive))).toBe(true);
+  });
+
+  it("keeps item effects, visual profiles, and Unique transformations bundle-defined", () => {
+    if (!existsSync(bundlePath)) throw new Error("Alpha bundle fixture is missing");
+
+    const raw = JSON.parse(readFileSync(bundlePath, "utf8")) as {
+      heroes: Array<{ visual_profile_id: string }>;
+      visual_profiles: Array<{ id: string }>;
+      normal_items: Array<{ category?: string; triggers?: Array<{ effects?: Array<{ primitive: string }> }>; rules?: Array<{ effects?: Array<{ primitive: string }> }> }>;
+      unique_items: Array<{ visual_transformation_id: string; triggers?: Array<{ effects?: Array<{ primitive: string }> }> }>;
+      transformations: Array<{ id: string }>;
+    };
+    const knownPrimitives = new Set<string>([
+      "deal_damage", "restore_mana", "damage_reduction", "heal", "shield", "stun", "slow", "buff_stat", "debuff_stat", "dash", "retreat", "knockback", "summon", "apply_dot", "cleanse",
+    ]);
+    const itemEffects = [...raw.normal_items, ...raw.unique_items]
+      .flatMap((item) => [...(item.triggers ?? []), ...("rules" in item ? item.rules ?? [] : [])])
+      .flatMap((trigger) => trigger.effects ?? []);
+
+    expect(raw.normal_items.map((item) => item.category)).toEqual([
+      "offensive", "offensive", "offensive", "offensive", "defensive", "defensive", "defensive", "defensive", "utility", "utility", "utility", "utility",
+    ]);
+    expect(itemEffects.every((effect) => knownPrimitives.has(effect.primitive))).toBe(true);
+    expect(raw.heroes.every((hero) => raw.visual_profiles.some((profile) => profile.id === hero.visual_profile_id))).toBe(true);
+    expect(raw.unique_items.every((item) => raw.transformations.some((transformation) => transformation.id === item.visual_transformation_id))).toBe(true);
   });
 
   it("compiles every Alpha item and Unique trigger into canonical passive data", () => {

@@ -1,7 +1,10 @@
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 import {
   canonicalizeSnapshot,
+  compileContentBundle,
   createSeededRng,
   runHeadlessCombat,
   resolveDamage,
@@ -10,6 +13,54 @@ import {
   type CombatEffect,
   type CombatPassive,
 } from "../../src/index.js";
+
+const bundlePath = fileURLToPath(new URL("../../../content/alpha-0.3.0/bundle.json", import.meta.url));
+const content = compileContentBundle(JSON.parse(readFileSync(bundlePath, "utf8")));
+
+function contentSkill(skillId: string): { id: string; castTimeTicks: number; effects: readonly CombatEffect[] } {
+  const skill = content.skillsById.get(skillId);
+  if (skill === undefined) throw new Error(`Missing content skill ${skillId}`);
+  return {
+    id: skill.id,
+    castTimeTicks: skill.cast_time_ticks,
+    effects: skill.effects.map((effect) => {
+      const raw = effect as Record<string, unknown>;
+      return {
+        id: effect.id,
+        primitive: effect.primitive as CombatEffect["primitive"],
+        target: effect.target as CombatEffect["target"],
+        ...(typeof raw.base_value === "number" ? { baseValue: raw.base_value } : {}),
+        ...(typeof raw.duration_ticks === "number" ? { durationTicks: raw.duration_ticks } : {}),
+        ...(typeof raw.distance === "number" ? { distance: raw.distance } : {}),
+        ...(typeof raw.stat === "string" ? { stat: raw.stat as CombatEffect["stat"] } : {}),
+        ...(typeof raw.mode === "string" ? { modifierMode: raw.mode as CombatEffect["modifierMode"] } : {}),
+        ...(raw.cleanseable === true ? { cleanseable: true } : {}),
+        ...(raw.summon === undefined ? {} : {
+          summon: {
+            id: (raw.summon as { id: string }).id,
+            maxHp: (raw.summon as { max_hp: number }).max_hp,
+            durationTicks: (raw.summon as { duration_ticks: number }).duration_ticks,
+          },
+        }),
+      } as CombatEffect;
+    }),
+  };
+}
+
+function contentPassive(ownerId: string, trigger: (typeof content.normalItems)[number]["triggers"][number]): CombatPassive {
+  return {
+    ownerId,
+    triggerId: trigger.id,
+    trigger: trigger.trigger,
+    effects: trigger.effects,
+    ...(trigger.cooldownTicks === undefined ? {} : { cooldownTicks: trigger.cooldownTicks }),
+    ...(trigger.thresholdPercent === undefined ? {} : { thresholdPercent: trigger.thresholdPercent }),
+    ...(trigger.attackCount === undefined ? {} : { attackCount: trigger.attackCount }),
+    ...(trigger.oncePerCombat === undefined ? {} : { oncePerCombat: trigger.oncePerCombat }),
+    ...(trigger.basicOnly === undefined ? {} : { basicOnly: trigger.basicOnly }),
+    ...(trigger.lifestealPerThousand === undefined ? {} : { lifestealPerThousand: trigger.lifestealPerThousand }),
+  };
+}
 
 const snapshot: CombatSnapshot = {
   combatId: "combat-001",
@@ -53,6 +104,43 @@ const snapshot: CombatSnapshot = {
 };
 
 describe("deterministic combat kernel", () => {
+  it("executes the Alpha debuff, summon, and cleanse skills as content-defined effects", () => {
+    const debuff = runHeadlessCombat({
+      ...snapshot,
+      maxTicks: 11,
+      units: [
+        { ...snapshot.units[0]!, position: 1, attackSpeed: 0, startingMana: 100_000, skill: contentSkill("S_H04") },
+        { ...snapshot.units[1]!, position: 4, attackSpeed: 0 },
+      ],
+    });
+    const summon = runHeadlessCombat({
+      ...snapshot,
+      maxTicks: 11,
+      units: [
+        { ...snapshot.units[0]!, position: 1, attackSpeed: 0, startingMana: 100_000, skill: contentSkill("S_H15") },
+        { ...snapshot.units[1]!, position: 4, attackSpeed: 0 },
+      ],
+    });
+    const cleanse = runHeadlessCombat({
+      ...snapshot,
+      maxTicks: 11,
+      units: [
+        {
+          ...snapshot.units[0]!, position: 1, attackSpeed: 0, startingMana: 100_000, skill: contentSkill("S_H17"),
+          passives: [{
+            ownerId: "test", triggerId: "test:debuff", trigger: "on_combat_start",
+            effects: [{ id: "E_TEST_CLEANSEABLE_DEBUFF", primitive: "debuff_stat", target: "self", stat: "attack_damage", modifierMode: "flat", baseValue: 1_000, durationTicks: 20, cleanseable: true }],
+          }],
+        },
+        { ...snapshot.units[1]!, position: 4, attackSpeed: 0 },
+      ],
+    });
+
+    expect(debuff.events).toContainEqual(expect.objectContaining({ type: "STAT_MODIFIER_APPLIED", payload: { stat: "attack_speed", value: 150 } }));
+    expect(summon.events).toContainEqual(expect.objectContaining({ type: "UNIT_SUMMONED" }));
+    expect(cleanse.events).toContainEqual(expect.objectContaining({ type: "CLEANSE_APPLIED", sourceUnitId: "enemy:E01:1" }));
+  });
+
   it("canonicalizes unit ordering without changing the input snapshot", () => {
     const canonical = canonicalizeSnapshot(snapshot);
 
@@ -120,16 +208,15 @@ describe("deterministic combat kernel", () => {
   });
 
   it("dispatches a basic-attack passive after the attack and observes its cooldown", () => {
+    const frostSigil = content.normalItems.find((item) => item.id === "I12");
+    if (frostSigil === undefined) throw new Error("Missing Alpha item I12");
     const result = runHeadlessCombat({
       ...snapshot,
       maxTicks: 2,
       units: [
         {
           ...snapshot.units[0]!, position: 1, attackSpeed: 20_000,
-          passives: [{
-            ownerId: "I12", triggerId: "I12:trigger:0", trigger: "on_basic_attack", cooldownTicks: 60,
-            effects: [{ id: "E_I12", primitive: "slow", target: "locked_target", baseValue: 250, durationTicks: 40 }],
-          }],
+          passives: [contentPassive(frostSigil.id, frostSigil.triggers[0]!)],
         },
         { ...snapshot.units[1]!, position: 4, maxHp: 1_000_000 },
       ],
@@ -163,16 +250,15 @@ describe("deterministic combat kernel", () => {
   });
 
   it("fires a low-HP passive exactly once after damage crosses its threshold", () => {
+    const lionCrown = content.uniqueItems.find((item) => item.id === "U01");
+    if (lionCrown === undefined) throw new Error("Missing Alpha Unique U01");
     const result = runHeadlessCombat({
       ...snapshot,
       maxTicks: 2,
       units: [
         {
           ...snapshot.units[0]!, position: 1, attackSpeed: 0,
-          passives: [{
-            ownerId: "U01", triggerId: "U01:trigger:0", trigger: "on_hp_below", thresholdPercent: 500, oncePerCombat: true,
-            effects: [{ id: "E_U01", primitive: "stun", target: "adjacent_enemies", durationTicks: 20 }],
-          }],
+          passives: [contentPassive(lionCrown.id, lionCrown.triggers[0]!)],
         },
         { ...snapshot.units[1]!, position: 4, attackDamage: 60_000, attackSpeed: 20_000 },
       ],
