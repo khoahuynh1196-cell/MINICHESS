@@ -128,10 +128,14 @@ func apply_event(event) -> void:
 			_update_unit_hp(event, "hit")
 		"HEAL_APPLIED":
 			_update_unit_hp(event, "skill")
-		"EFFECT_APPLIED", "SHIELD_APPLIED", "STAT_MODIFIER_APPLIED", "CLEANSE_APPLIED":
+		"EFFECT_APPLIED", "SHIELD_APPLIED", "STAT_MODIFIER_APPLIED":
 			_present_target(event, "skill")
-		"STUN_APPLIED", "SLOW_APPLIED":
-			_present_target(event, "hit")
+		"CLEANSE_APPLIED":
+			_present_target_with_status(event, "", "skill")
+		"STUN_APPLIED":
+			_present_target_with_status(event, "stunned", "hit")
+		"SLOW_APPLIED":
+			_present_target_with_status(event, "slowed", "hit")
 		"UNIT_DIED":
 			_mark_unit_defeated(event)
 		"COMBAT_ENDED":
@@ -462,11 +466,12 @@ func _spawn_unit(event) -> void:
 		_show_biome_layer(_biome_for_monster(monster_id))
 	else:
 		unit = UnitViewScript.new()
+		var hero_id := _hero_id_from_unit_id(unit_id)
 		unit.configure(
 			side,
 			int(event.payload.get("position", 0)),
 			int(event.payload.get("max_hp", 100000)),
-			_hero_id_from_unit_id(unit_id),
+			AssetManifestScript.hero_profile(hero_id),
 			_unique_item_id_from_unit_id(unit_id),
 		)
 	unit.set_reduced_motion(bool(settings.get("reduced_motion", false)))
@@ -487,6 +492,12 @@ func _present_source(event, animation_state: String) -> void:
 func _present_target(event, animation_state: String) -> void:
 	var unit = _targeted_unit(event)
 	if unit != null:
+		unit.present(animation_state)
+
+func _present_target_with_status(event, next_status: String, animation_state: String) -> void:
+	var unit = _targeted_unit(event)
+	if unit != null:
+		unit.set_status(next_status)
 		unit.present(animation_state)
 
 func _update_unit_hp(event, animation_state: String) -> void:
@@ -709,11 +720,12 @@ func _build_mobile_screen(screen_id: String) -> void:
 	if screen_id == "prepare":
 		_build_prepare_screen(root)
 		return
-	var background := ColorRect.new()
-	background.color = ThemeTokensScript.NAVY
-	background.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	background.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	root.add_child(background)
+	if screen_id != "combat":
+		var background := ColorRect.new()
+		background.color = ThemeTokensScript.NAVY
+		background.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		background.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		root.add_child(background)
 	var title := Label.new()
 	title.position = Vector2(40.0, 38.0)
 	title.size = Vector2(1000.0, 58.0)

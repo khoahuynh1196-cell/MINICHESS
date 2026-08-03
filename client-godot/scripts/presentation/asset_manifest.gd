@@ -18,6 +18,20 @@ static func validate_hero_assets(hero_ids: Array[String]) -> PackedStringArray:
 			errors.append("missing sprite asset for %s" % hero_id)
 	return errors
 
+# This is the runtime AssetCatalog contract. Unknown IDs deliberately return an
+# empty profile: presentation must never silently substitute H01 in a release.
+static func hero_profile(hero_id: String) -> Dictionary:
+	var manifest := load_manifest()
+	var profile_key := "VP_%s" % hero_id
+	var profile: Dictionary = Dictionary(manifest.get("visual_profiles", {}).get(profile_key, {})).duplicate(true)
+	if profile.is_empty():
+		return {}
+	for required_key in ["portrait", "sprite", "icon", "vfx"]:
+		if String(profile.get(required_key, "")).is_empty():
+			return {}
+	profile["id"] = hero_id
+	return profile
+
 static func validate_all_assets() -> PackedStringArray:
 	var errors := PackedStringArray()
 	var assets: Dictionary = load_manifest().get("assets", {})
@@ -32,16 +46,11 @@ static func validate_all_assets() -> PackedStringArray:
 	return errors
 
 static func resolve_hero_texture(hero_id: String) -> Texture2D:
-	var manifest := load_manifest()
-	var profiles: Dictionary = manifest.get("visual_profiles", {})
-	var profile: Dictionary = profiles.get("VP_%s" % hero_id, {})
-	var sprite_key := String(profile.get("sprite", ""))
-	return resolve_asset_texture(sprite_key)
+	return resolve_asset_texture(String(hero_profile(hero_id).get("sprite", "")))
 
 static func resolve_hero_vfx_texture(hero_id: String) -> Texture2D:
 	var manifest := load_manifest()
-	var profiles: Dictionary = manifest.get("visual_profiles", {})
-	var profile: Dictionary = profiles.get("VP_%s" % hero_id, {})
+	var profile := hero_profile(hero_id)
 	var vfx_key := String(profile.get("vfx", ""))
 	var asset: Dictionary = manifest.get("assets", {}).get(vfx_key, {})
 	# The current hero skills use CombatVfx2D's code-drawn effects. Marking the

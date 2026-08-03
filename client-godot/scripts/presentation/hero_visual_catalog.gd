@@ -35,8 +35,7 @@ static var PROFILES: Dictionary = {
 }
 
 static func profile(hero_id: String) -> Dictionary:
-	var fallback: Dictionary = PROFILES["H01"]
-	return Dictionary(PROFILES.get(hero_id, fallback)).duplicate(true)
+	return Dictionary(PROFILES.get(hero_id, {})).duplicate(true)
 
 static func hero_ids() -> Array[String]:
 	var ids: Array[String] = []
