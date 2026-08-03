@@ -17,6 +17,16 @@ func _init() -> void:
 	_expect(int(catfolk.front().count) == 2, "duplicate instance IDs and bench slots must not inflate traits")
 	_expect(bool(catfolk.front().active), "two matching deployed heroes must activate a trait")
 	_expect(TraitSummaryScript.text(board).contains("Cat"), "trait copy must be human-readable")
+	var four_catfolk := TraitSummaryScript.summarize([
+		{ "instanceId": "one", "heroId": "H01" }, { "instanceId": "two", "heroId": "H02" },
+		{ "instanceId": "three", "heroId": "H03" }, { "instanceId": "four", "heroId": "H04" },
+	]).filter(func(entry): return String(entry.id) == "species:cat")
+	_expect(not four_catfolk.is_empty() and int(four_catfolk.front().get("active_breakpoint", 0)) == 4, "trait summaries must expose the active 2/4/6 breakpoint")
+	var six_catfolk := TraitSummaryScript.summarize([
+		{ "instanceId": "six-one", "heroId": "H01" }, { "instanceId": "six-two", "heroId": "H02" }, { "instanceId": "six-three", "heroId": "H03" },
+		{ "instanceId": "six-four", "heroId": "H04" }, { "instanceId": "six-five", "heroId": "H05" }, { "instanceId": "six-six", "heroId": "H01" },
+	]).filter(func(entry): return String(entry.id) == "species:cat")
+	_expect(not six_catfolk.is_empty() and int(six_catfolk.front().get("active_breakpoint", 0)) == 6, "six deployed matching heroes must expose the 6-piece breakpoint")
 	if _failed:
 		quit(1)
 		return

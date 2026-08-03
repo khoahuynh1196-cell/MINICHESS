@@ -64,6 +64,8 @@ var formation_controller = FormationControllerScript.new()
 var localization = LocalizationCatalogScript.new()
 var audio_feedback = AudioFeedbackScript.new()
 var _selected_item_instance_id := ""
+var _item_feedback := ""
+var _star_upgrade: Dictionary = {}
 var _collection_species_filter := "all"
 var _collection_role_filter := "all"
 var _collection_detail_hero_id := ""
@@ -140,6 +142,7 @@ func apply_event(event) -> void:
 				print("Ignoring presentation-unsupported event: %s" % event.type)
 
 func apply_run_view(view: Dictionary) -> void:
+	_star_upgrade = _detect_star_upgrade(view)
 	run_state.apply_public_view(view)
 	_public_run_view = view.duplicate(true)
 	_request_in_flight = false
@@ -147,6 +150,8 @@ func apply_run_view(view: Dictionary) -> void:
 		formation_controller.clear_selection()
 	if not _selected_item_instance_id.is_empty() and not run_state.items.any(func(item): return String(item.get("instanceId", "")) == _selected_item_instance_id and not item.has("equippedHeroInstanceId")):
 		_selected_item_instance_id = ""
+	if _selected_item_instance_id.is_empty():
+		_item_feedback = ""
 	if run_state.state == "COMPLETE":
 		local_run_store.clear_run()
 	else:
@@ -245,9 +250,13 @@ func request_equip_item(item_instance_id: String, hero_instance_id: String) -> v
 		return
 	var result: Dictionary = ItemInventoryScript.equip_result(run_state.items, item_instance_id, hero_instance_id)
 	if not bool(result.allowed):
-		_set_status(String(result.reason))
+		_item_feedback = String(result.reason)
+		_set_status(_item_feedback)
+		_refresh_mobile_screen()
 		return
 	_selected_item_instance_id = ""
+	_item_feedback = "Equip requested; awaiting server confirmation."
+	_set_status(_item_feedback)
 	command_requested.emit(build_command_payload("client-equip-%s-%s-%s" % [run_state.revision, item_instance_id, hero_instance_id], "EQUIP_ITEM", { "item_instance_id": item_instance_id, "hero_instance_id": hero_instance_id }))
 
 func request_unequip_item(item_instance_id: String) -> void:
@@ -334,7 +343,8 @@ func select_item(item_instance_id: String) -> void:
 		_set_status("That item is no longer available")
 		return
 	_selected_item_instance_id = "" if _selected_item_instance_id == item_instance_id else item_instance_id
-	_set_status(localization.text("feedback.item_selected") if not _selected_item_instance_id.is_empty() else localization.text("feedback.item_cleared"))
+	_item_feedback = "Select a hero to equip this item." if not _selected_item_instance_id.is_empty() else "Item selection cleared."
+	_set_status(_item_feedback)
 	_refresh_mobile_screen()
 
 func _interact_with_hero(hero: Dictionary, destination: int) -> void:
@@ -364,6 +374,22 @@ func _interact_with_prepare_hero(hero_instance_id: String, destination: int) -> 
 		if hero != null and String(hero.get("instanceId", "")) == hero_instance_id:
 			_interact_with_hero(hero, destination)
 			return
+
+func _detect_star_upgrade(view: Dictionary) -> Dictionary:
+	var previous: Dictionary = {}
+	for hero in run_state.board + run_state.bench:
+		if hero != null:
+			previous[String(hero.get("instanceId", ""))] = hero
+	for hero in Array(view.get("board", [])) + Array(view.get("bench", [])):
+		if hero == null:
+			continue
+		var instance_id := String(hero.get("instanceId", ""))
+		var prior: Dictionary = Dictionary(previous.get(instance_id, {}))
+		if not prior.is_empty() and int(hero.get("stars", 1)) > int(prior.get("stars", 1)):
+			var profile: Dictionary = HeroVisualCatalogScript.profile(String(hero.get("heroId", "")))
+			audio_feedback.request_haptic("combine")
+			return { "heroInstanceId": instance_id, "heroName": String(profile.get("display_name", hero.get("heroId", "Hero"))), "stars": int(hero.get("stars", 1)) }
+	return {}
 
 func request_return_to_bench(hero_instance_id: String, bench_slot: int = 0) -> void:
 	request_move_hero(hero_instance_id, bench_slot)
@@ -793,6 +819,7 @@ func _build_prepare_screen(root: Control) -> void:
 	prepare_screen.formation_destination_selected.connect(request_selected_formation_move)
 	prepare_screen.formation_drag_dropped.connect(request_drag_formation_move)
 	prepare_screen.item_selected.connect(select_item)
+	prepare_screen.item_equip_requested.connect(request_equip_item)
 	prepare_screen.unequip_item_requested.connect(request_unequip_item)
 	prepare_screen.collection_requested.connect(func() -> void: show_mobile_screen("collection"))
 	prepare_screen.bind_run(_prepare_screen_view())
@@ -802,6 +829,9 @@ func _prepare_screen_view() -> Dictionary:
 	var view := _public_run_view.duplicate(true)
 	view["selectedHeroInstanceId"] = formation_controller.selected_hero_instance_id
 	view["selectedItemInstanceId"] = _selected_item_instance_id
+	view["itemFeedback"] = _item_feedback
+	view["starUpgrade"] = _star_upgrade
+	view["reducedMotion"] = bool(settings.get("reduced_motion", false))
 	return view
 
 func _board_hero_count() -> int:

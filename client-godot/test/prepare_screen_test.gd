@@ -18,6 +18,14 @@ func _init() -> void:
 		var bench_button := _button(screen, "BenchSlot%02d" % index)
 		_expect(bench_button.text == "Empty" and bench_button.tooltip_text == "Empty bench slot %d" % (index + 1) and bench_button.get_rect().end.x <= 1080.0, "Empty bench controls must use short labels that fit without collision")
 	_expect(_board_cell_count(screen) == 12 and _button(screen, "BoardCell11") != null and _button(screen, "BoardCell12") == null, "Prepare must render exactly the 12 legal player-half board slots")
+	_expect(screen.find_child("TraitBottomSheet", true, false) != null, "Prepare must render trait chips in a bottom sheet")
+	_expect(_trait_chip_texts(screen).any(func(text): return text.contains("Cat  1 / 6")), "trait chips must count board heroes only, never matching bench heroes")
+	var combined_view := _prepare_view()
+	combined_view["starUpgrade"] = { "heroInstanceId": "board-h01", "heroName": "Cotton Bulwark", "stars": 2 }
+	combined_view["reducedMotion"] = true
+	screen.bind_run(combined_view)
+	var star_upgrade := screen.find_child("StarUpgradePresentation", true, false)
+	_expect(star_upgrade != null and not bool(star_upgrade.get_meta("animated", true)) and _label(screen, "StarUpgradeMessage").contains("Three copies combined"), "three-copy star upgrades must use the reduced-motion presentation")
 
 	var intents: Array = []
 	screen.buy_shop_slot.connect(func(index: int) -> void: intents.append(["buy", index]))
@@ -125,6 +133,21 @@ func _board_cell_count(screen: Control) -> int:
 		if String(button.name).begins_with("BoardCell"):
 			count += 1
 	return count
+
+func _trait_chip_texts(screen: Control) -> Array[String]:
+	var texts: Array[String] = []
+	for child in _labels(screen):
+		if String(child.name).begins_with("TraitChipLabel"):
+			texts.append(child.text)
+	return texts
+
+func _labels(root: Node) -> Array[Label]:
+	var labels: Array[Label] = []
+	for child in root.get_children():
+		if child is Label:
+			labels.append(child)
+		labels.append_array(_labels(child))
+	return labels
 
 func _expect(condition: bool, message: String) -> void:
 	if not condition:

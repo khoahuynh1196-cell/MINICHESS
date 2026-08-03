@@ -2,7 +2,7 @@ class_name PrepareScreen
 extends Control
 
 const ThemeTokensScript = preload("res://scripts/ui/theme_tokens.gd")
-const TraitSummaryScript = preload("res://scripts/ui/trait_summary.gd")
+const TraitPanelScript = preload("res://scripts/ui/trait_panel.gd")
 const ItemInventoryScript = preload("res://scripts/ui/item_inventory.gd")
 const HeroVisualCatalogScript = preload("res://scripts/presentation/hero_visual_catalog.gd")
 const FormationSlotButtonScript = preload("res://scripts/ui/formation_slot_button.gd")
@@ -24,6 +24,7 @@ signal formation_hero_pressed(instance_id: String, destination: int)
 signal formation_destination_selected(destination: int)
 signal formation_drag_dropped(instance_id: String, destination: int)
 signal item_selected(instance_id: String)
+signal item_equip_requested(item_instance_id: String, hero_instance_id: String)
 signal unequip_item_requested(instance_id: String)
 signal collection_requested
 
@@ -32,6 +33,9 @@ var _prepare_enabled := false
 var _selected_hero_instance_id := ""
 var _selected_item_instance_id := ""
 var _sell_feedback := ""
+var _item_feedback := ""
+var _star_upgrade: Dictionary = {}
+var _reduced_motion := false
 
 func _init() -> void:
 	name = "PrepareScreen"
@@ -45,6 +49,9 @@ func bind_run(view: Dictionary) -> void:
 	_prepare_enabled = String(_view.get("state", "")) == "PREPARE"
 	_selected_hero_instance_id = String(_view.get("selectedHeroInstanceId", ""))
 	_selected_item_instance_id = String(_view.get("selectedItemInstanceId", ""))
+	_item_feedback = String(_view.get("itemFeedback", ""))
+	_star_upgrade = Dictionary(_view.get("starUpgrade", {}))
+	_reduced_motion = bool(_view.get("reducedMotion", false))
 	_rebuild()
 
 func _rebuild() -> void:
@@ -54,6 +61,7 @@ func _rebuild() -> void:
 	_background()
 	_header()
 	_board()
+	_star_upgrade_presentation()
 	_bench()
 	_traits()
 	_inventory()
@@ -114,31 +122,27 @@ func _bench() -> void:
 			button.pressed.connect(_emit_formation_hero.bind(String(hero.get("instanceId", "")), index))
 
 func _traits() -> void:
-	_panel("TraitPanel", Rect2(40.0, 885.0, 1000.0, 95.0))
-	_label("TraitHeading", "TRAITS", Rect2(64.0, 900.0, 120.0, 26.0), ThemeTokensScript.TYPE_META, ThemeTokensScript.GOLD)
-	_label("TraitValue", TraitSummaryScript.text(Array(_view.get("board", []))), Rect2(185.0, 900.0, 820.0, 54.0), ThemeTokensScript.TYPE_META, ThemeTokensScript.PARCHMENT, true)
+	var trait_panel := TraitPanelScript.new()
+	trait_panel.name = "TraitBottomSheet"
+	trait_panel.position = Vector2(40.0, 1545.0)
+	trait_panel.size = Vector2(1000.0, 295.0)
+	trait_panel.bind_board_heroes(Array(_view.get("board", [])), _hero_catalog())
+	add_child(trait_panel)
 
 func _inventory() -> void:
-	_panel("InventoryPanel", Rect2(40.0, 995.0, 1000.0, 95.0))
-	_label("InventoryHeading", "INVENTORY", Rect2(64.0, 1010.0, 150.0, 26.0), ThemeTokensScript.TYPE_META, ThemeTokensScript.GOLD)
-	var items: Array = Array(_view.get("items", []))
-	if items.is_empty():
-		_label("InventoryValue", "Empty", Rect2(220.0, 1010.0, 785.0, 54.0), ThemeTokensScript.TYPE_META, ThemeTokensScript.PARCHMENT, true)
-		return
-	for index in items.size():
-		var item: Dictionary = items[index]
-		var equipped := item.has("equippedHeroInstanceId")
-		var selected := String(item.get("instanceId", "")) == _selected_item_instance_id
-		var button := _button("InventoryItem%d" % index, ("Unequip " if equipped else "Use ") + ItemInventoryScript.item_label(item), Rect2(220.0 + index * 157.0, 1038.0, 150.0, 44.0), ThemeTokensScript.PLAYER if selected else ThemeTokensScript.STONE_RAISED if equipped else ThemeTokensScript.GOLD)
-		button.disabled = not _prepare_enabled
-		if equipped:
-			button.pressed.connect(func() -> void: unequip_item_requested.emit(String(item.get("instanceId", ""))))
-		else:
-			button.pressed.connect(func() -> void: item_selected.emit(String(item.get("instanceId", ""))))
+	var inventory := ItemInventoryScript.new()
+	inventory.name = "InventoryPanel"
+	inventory.position = Vector2(40.0, 995.0)
+	inventory.size = Vector2(1000.0, 135.0)
+	inventory.bind_inventory(Array(_view.get("items", [])), _heroes_for_inventory(), _selected_item_instance_id, _prepare_enabled, _item_feedback)
+	inventory.item_selected.connect(func(instance_id: String) -> void: item_selected.emit(instance_id))
+	inventory.equip_requested.connect(func(item_instance_id: String, hero_instance_id: String) -> void: item_equip_requested.emit(item_instance_id, hero_instance_id))
+	inventory.unequip_requested.connect(func(instance_id: String) -> void: unequip_item_requested.emit(instance_id))
+	add_child(inventory)
 
 func _shop() -> void:
 	var panel = ShopPanelScript.new()
-	panel.position = Vector2(40.0, 1110.0)
+	panel.position = Vector2(40.0, 1140.0)
 	panel.size = Vector2(1000.0, 245.0)
 	panel.set_catalog(_shop_catalog())
 	panel.set_purchase_context(int(_view.get("gold", 0)), Array(_view.get("bench", [])).size(), _prepare_enabled, int(_view.get("freeRefreshes", 0)))
@@ -149,21 +153,21 @@ func _shop() -> void:
 	add_child(panel)
 
 func _action_rail() -> void:
-	_panel("ActionRail", Rect2(40.0, 1375.0, 1000.0, 145.0), ThemeTokensScript.STONE_RAISED)
-	_label("ActionHeading", "ROUND ACTIONS", Rect2(64.0, 1390.0, 300.0, 28.0), ThemeTokensScript.TYPE_META, ThemeTokensScript.PARCHMENT)
-	var xp := _button("BuyXp", "Buy 4 XP", Rect2(60.0, 1435.0, 170.0, 56.0), ThemeTokensScript.PLAYER)
+	_panel("ActionRail", Rect2(40.0, 1405.0, 1000.0, 125.0), ThemeTokensScript.STONE_RAISED)
+	_label("ActionHeading", "ROUND ACTIONS", Rect2(64.0, 1415.0, 300.0, 28.0), ThemeTokensScript.TYPE_META, ThemeTokensScript.PARCHMENT)
+	var xp := _button("BuyXp", "Buy 4 XP", Rect2(60.0, 1460.0, 170.0, 56.0), ThemeTokensScript.PLAYER)
 	xp.disabled = not _prepare_enabled or int(_view.get("gold", 0)) < 4 or int(_view.get("experienceToNext", 0)) <= 0
 	xp.pressed.connect(func() -> void: buy_xp.emit())
-	var start := _button("StartRound", "Start Round", Rect2(250.0, 1435.0, 170.0, 56.0), ThemeTokensScript.SUCCESS)
+	var start := _button("StartRound", "Start Round", Rect2(250.0, 1460.0, 170.0, 56.0), ThemeTokensScript.SUCCESS)
 	start.disabled = not _prepare_enabled or _deployed_count() == 0
 	start.pressed.connect(func() -> void: start_round.emit())
-	var sell := _button("SellSelected", "Sell selected", Rect2(440.0, 1435.0, 180.0, 56.0), ThemeTokensScript.DANGER)
+	var sell := _button("SellSelected", "Sell selected", Rect2(440.0, 1460.0, 180.0, 56.0), ThemeTokensScript.DANGER)
 	sell.disabled = not _prepare_enabled or _selected_hero_instance_id.is_empty()
 	sell.pressed.connect(_request_sell_selected)
-	var collection := _button("ViewCollection", "Collection", Rect2(640.0, 1435.0, 180.0, 56.0), ThemeTokensScript.GOLD)
+	var collection := _button("ViewCollection", "Collection", Rect2(640.0, 1460.0, 180.0, 56.0), ThemeTokensScript.GOLD)
 	collection.disabled = not _prepare_enabled
 	collection.pressed.connect(func() -> void: collection_requested.emit())
-	_label("SellFeedback", _sell_feedback, Rect2(64.0, 1498.0, 920.0, 18.0), 14, ThemeTokensScript.MUTED)
+	_label("SellFeedback", _sell_feedback, Rect2(64.0, 1512.0, 920.0, 18.0), 14, ThemeTokensScript.MUTED)
 
 func _panel(node_name: String, rect: Rect2, color: Color = ThemeTokensScript.STONE) -> Panel:
 	var panel := Panel.new()
@@ -234,6 +238,43 @@ func _hero_name(hero: Dictionary) -> String:
 	if HeroVisualCatalogScript.hero_ids().has(hero_id):
 		return String(HeroVisualCatalogScript.profile(hero_id).get("display_name", hero_id))
 	return hero_id
+
+func _hero_catalog() -> Dictionary:
+	var catalog := {}
+	for hero_id in HeroVisualCatalogScript.hero_ids():
+		catalog[hero_id] = HeroVisualCatalogScript.profile(hero_id)
+	return catalog
+
+func _heroes_for_inventory() -> Array:
+	var heroes: Array = Array(_view.get("bench", [])).duplicate(true)
+	for hero in Array(_view.get("board", [])):
+		if hero != null:
+			heroes.append(hero)
+	return heroes
+
+func _star_upgrade_presentation() -> void:
+	if _star_upgrade.is_empty():
+		return
+	var panel := Panel.new()
+	panel.name = "StarUpgradePresentation"
+	panel.position = Vector2(565.0, 182.0)
+	panel.size = Vector2(450.0, 46.0)
+	panel.add_theme_stylebox_override("panel", ThemeTokensScript.panel_style(ThemeTokensScript.GOLD))
+	panel.set_meta("animated", not _reduced_motion)
+	add_child(panel)
+	var label := Label.new()
+	label.name = "StarUpgradeMessage"
+	label.text = "Three copies combined — %s is now %d star%s" % [String(_star_upgrade.get("heroName", "Hero")), int(_star_upgrade.get("stars", 2)), "s" if int(_star_upgrade.get("stars", 2)) != 1 else ""]
+	label.position = Vector2(12.0, 8.0)
+	label.size = Vector2(426.0, 32.0)
+	label.add_theme_font_size_override("font_size", ThemeTokensScript.TYPE_META)
+	label.add_theme_color_override("font_color", ThemeTokensScript.INK)
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	panel.add_child(label)
+	if not _reduced_motion:
+		panel.modulate.a = 0.0
+		var tween := create_tween()
+		tween.tween_property(panel, "modulate:a", 1.0, ThemeTokensScript.motion_duration(0.18, false))
 
 func _shop_catalog() -> Dictionary:
 	var catalog := {}
