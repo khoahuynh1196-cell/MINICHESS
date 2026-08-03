@@ -28,6 +28,14 @@ func _init() -> void:
 	_expect(store.load_run().is_empty(), "a newer or incompatible save schema must not be resumed")
 	_write_raw_json({ "schema_version": "1", "view": view })
 	_expect(store.load_run().is_empty(), "a schema version with the wrong type must not be resumed")
+	var stale_hero_choice := view.duplicate(true)
+	stale_hero_choice["roundRewardPlan"] = { "offers": [{ "id": "reward:3:hero_choice:0", "kind": "hero_choice", "options": [{ "id": "H21", "kind": "hero" }] }] }
+	_write_raw_json({ "schema_version": 1, "view": stale_hero_choice })
+	_expect(store.load_run().is_empty(), "a cached hero-choice option outside H01-H20 must not be resumed")
+	var non_hero_choice := view.duplicate(true)
+	non_hero_choice["roundRewardPlan"] = { "offers": [{ "id": "reward:3:normal_item_choice:0", "kind": "normal_item_choice", "options": [{ "id": "I99", "kind": "normal_item" }] }] }
+	_write_raw_json({ "schema_version": 1, "view": non_hero_choice })
+	_expect(store.load_run() == non_hero_choice, "non-hero reward option IDs must remain valid cache data")
 
 	_write_raw_text("{not valid json")
 	_expect(store.load_run().is_empty(), "corrupt local JSON must be rejected instead of becoming a run view")

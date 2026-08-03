@@ -70,6 +70,8 @@ func _uses_current_roster(value) -> bool:
 		var entry: Dictionary = value
 		if entry.has("heroId") and not ROSTER_IDS.has(String(entry["heroId"])):
 			return false
+		if String(entry.get("kind", "")) == "hero" and not ROSTER_IDS.has(String(entry.get("id", ""))):
+			return false
 		for nested_value in entry.values():
 			if not _uses_current_roster(nested_value):
 				return false
