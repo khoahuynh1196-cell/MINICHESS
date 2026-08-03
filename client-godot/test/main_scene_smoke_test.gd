@@ -134,12 +134,12 @@ func _init() -> void:
 		"id": "run-ui", "state": "PREPARE", "round": 1, "revision": 1, "gold": 7, "health": 30, "shop": [], "bench": [],
 		"board": [{ "instanceId": "hero-board", "heroId": "H01", "cost": 1, "stars": 1 }],
 	})
-	if not _expect(main_scene.start_round_button != null and not main_scene.start_round_button.disabled, "prepare UI must enable Start Round only with a board hero"):
+	if not _expect(main_scene.screen_router.current_screen_id == "prepare" and not main_scene.prepare_screen.find_child("StartRound", true, false).disabled, "Prepare shell must enable Start Round only with a board hero"):
 		main_scene.free()
 		_finish()
 		return
 	api.run_view_received.emit({ "id": "run-ui", "state": "COMBAT", "round": 1, "revision": 1, "gold": 8, "health": 30, "shop": [], "bench": [], "board": [] })
-	if not _expect(main_scene.start_round_button.disabled, "combat UI must disable Start Round"):
+	if not _expect(main_scene.screen_router.current_screen_id == "combat", "combat state must replace the Prepare action rail"):
 		main_scene.free()
 		_finish()
 		return

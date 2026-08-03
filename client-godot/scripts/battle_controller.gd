@@ -70,7 +70,6 @@ var _request_in_flight := false
 signal command_requested(payload: Dictionary)
 
 func _ready() -> void:
-	_create_controls()
 	_create_mobile_ui()
 	attach_run_api(RunApiClientScript.new())
 	_resume_local_run()
@@ -153,8 +152,6 @@ func apply_run_view(view: Dictionary) -> void:
 	if run_state.state != "REWARD":
 		_reward_selections.clear()
 		_acknowledged_reveals.clear()
-	if start_round_button == null:
-		_create_controls()
 	_refresh_run_ui()
 	if screen_router == null:
 		_create_mobile_ui()
@@ -352,6 +349,12 @@ func _interact_with_hero(hero: Dictionary, destination: int) -> void:
 		return
 	select_formation_hero(hero_instance_id)
 
+func _interact_with_prepare_hero(hero_instance_id: String, destination: int) -> void:
+	for hero in run_state.bench + run_state.board:
+		if hero != null and String(hero.get("instanceId", "")) == hero_instance_id:
+			_interact_with_hero(hero, destination)
+			return
+
 func request_return_to_bench(hero_instance_id: String, bench_slot: int = 0) -> void:
 	request_move_hero(hero_instance_id, bench_slot)
 
@@ -487,88 +490,6 @@ func _set_status(next_status: String) -> void:
 	if mobile_status_label != null:
 		mobile_status_label.text = status_text
 	queue_redraw()
-
-func _create_controls() -> void:
-	var layer := CanvasLayer.new()
-	var header_background := ColorRect.new()
-	header_background.color = Color("#101827e8")
-	header_background.position = Vector2(16.0, 16.0)
-	header_background.size = Vector2(1048.0, 118.0)
-	header_background.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	layer.add_child(header_background)
-	var header := VBoxContainer.new()
-	header.position = Vector2(32.0, 26.0)
-	header.size = Vector2(1016.0, 96.0)
-	header.add_theme_constant_override("separation", 4)
-	layer.add_child(header)
-
-	status_label = Label.new()
-	status_label.text = status_text
-	status_label.add_theme_font_size_override("font_size", 30)
-	header.add_child(status_label)
-	run_label = Label.new()
-	run_label.add_theme_font_size_override("font_size", 24)
-	header.add_child(run_label)
-
-	var panel_background := ColorRect.new()
-	panel_background.color = Color("#172033f2")
-	panel_background.position = MOBILE_CONTROLS_RECT.position
-	panel_background.size = MOBILE_CONTROLS_RECT.size
-	panel_background.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	layer.add_child(panel_background)
-	var scroll := ScrollContainer.new()
-	scroll.position = MOBILE_CONTROLS_RECT.position + Vector2(16.0, 16.0)
-	scroll.size = MOBILE_CONTROLS_RECT.size - Vector2(32.0, 32.0)
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	layer.add_child(scroll)
-	var controls := VBoxContainer.new()
-	controls.custom_minimum_size = Vector2(968.0, 1040.0)
-	controls.add_theme_constant_override("separation", 14)
-	scroll.add_child(controls)
-
-	shop_label = Label.new()
-	shop_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	controls.add_child(shop_label)
-	shop_actions = HBoxContainer.new()
-	controls.add_child(shop_actions)
-	refresh_shop_button = _button("Refresh Shop", request_refresh_shop)
-	controls.add_child(refresh_shop_button)
-	bench_label = Label.new()
-	bench_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	controls.add_child(bench_label)
-	bench_actions = HBoxContainer.new()
-	controls.add_child(bench_actions)
-	item_label = Label.new()
-	item_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	controls.add_child(item_label)
-	item_actions = HBoxContainer.new()
-	controls.add_child(item_actions)
-	reward_label = Label.new()
-	reward_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	controls.add_child(reward_label)
-	reward_actions = VBoxContainer.new()
-	controls.add_child(reward_actions)
-	new_run_button = _button("New Run", request_new_run)
-	controls.add_child(new_run_button)
-	resume_run_input = LineEdit.new()
-	resume_run_input.placeholder_text = "Run ID to resume"
-	controls.add_child(resume_run_input)
-	resume_run_button = _button("Resume Run", request_resume_run)
-	controls.add_child(resume_run_button)
-	start_round_button = _button("Start Round", request_start_round)
-	start_round_button.disabled = true
-	controls.add_child(start_round_button)
-	controls.add_child(_button("Play", func() -> void: _paused = false))
-	controls.add_child(_button("Pause", func() -> void: _paused = true))
-	controls.add_child(_button("Restart", restart_replay))
-	controls.add_child(_button("1×", func() -> void: set_playback_speed(1.0)))
-	controls.add_child(_button("2×", func() -> void: set_playback_speed(2.0)))
-	add_child(layer)
-	legacy_controls_layer = layer
-	# The original controls remain as a regression-safe command surface, but the
-	# routed mobile screens own the player-facing presentation.
-	legacy_controls_layer.visible = false
-	_refresh_run_ui()
 
 func _create_mobile_ui() -> void:
 	if screen_router != null:
@@ -766,78 +687,19 @@ func _build_prepare_screen(root: Control) -> void:
 	prepare_screen.buy_xp.connect(request_buy_xp)
 	prepare_screen.start_round.connect(request_start_round)
 	prepare_screen.sell_hero.connect(request_sell_hero)
-	prepare_screen.bind_run(_public_run_view)
+	prepare_screen.formation_hero_pressed.connect(_interact_with_prepare_hero)
+	prepare_screen.formation_destination_selected.connect(request_selected_formation_move)
+	prepare_screen.item_selected.connect(select_item)
+	prepare_screen.unequip_item_requested.connect(request_unequip_item)
+	prepare_screen.collection_requested.connect(func() -> void: show_mobile_screen("collection"))
+	prepare_screen.bind_run(_prepare_screen_view())
 	return
-	var summary := _screen_panel(root, Rect2(40.0, 165.0, 1000.0, 140.0), "Round %d  |  %d HP  |  %d gold  |  Level %d" % [run_state.round, run_state.health, run_state.gold, run_state.level])
-	summary.add_child(_mobile_button("Buy 4 XP (%d / %d)" % [run_state.experience, run_state.experience_to_next], request_buy_xp, ThemeTokensScript.PLAYER))
-	var board_panel := _screen_panel(root, Rect2(40.0, 325.0, 1000.0, 540.0), "Formation  •  %d / %d deployed" % [_board_hero_count(), run_state.board_cap])
-	var board := GridContainer.new()
-	board.columns = 3
-	board.add_theme_constant_override("h_separation", ThemeTokensScript.TOUCH_GAP)
-	board.add_theme_constant_override("v_separation", ThemeTokensScript.TOUCH_GAP)
-	board_panel.add_child(board)
-	for index in 12:
-		var hero = run_state.board[index] if index < run_state.board.size() else null
-		var label := "Open tile" if hero == null else "%s ★%d" % [String(hero.get("heroId", "?")), int(hero.get("stars", 1))]
-		var action: Callable = func() -> void: request_selected_formation_move(12 + index)
-		if hero != null:
-			action = func() -> void: _interact_with_hero(hero, 12 + index)
-		var cell := _mobile_button(label, action, ThemeTokensScript.PLAYER if hero == null else ThemeTokensScript.STONE_RAISED)
-		cell.disabled = run_state.state != "PREPARE" or (hero == null and not formation_controller.has_selection())
-		board.add_child(cell)
-	var shop_panel := _screen_panel(root, Rect2(40.0, 885.0, 1000.0, 395.0), "Shop  •  five shared-pool offers")
-	var cards := GridContainer.new()
-	cards.columns = 2
-	cards.add_theme_constant_override("h_separation", ThemeTokensScript.TOUCH_GAP)
-	cards.add_theme_constant_override("v_separation", ThemeTokensScript.TOUCH_GAP)
-	shop_panel.add_child(cards)
-	for index in run_state.shop.size():
-		var slot = run_state.shop[index]
-		var card := _mobile_button("Sold" if slot == null else "%s  •  %dg" % [String(slot.get("heroId", "?")), int(slot.get("cost", 0))], request_buy_shop_slot.bind(index), ThemeTokensScript.GOLD)
-		card.disabled = slot == null or run_state.state != "PREPARE" or run_state.gold < int(slot.get("cost", 0)) or run_state.bench.size() >= 8
-		cards.add_child(card)
-	shop_panel.add_child(_mobile_button("Refresh Shop%s" % (" (free)" if run_state.free_refreshes > 0 else " • 2g"), request_refresh_shop, ThemeTokensScript.PLAYER))
-	var bottom := _screen_panel(root, Rect2(40.0, 1300.0, 1000.0, 540.0), "Bench, items & traits")
-	var scroll := ScrollContainer.new()
-	scroll.custom_minimum_size = Vector2(0.0, 450.0)
-	bottom.add_child(scroll)
-	var bottom_content := VBoxContainer.new()
-	bottom_content.add_theme_constant_override("separation", ThemeTokensScript.TOUCH_GAP)
-	scroll.add_child(bottom_content)
-	var bench_label := Label.new()
-	bench_label.text = "Bench: " + _slots_text(run_state.bench, "heroId") + (" selected for move" if formation_controller.has_selection() else "")
-	bench_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	bench_label.add_theme_font_size_override("font_size", 20)
-	bottom_content.add_child(bench_label)
-	for bench_index in 8:
-		var bench_hero = run_state.bench[bench_index] if bench_index < run_state.bench.size() else null
-		if bench_hero == null:
-			var empty_slot := _mobile_button("Empty bench slot %d" % (bench_index + 1), request_selected_formation_move.bind(bench_index), ThemeTokensScript.STONE_RAISED)
-			empty_slot.disabled = not formation_controller.has_selection()
-			bottom_content.add_child(empty_slot)
-			continue
-		var hero_instance_id := String(bench_hero.get("instanceId", ""))
-		bottom_content.add_child(_mobile_button("%s %s" % ["Equip selected item:" if not _selected_item_instance_id.is_empty() else "Select", String(bench_hero.get("heroId", "?"))], func() -> void: _interact_with_hero(bench_hero, bench_index), ThemeTokensScript.PLAYER))
-		bottom_content.add_child(_mobile_button("Sell %s" % String(bench_hero.get("heroId", "?")), request_sell_hero.bind(hero_instance_id), ThemeTokensScript.STONE_RAISED))
-	var trait_label := Label.new()
-	trait_label.text = "Traits: " + TraitSummaryScript.text(run_state.board)
-	trait_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	trait_label.add_theme_font_size_override("font_size", 20)
-	trait_label.add_theme_color_override("font_color", ThemeTokensScript.PARCHMENT)
-	bottom_content.add_child(trait_label)
-	var items_label := Label.new()
-	items_label.text = "Inventory: " + _slots_text(run_state.items, "itemId")
-	items_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	items_label.add_theme_font_size_override("font_size", 20)
-	bottom_content.add_child(items_label)
-	for item in run_state.items:
-		var item_instance_id := String(item.get("instanceId", ""))
-		if item.has("equippedHeroInstanceId"):
-			bottom_content.add_child(_mobile_button("Unequip " + ItemInventoryScript.item_label(item), request_unequip_item.bind(item_instance_id), ThemeTokensScript.STONE_RAISED))
-		else:
-			bottom_content.add_child(_mobile_button(("Selected: " if item_instance_id == _selected_item_instance_id else "Choose ") + ItemInventoryScript.item_label(item), select_item.bind(item_instance_id), ThemeTokensScript.GOLD))
-	bottom_content.add_child(_mobile_button("Start Round", request_start_round, ThemeTokensScript.SUCCESS))
-	bottom_content.add_child(_mobile_button("View Collection", func() -> void: show_mobile_screen("collection"), ThemeTokensScript.STONE_RAISED))
+
+func _prepare_screen_view() -> Dictionary:
+	var view := _public_run_view.duplicate(true)
+	view["selectedHeroInstanceId"] = formation_controller.selected_hero_instance_id
+	view["selectedItemInstanceId"] = _selected_item_instance_id
+	return view
 
 func _board_hero_count() -> int:
 	return run_state.board.filter(func(hero): return hero != null).size()

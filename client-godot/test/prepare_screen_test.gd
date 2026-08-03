@@ -23,6 +23,34 @@ func _init() -> void:
 	_button(screen, "LockShop").pressed.emit()
 	_button(screen, "StartRound").pressed.emit()
 	_expect(intents == [["buy", 0], ["xp"], ["lock"], ["start"]], "Prepare controls must emit typed presentation intents")
+	var interaction_intents: Array = []
+	if screen.has_signal("formation_hero_pressed"):
+		screen.connect("formation_hero_pressed", func(instance_id: String, destination: int) -> void: interaction_intents.append(["hero", instance_id, destination]))
+	if screen.has_signal("formation_destination_selected"):
+		screen.connect("formation_destination_selected", func(destination: int) -> void: interaction_intents.append(["destination", destination]))
+	if screen.has_signal("item_selected"):
+		screen.connect("item_selected", func(instance_id: String) -> void: interaction_intents.append(["item", instance_id]))
+	if screen.has_signal("collection_requested"):
+		screen.connect("collection_requested", func() -> void: interaction_intents.append(["collection"]))
+	_expect(screen.has_signal("formation_hero_pressed") and screen.has_signal("formation_destination_selected") and screen.has_signal("item_selected") and screen.has_signal("collection_requested"), "Prepare must expose formation, item, and collection intents")
+	_button(screen, "BoardCell00").pressed.emit()
+	_button(screen, "BoardCell01").pressed.emit()
+	var item_button := _button(screen, "InventoryItem0")
+	_expect(item_button != null, "Prepare inventory must expose an accessible item action")
+	if item_button != null:
+		item_button.pressed.emit()
+	_button(screen, "ViewCollection").pressed.emit()
+	_expect(interaction_intents == [["hero", "board-h01", 12], ["destination", 13], ["item", "item-1"], ["collection"]], "Prepare interaction controls must emit typed intents without mutating the run")
+	var sell_intents: Array[String] = []
+	screen.sell_hero.connect(func(instance_id: String) -> void: sell_intents.append(instance_id))
+	var selected_view := _prepare_view()
+	selected_view["selectedHeroInstanceId"] = "bench-h02"
+	screen.bind_run(selected_view)
+	var sell_button := _button(screen, "SellSelected")
+	_expect(sell_button != null and not sell_button.disabled, "Prepare must expose an enabled sell action for the selected hero")
+	if sell_button != null:
+		sell_button.pressed.emit()
+	_expect(sell_intents == ["bench-h02"], "Prepare sell action must emit the selected immutable hero instance ID")
 
 	var combat_view := _prepare_view()
 	combat_view["state"] = "COMBAT"

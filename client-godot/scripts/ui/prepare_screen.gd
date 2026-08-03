@@ -18,9 +18,16 @@ signal lock_shop
 signal buy_xp
 signal start_round
 signal sell_hero(instance_id: String)
+signal formation_hero_pressed(instance_id: String, destination: int)
+signal formation_destination_selected(destination: int)
+signal item_selected(instance_id: String)
+signal unequip_item_requested(instance_id: String)
+signal collection_requested
 
 var _view: Dictionary = {}
 var _prepare_enabled := false
+var _selected_hero_instance_id := ""
+var _selected_item_instance_id := ""
 
 func _init() -> void:
 	name = "PrepareScreen"
@@ -31,6 +38,8 @@ func _init() -> void:
 func bind_run(view: Dictionary) -> void:
 	_view = view.duplicate(true)
 	_prepare_enabled = String(_view.get("state", "")) == "PREPARE"
+	_selected_hero_instance_id = String(_view.get("selectedHeroInstanceId", ""))
+	_selected_item_instance_id = String(_view.get("selectedItemInstanceId", ""))
 	_rebuild()
 
 func _rebuild() -> void:
@@ -75,8 +84,13 @@ func _board() -> void:
 		var text := "Open tile"
 		if hero != null:
 			text = "%s  ★%d" % [_hero_name(hero), int(hero.get("stars", 1))]
-		var cell := _button("BoardCell%02d" % index, text, Rect2(60.0 + column * 325.0, 230.0 + row * 56.0, 310.0, 48.0), ThemeTokensScript.STONE_RAISED if hero != null else ThemeTokensScript.PLAYER)
+		var selected := hero != null and String(hero.get("instanceId", "")) == _selected_hero_instance_id
+		var cell := _button("BoardCell%02d" % index, text, Rect2(60.0 + column * 325.0, 230.0 + row * 56.0, 310.0, 48.0), ThemeTokensScript.GOLD if selected else ThemeTokensScript.STONE_RAISED if hero != null else ThemeTokensScript.PLAYER)
 		cell.disabled = not _prepare_enabled
+		if hero == null:
+			cell.pressed.connect(func() -> void: formation_destination_selected.emit(12 + index))
+		else:
+			cell.pressed.connect(func() -> void: formation_hero_pressed.emit(String(hero.get("instanceId", "")), 12 + index))
 
 func _bench() -> void:
 	_panel("BenchPanel", Rect2(40.0, 715.0, 1000.0, 150.0))
@@ -84,11 +98,13 @@ func _bench() -> void:
 	var bench: Array = Array(_view.get("bench", []))
 	for index in BENCH_SLOT_COUNT:
 		var hero = bench[index] if index < bench.size() else null
-		var button := _button("BenchSlot%02d" % index, "Open bench" if hero == null else "%s  •  Sell" % _hero_name(hero), Rect2(60.0 + index * 123.0, 775.0, 116.0, 58.0), ThemeTokensScript.STONE_RAISED if hero != null else ThemeTokensScript.PLAYER)
+		var selected := hero != null and String(hero.get("instanceId", "")) == _selected_hero_instance_id
+		var button := _button("BenchSlot%02d" % index, "Open bench" if hero == null else _hero_name(hero), Rect2(60.0 + index * 123.0, 775.0, 116.0, 58.0), ThemeTokensScript.GOLD if selected else ThemeTokensScript.STONE_RAISED if hero != null else ThemeTokensScript.PLAYER)
 		button.disabled = not _prepare_enabled
-		if hero != null:
-			button.name = "SellHero%02d" % index
-			button.pressed.connect(func() -> void: sell_hero.emit(String(hero.get("instanceId", ""))))
+		if hero == null:
+			button.pressed.connect(func() -> void: formation_destination_selected.emit(index))
+		else:
+			button.pressed.connect(func() -> void: formation_hero_pressed.emit(String(hero.get("instanceId", "")), index))
 
 func _traits() -> void:
 	_panel("TraitPanel", Rect2(40.0, 885.0, 1000.0, 95.0))
@@ -99,10 +115,19 @@ func _inventory() -> void:
 	_panel("InventoryPanel", Rect2(40.0, 995.0, 1000.0, 95.0))
 	_label("InventoryHeading", "INVENTORY", Rect2(64.0, 1010.0, 150.0, 26.0), ThemeTokensScript.TYPE_META, ThemeTokensScript.GOLD)
 	var items: Array = Array(_view.get("items", []))
-	var labels: Array[String] = []
-	for item in items:
-		labels.append(ItemInventoryScript.item_label(item))
-	_label("InventoryValue", "Empty" if labels.is_empty() else ", ".join(labels), Rect2(220.0, 1010.0, 785.0, 54.0), ThemeTokensScript.TYPE_META, ThemeTokensScript.PARCHMENT, true)
+	if items.is_empty():
+		_label("InventoryValue", "Empty", Rect2(220.0, 1010.0, 785.0, 54.0), ThemeTokensScript.TYPE_META, ThemeTokensScript.PARCHMENT, true)
+		return
+	for index in items.size():
+		var item: Dictionary = items[index]
+		var equipped := item.has("equippedHeroInstanceId")
+		var selected := String(item.get("instanceId", "")) == _selected_item_instance_id
+		var button := _button("InventoryItem%d" % index, ("Unequip " if equipped else "Use ") + ItemInventoryScript.item_label(item), Rect2(220.0 + index * 157.0, 1038.0, 150.0, 44.0), ThemeTokensScript.PLAYER if selected else ThemeTokensScript.STONE_RAISED if equipped else ThemeTokensScript.GOLD)
+		button.disabled = not _prepare_enabled
+		if equipped:
+			button.pressed.connect(func() -> void: unequip_item_requested.emit(String(item.get("instanceId", ""))))
+		else:
+			button.pressed.connect(func() -> void: item_selected.emit(String(item.get("instanceId", ""))))
 
 func _shop() -> void:
 	_panel("ShopPanel", Rect2(40.0, 1110.0, 1000.0, 245.0))
@@ -125,18 +150,22 @@ func _shop() -> void:
 func _action_rail() -> void:
 	_panel("ActionRail", Rect2(40.0, 1375.0, 1000.0, 145.0), ThemeTokensScript.STONE_RAISED)
 	_label("ActionHeading", "ROUND ACTIONS", Rect2(64.0, 1390.0, 300.0, 28.0), ThemeTokensScript.TYPE_META, ThemeTokensScript.PARCHMENT)
-	var xp := _button("BuyXp", "Buy 4 XP", Rect2(60.0, 1435.0, 210.0, 56.0), ThemeTokensScript.PLAYER)
+	var xp := _button("BuyXp", "Buy 4 XP", Rect2(60.0, 1435.0, 170.0, 56.0), ThemeTokensScript.PLAYER)
 	xp.disabled = not _prepare_enabled or int(_view.get("gold", 0)) < 4 or int(_view.get("experienceToNext", 0)) <= 0
 	xp.pressed.connect(func() -> void: buy_xp.emit())
-	var lock := _button("LockShop", "Lock Shop", Rect2(300.0, 1435.0, 210.0, 56.0), ThemeTokensScript.STONE_RAISED)
+	var lock := _button("LockShop", "Lock Shop", Rect2(250.0, 1435.0, 150.0, 56.0), ThemeTokensScript.STONE_RAISED)
 	lock.disabled = true
 	lock.tooltip_text = "Shop locking is not available until the server supports it."
 	lock.pressed.connect(func() -> void: lock_shop.emit())
-	var start := _button("StartRound", "Start Round", Rect2(540.0, 1435.0, 210.0, 56.0), ThemeTokensScript.SUCCESS)
+	var start := _button("StartRound", "Start Round", Rect2(420.0, 1435.0, 170.0, 56.0), ThemeTokensScript.SUCCESS)
 	start.disabled = not _prepare_enabled or _deployed_count() == 0
 	start.pressed.connect(func() -> void: start_round.emit())
-	var collection := _button("ViewCollection", "Collection", Rect2(780.0, 1435.0, 210.0, 56.0), ThemeTokensScript.GOLD)
+	var sell := _button("SellSelected", "Sell selected", Rect2(610.0, 1435.0, 180.0, 56.0), ThemeTokensScript.DANGER)
+	sell.disabled = not _prepare_enabled or _selected_hero_instance_id.is_empty()
+	sell.pressed.connect(func() -> void: sell_hero.emit(_selected_hero_instance_id))
+	var collection := _button("ViewCollection", "Collection", Rect2(810.0, 1435.0, 180.0, 56.0), ThemeTokensScript.GOLD)
 	collection.disabled = not _prepare_enabled
+	collection.pressed.connect(func() -> void: collection_requested.emit())
 
 func _panel(node_name: String, rect: Rect2, color: Color = ThemeTokensScript.STONE) -> Panel:
 	var panel := Panel.new()

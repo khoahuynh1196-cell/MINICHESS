@@ -15,14 +15,17 @@ func _init() -> void:
 		"shop": [], "bench": [{ "instanceId": "bench-a", "heroId": "H01", "stars": 1 }],
 		"board": _board(), "items": [{ "instanceId": "item-a", "itemId": "I01", "kind": "normal" }],
 	})
-	controller.select_formation_hero("bench-a")
-	controller.request_selected_formation_move(12)
-	_expect(commands.size() == 1 and String(commands[0].type) == "MOVE_HERO", "tap formation flow must emit a MOVE_HERO command")
-	_expect(int(commands[0].destination) == 12, "formation command must preserve the selected destination")
-	controller.select_item("item-a")
-	controller.request_equip_item("item-a", "bench-a")
-	_expect(commands.size() == 2 and String(commands[1].type) == "EQUIP_ITEM", "selected item flow must emit an EQUIP_ITEM command")
-	controller.show_mobile_screen("collection")
+	_expect(controller.prepare_screen != null, "a PREPARE run must render the routed Prepare shell")
+	controller.prepare_screen.find_child("BenchSlot00", true, false).pressed.emit()
+	controller.prepare_screen.find_child("BoardCell00", true, false).pressed.emit()
+	var move_command: Dictionary = commands[0] if commands.size() > 0 else {}
+	_expect(String(move_command.get("type", "")) == "MOVE_HERO", "tap formation flow must emit a MOVE_HERO command")
+	_expect(int(move_command.get("destination", -1)) == 12, "formation command must preserve the selected destination")
+	controller.prepare_screen.find_child("InventoryItem0", true, false).pressed.emit()
+	controller.prepare_screen.find_child("BenchSlot00", true, false).pressed.emit()
+	var equip_command: Dictionary = commands[1] if commands.size() > 1 else {}
+	_expect(String(equip_command.get("type", "")) == "EQUIP_ITEM", "selected item flow must emit an EQUIP_ITEM command")
+	controller.prepare_screen.find_child("ViewCollection", true, false).pressed.emit()
 	_expect(controller.screen_router.current_screen_id == "collection", "collection remains reachable after Prepare interaction")
 	controller.free()
 	if _failed:
