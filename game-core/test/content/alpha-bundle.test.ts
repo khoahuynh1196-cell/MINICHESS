@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 import { compileContentBundle } from "../../src/index.js";
 
 const bundlePath = fileURLToPath(new URL("../../../content/alpha-0.3.0/bundle.json", import.meta.url));
+const assetManifestPath = fileURLToPath(new URL("../../../client-godot/assets/asset_manifest.json", import.meta.url));
 const heroIds = Array.from({ length: 20 }, (_value, index) => `H${String(index + 1).padStart(2, "0")}`);
 const requiredSkillPrimitives = [
   "deal_damage", "heal", "shield", "stun", "slow", "buff_stat", "debuff_stat", "summon", "cleanse", "dash", "knockback",
@@ -15,6 +16,57 @@ function countBy(values: readonly { species_trait_id: string; class_trait_id: st
 }
 
 describe("Alpha content bundle", () => {
+  it("registers every bundle visual, item, biome, and Unique transformation in the asset manifest", () => {
+    expect(existsSync(assetManifestPath)).toBe(true);
+    if (!existsSync(assetManifestPath) || !existsSync(bundlePath)) return;
+
+    const bundle = JSON.parse(readFileSync(bundlePath, "utf8")) as {
+      visual_profiles: Array<{ id: string; portrait_key: string; sprite_key: string; ability_icon_key: string; vfx_key: string; animations: string[] }>;
+      normal_items: Array<{ id: string }>;
+      unique_items: Array<{ id: string; visual_transformation_id: string }>;
+      transformations: Array<{ id: string; accessory_key: string; aura_key: string; vfx_key: string; icon_key: string; portrait_badge_key: string }>;
+      encounters: Array<{ biome: string }>;
+    };
+    const manifest = JSON.parse(readFileSync(assetManifestPath, "utf8")) as {
+      assets: Record<string, { path: string; frames?: Array<{ x: number; y: number; width: number; height: number }> }>;
+      visual_profiles: Record<string, { portrait: string; sprite: string; icon: string; vfx: string; animations: Record<string, string> }>;
+      items: Record<string, { icon: string; badge?: string }>;
+      biomes: Record<string, { layers: string[] }>;
+      transformations: Record<string, { accessory: string; aura: string; vfx: string; icon: string; portrait_badge: string }>;
+    };
+    const hasAsset = (key: string) => Boolean(manifest.assets[key]?.path);
+
+    for (const profile of bundle.visual_profiles) {
+      const entry = manifest.visual_profiles[profile.id];
+      expect(entry, `missing visual profile ${profile.id}`).toBeTruthy();
+      expect([entry?.portrait, entry?.sprite, entry?.icon, entry?.vfx].every((key) => Boolean(key && hasAsset(key)))).toBe(true);
+      expect([profile.portrait_key, profile.sprite_key, profile.ability_icon_key, profile.vfx_key].every(hasAsset)).toBe(true);
+      expect(Object.keys(entry?.animations ?? {}).sort()).toEqual([...profile.animations].sort());
+      expect(Object.values(entry?.animations ?? {}).every((key) => (manifest.assets[key]?.frames?.length ?? 0) >= 6)).toBe(true);
+    }
+
+    for (const item of [...bundle.normal_items, ...bundle.unique_items]) {
+      expect(hasAsset(manifest.items[item.id]?.icon ?? ""), `missing item icon ${item.id}`).toBe(true);
+    }
+    for (const biome of new Set(bundle.encounters.map((encounter) => encounter.biome))) {
+      const layers = manifest.biomes[biome]?.layers ?? [];
+      expect(layers.length, `missing biome layers ${biome}`).toBeGreaterThan(0);
+      expect(layers.every(hasAsset)).toBe(true);
+    }
+    for (const transformation of bundle.transformations) {
+      const entry = manifest.transformations[transformation.id];
+      expect(entry, `missing Unique transformation ${transformation.id}`).toBeTruthy();
+      expect([entry?.accessory, entry?.aura, entry?.vfx, entry?.icon, entry?.portrait_badge].every((key) => Boolean(key && hasAsset(key)))).toBe(true);
+      expect(entry).toMatchObject({
+        accessory: transformation.accessory_key,
+        aura: transformation.aura_key,
+        vfx: transformation.vfx_key,
+        icon: transformation.icon_key,
+        portrait_badge: transformation.portrait_badge_key,
+      });
+    }
+  });
+
   it("contains the approved twenty-hero species and class distribution", () => {
     expect(existsSync(bundlePath)).toBe(true);
     if (!existsSync(bundlePath)) return;
