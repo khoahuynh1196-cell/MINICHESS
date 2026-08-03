@@ -12,12 +12,14 @@ var _revealed_items: Array = []
 var _selected_by_offer: Dictionary = {}
 var _acknowledged_reveals: Dictionary = {}
 var _reduced_motion := false
+var _reveal_tweens: Array[Tween] = []
 
 func _init() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_STOP
 
 func bind_reward(plan: Dictionary, items: Array, reduced_motion: bool) -> void:
+	_cancel_reveal_tweens()
 	_plan = plan.duplicate(true)
 	_revealed_items = items.duplicate(true)
 	_reduced_motion = reduced_motion
@@ -78,6 +80,7 @@ func reveal_animation_duration() -> float:
 
 func _rebuild() -> void:
 	for child in get_children():
+		remove_child(child)
 		child.queue_free()
 	var background := ColorRect.new()
 	background.color = ThemeTokensScript.NAVY
@@ -104,12 +107,17 @@ func _rebuild() -> void:
 		var item = _revealed_items.filter(func(candidate): return String(Dictionary(candidate).get("instanceId", "")) == reveal_id).front()
 		var item_data := Dictionary(item)
 		var metadata := ItemMetadataCatalogScript.item_metadata(String(item_data.get("itemId", "")))
+		var reveal_panel := PanelContainer.new()
+		reveal_panel.name = "UniqueRevealPanel"
+		reveal_panel.add_theme_stylebox_override("panel", ThemeTokensScript.panel_style(ThemeTokensScript.GOLD))
 		var reveal := _button("Unique revealed: %s%s" % [String(metadata.get("name", item_data.get("itemId", "Unique item"))), " (acknowledged)" if _acknowledged_reveals.has(reveal_id) else ""], ThemeTokensScript.GOLD)
 		reveal.name = "UniqueReveal_%s" % reveal_id
 		reveal.disabled = _acknowledged_reveals.has(reveal_id)
 		reveal.tooltip_text = "Acknowledge the server-owned Unique item reveal"
 		reveal.pressed.connect(acknowledge_unique.bind(reveal_id))
-		panel.add_child(reveal)
+		reveal_panel.add_child(reveal)
+		panel.add_child(reveal_panel)
+		_animate_reveal(reveal_panel)
 	for offer in Array(_plan.get("offers", [])):
 		var offer_data := Dictionary(offer)
 		var offer_id := String(offer_data.get("id", ""))
@@ -139,6 +147,24 @@ func _option_label(option: Dictionary) -> String:
 		return "%s (hero)" % option_id
 	var metadata := ItemMetadataCatalogScript.item_metadata(option_id)
 	return String(metadata.get("name", option_id))
+
+func _animate_reveal(reveal_panel: Control) -> void:
+	if _reduced_motion or not is_inside_tree():
+		reveal_panel.modulate.a = 1.0
+		return
+	reveal_panel.modulate.a = 0.0
+	var tween := create_tween()
+	tween.set_trans(Tween.TRANS_SINE)
+	tween.set_ease(Tween.EASE_OUT)
+	tween.tween_property(reveal_panel, "modulate:a", 1.0, reveal_animation_duration())
+	tween.finished.connect(func() -> void: _reveal_tweens.erase(tween))
+	_reveal_tweens.append(tween)
+
+func _cancel_reveal_tweens() -> void:
+	for tween in _reveal_tweens:
+		if is_instance_valid(tween):
+			tween.kill()
+	_reveal_tweens.clear()
 
 func _button(label: String, accent: Color) -> Button:
 	var button := Button.new()

@@ -7,12 +7,16 @@ const ThemeTokensScript = preload("res://scripts/ui/theme_tokens.gd")
 var _failed := false
 
 func _init() -> void:
+	call_deferred("_run")
+
+func _run() -> void:
 	var reward_screen_script = load("res://scripts/ui/reward_screen.gd")
 	_expect(reward_screen_script != null, "RewardScreen must exist to render authoritative offers")
 	if reward_screen_script == null:
 		_finish()
 		return
 	var screen = reward_screen_script.new()
+	root.add_child(screen)
 	var selected: Array = []
 	var acknowledged: Array = []
 	screen.select_reward.connect(func(offer_id: String, option_id: String) -> void: selected.append([offer_id, option_id]))
@@ -32,6 +36,13 @@ func _init() -> void:
 	_expect(screen.get_selectable_option_count() == 3, "reward screen must not generate a fourth local option")
 	var offered_card: Button = screen.find_child("RewardOption_H02", true, false) as Button
 	_expect(offered_card != null and offered_card.get_theme_color("font_color").is_equal_approx(ThemeTokensScript.PARCHMENT), "dark reward cards must use high-contrast parchment text")
+	var animated_reveal: Control = screen.find_child("UniqueRevealPanel", true, false) as Control
+	var animated_tweens: Array = screen.get("_reveal_tweens")
+	_expect(animated_reveal != null and animated_reveal.modulate.a < 1.0 and animated_tweens.size() == 1, "normal R4 Unique reveal must start as a visible tweened transition, not only expose a duration value")
+	if animated_reveal != null and not animated_tweens.is_empty():
+		var initial_alpha := animated_reveal.modulate.a
+		animated_tweens.front().custom_step(0.05)
+		_expect(animated_reveal.modulate.a > initial_alpha and animated_reveal.modulate.a < 1.0, "normal R4 Unique reveal must visibly advance while animating")
 	_expect(not screen.is_selection_complete(), "the claim state must remain incomplete until every server offer is selected")
 	screen.choose_server_option("reward:4:hero_choice:1", "H09")
 	_expect(selected == [["reward:4:hero_choice:1", "H09"]], "an offered card must emit its immutable offer and option IDs")
@@ -42,9 +53,12 @@ func _init() -> void:
 	_expect(screen.find_child("UniqueHero", true, false) == null, "future Unique heroes must remain deferred")
 	screen.acknowledge_unique("unique:run-4:U01")
 	_expect(acknowledged == ["unique:run-4:U01"], "acknowledging an existing Unique item must emit its server reveal ID")
-	_expect(screen.reveal_animation_duration() > 0.0, "normal motion must animate the Unique item reveal")
 	screen.bind_reward({ "round": 4, "offers": [] }, [{ "instanceId": "unique:run-4:U01", "itemId": "U01", "kind": "unique" }], true)
-	_expect(screen.reveal_animation_duration() == 0.0, "reduced motion must skip Unique reveal animation")
+	var static_reveal: Control = screen.find_child("UniqueRevealPanel", true, false) as Control
+	var static_tweens: Array = screen.get("_reveal_tweens")
+	_expect(static_reveal != null and static_reveal.modulate.a == 1.0 and static_tweens.is_empty(), "reduced motion must render the Unique result immediately readable with no tween or animation")
+	if static_reveal != null:
+		_expect(static_reveal.modulate.a == 1.0, "reduced motion must not leave a Unique reveal tween or animation running")
 	screen.free()
 	_finish()
 
