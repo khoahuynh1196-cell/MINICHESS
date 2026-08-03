@@ -94,3 +94,18 @@ a viewport frame, so no screenshot was retained and no visual-inspection claim
 is made for a 1080 × 1920 live combat capture. Capture should be performed
 from an interactive or device-backed Godot run before the full visual
 acceptance gate is signed off.
+
+## 2026-08-04 manifest closure repair
+
+Independent game-core verification found that the cutout-manifest rewrite had
+preserved `items.I01`–`items.I12` and `items.U01`–`items.U06` references while
+dropping their `assets` records. The repair restores all 12 normal icon keys,
+six Unique icon keys, and six Unique badge keys from the icon-only
+`item-vfx-ui-atlas-v1.png` crops. It also restores the four biome board layer
+records and five missing existing-Unique transformation records required for
+the complete content-bundle manifest closure. Neither rejected hero roster nor
+monster HUD atlas was restored.
+
+- `pnpm --dir game-core test -- alpha-bundle.test.ts`: 6 files / 100 tests
+  passed.
+- Godot `res://test/asset_manifest_test.gd`: passed.

@@ -1462,6 +1462,204 @@
           "height": 1254
         }
       ]
+    },
+    "items/i01/icon": {
+      "path": "res://assets/items/item-vfx-ui-atlas-v1.png",
+      "frames": [
+        { "x": 0, "y": 0, "width": 256, "height": 256 }
+      ]
+    },
+    "items/i02/icon": {
+      "path": "res://assets/items/item-vfx-ui-atlas-v1.png",
+      "frames": [
+        { "x": 256, "y": 0, "width": 256, "height": 256 }
+      ]
+    },
+    "items/i03/icon": {
+      "path": "res://assets/items/item-vfx-ui-atlas-v1.png",
+      "frames": [
+        { "x": 512, "y": 0, "width": 256, "height": 256 }
+      ]
+    },
+    "items/i04/icon": {
+      "path": "res://assets/items/item-vfx-ui-atlas-v1.png",
+      "frames": [
+        { "x": 768, "y": 0, "width": 256, "height": 256 }
+      ]
+    },
+    "items/i05/icon": {
+      "path": "res://assets/items/item-vfx-ui-atlas-v1.png",
+      "frames": [
+        { "x": 1024, "y": 0, "width": 256, "height": 256 }
+      ]
+    },
+    "items/i06/icon": {
+      "path": "res://assets/items/item-vfx-ui-atlas-v1.png",
+      "frames": [
+        { "x": 1280, "y": 0, "width": 256, "height": 256 }
+      ]
+    },
+    "items/i07/icon": {
+      "path": "res://assets/items/item-vfx-ui-atlas-v1.png",
+      "frames": [
+        { "x": 0, "y": 256, "width": 256, "height": 256 }
+      ]
+    },
+    "items/i08/icon": {
+      "path": "res://assets/items/item-vfx-ui-atlas-v1.png",
+      "frames": [
+        { "x": 256, "y": 256, "width": 256, "height": 256 }
+      ]
+    },
+    "items/i09/icon": {
+      "path": "res://assets/items/item-vfx-ui-atlas-v1.png",
+      "frames": [
+        { "x": 512, "y": 256, "width": 256, "height": 256 }
+      ]
+    },
+    "items/i10/icon": {
+      "path": "res://assets/items/item-vfx-ui-atlas-v1.png",
+      "frames": [
+        { "x": 768, "y": 256, "width": 256, "height": 256 }
+      ]
+    },
+    "items/i11/icon": {
+      "path": "res://assets/items/item-vfx-ui-atlas-v1.png",
+      "frames": [
+        { "x": 1024, "y": 256, "width": 256, "height": 256 }
+      ]
+    },
+    "items/i12/icon": {
+      "path": "res://assets/items/item-vfx-ui-atlas-v1.png",
+      "frames": [
+        { "x": 1280, "y": 256, "width": 256, "height": 256 }
+      ]
+    },
+    "items/u01/icon": {
+      "path": "res://assets/items/item-vfx-ui-atlas-v1.png",
+      "frames": [
+        { "x": 0, "y": 512, "width": 256, "height": 256 }
+      ]
+    },
+    "items/u02/icon": {
+      "path": "res://assets/items/item-vfx-ui-atlas-v1.png",
+      "frames": [
+        { "x": 256, "y": 512, "width": 256, "height": 256 }
+      ]
+    },
+    "items/u03/icon": {
+      "path": "res://assets/items/item-vfx-ui-atlas-v1.png",
+      "frames": [
+        { "x": 512, "y": 512, "width": 256, "height": 256 }
+      ]
+    },
+    "items/u04/icon": {
+      "path": "res://assets/items/item-vfx-ui-atlas-v1.png",
+      "frames": [
+        { "x": 768, "y": 512, "width": 256, "height": 256 }
+      ]
+    },
+    "items/u05/icon": {
+      "path": "res://assets/items/item-vfx-ui-atlas-v1.png",
+      "frames": [
+        { "x": 1024, "y": 512, "width": 256, "height": 256 }
+      ]
+    },
+    "items/u06/icon": {
+      "path": "res://assets/items/item-vfx-ui-atlas-v1.png",
+      "frames": [
+        { "x": 1280, "y": 512, "width": 256, "height": 256 }
+      ]
+    },
+    "items/u01/badge": {
+      "path": "res://assets/items/item-vfx-ui-atlas-v1.png",
+      "frames": [
+        { "x": 0, "y": 512, "width": 256, "height": 256 }
+      ]
+    },
+    "items/u02/badge": {
+      "path": "res://assets/items/item-vfx-ui-atlas-v1.png",
+      "frames": [
+        { "x": 256, "y": 512, "width": 256, "height": 256 }
+      ]
+    },
+    "items/u03/badge": {
+      "path": "res://assets/items/item-vfx-ui-atlas-v1.png",
+      "frames": [
+        { "x": 512, "y": 512, "width": 256, "height": 256 }
+      ]
+    },
+    "items/u04/badge": {
+      "path": "res://assets/items/item-vfx-ui-atlas-v1.png",
+      "frames": [
+        { "x": 768, "y": 512, "width": 256, "height": 256 }
+      ]
+    },
+    "items/u05/badge": {
+      "path": "res://assets/items/item-vfx-ui-atlas-v1.png",
+      "frames": [
+        { "x": 1024, "y": 512, "width": 256, "height": 256 }
+      ]
+    },
+    "items/u06/badge": {
+      "path": "res://assets/items/item-vfx-ui-atlas-v1.png",
+      "frames": [
+        { "x": 1280, "y": 512, "width": 256, "height": 256 }
+      ]
+    },
+    "biomes/meadow/board": {
+      "path": "res://assets/biomes/board-kits-atlas-v1.png",
+      "frames": [
+        { "x": 0, "y": 0, "width": 627, "height": 627 }
+      ]
+    },
+    "biomes/ruins/board": {
+      "path": "res://assets/biomes/board-kits-atlas-v1.png",
+      "frames": [
+        { "x": 627, "y": 0, "width": 627, "height": 627 }
+      ]
+    },
+    "biomes/frost_keep/board": {
+      "path": "res://assets/biomes/board-kits-atlas-v1.png",
+      "frames": [
+        { "x": 0, "y": 627, "width": 627, "height": 627 }
+      ]
+    },
+    "biomes/ember_citadel/board": {
+      "path": "res://assets/biomes/board-kits-atlas-v1.png",
+      "frames": [
+        { "x": 627, "y": 627, "width": 627, "height": 627 }
+      ]
+    },
+    "transformations/lion_crown/accessory": {
+      "path": "res://assets/items/item-vfx-ui-atlas-v1.png",
+      "frames": [
+        { "x": 0, "y": 512, "width": 256, "height": 256 }
+      ]
+    },
+    "transformations/lion_crown/aura": {
+      "path": "res://assets/vfx/vfx-atlas-v1.png",
+      "frames": [
+        { "x": 512, "y": 768, "width": 256, "height": 256 }
+      ]
+    },
+    "transformations/lion_crown/vfx": {
+      "path": "res://assets/vfx/vfx-atlas-v1.png",
+      "frames": [
+        { "x": 512, "y": 768, "width": 256, "height": 256 }
+      ]
+    },
+    "transformations/white_wolf_claw/accessory": {
+      "path": "res://assets/items/item-vfx-ui-atlas-v1.png",
+      "frames": [
+        { "x": 256, "y": 512, "width": 256, "height": 256 }
+      ]
+    },
+    "transformations/white_wolf_claw/aura": {
+      "path": "res://assets/vfx/vfx-atlas-v1.png",
+      "frames": [
+        { "x": 768, "y": 768, "width": 256, "height": 256 }
+      ]
     }
   },
   "visual_profiles": {
