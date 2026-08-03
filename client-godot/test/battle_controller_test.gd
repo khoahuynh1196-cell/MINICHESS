@@ -24,6 +24,7 @@ func _init() -> void:
 	_expect(controller.unit_views["player:H01:1"].get("animation_state") == "hit", "stun effects must present a target hit reaction")
 	_expect(controller.unit_views.has("player:H01:1"), "spawn must create a unit view")
 	_expect(controller.unit_views["player:H01:1"].grid_index == 22, "spawn must place the unit on its grid index")
+	_expect(controller.unit_views["player:H01:1"].get("hero_id") == "H01", "spawn must retain the hero ID for a readable board label")
 	var portrait = controller.unit_views["player:H01:1"].get_node_or_null("Portrait")
 	_expect(portrait != null and portrait.texture != null and portrait.texture.resource_path == "res://assets/sprites/h01-cotton-shield-cat-chibi-v2.png", "H01 spawn must render the chibi full-body character texture")
 	controller.apply_event(_event("UNIT_SPAWNED", "player:H02:1", "", { "side": "player", "position": 21, "max_hp": 100000 }))

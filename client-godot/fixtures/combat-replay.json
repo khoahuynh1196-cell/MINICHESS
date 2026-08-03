@@ -2,12 +2,19 @@
   "schema_version": "alpha-0.3.0",
   "events": [
     { "sequence": 0, "tick": 0, "type": "COMBAT_STARTED", "payload": { "combat_id": "local-demo" } },
-    { "sequence": 1, "tick": 0, "type": "UNIT_SPAWNED", "source_unit_id": "enemy:E01:1", "payload": { "side": "enemy", "position": 1, "max_hp": 100000 } },
-    { "sequence": 2, "tick": 0, "type": "UNIT_SPAWNED", "source_unit_id": "player:H01:1", "payload": { "side": "player", "position": 22, "max_hp": 100000 } },
-    { "sequence": 3, "tick": 1, "type": "UNIT_MOVED", "source_unit_id": "enemy:E01:1", "target_unit_id": "player:H01:1", "payload": { "from": 1, "to": 4 } },
-    { "sequence": 4, "tick": 1, "type": "UNIT_MOVED", "source_unit_id": "player:H01:1", "target_unit_id": "enemy:E01:1", "payload": { "from": 22, "to": 19 } },
-    { "sequence": 5, "tick": 2, "type": "BASIC_ATTACK", "source_unit_id": "enemy:E01:1", "target_unit_id": "player:H01:1", "payload": { "is_critical": false } },
-    { "sequence": 6, "tick": 2, "type": "DAMAGE_APPLIED", "source_unit_id": "enemy:E01:1", "target_unit_id": "player:H01:1", "payload": { "amount": 25000, "damage_type": "physical", "remaining_hp": 75000 } },
-    { "sequence": 7, "tick": 3, "type": "COMBAT_ENDED", "payload": { "winner": "enemy", "reason": "timeout" } }
+    { "sequence": 1, "tick": 0, "type": "UNIT_SPAWNED", "source_unit_id": "enemy:H15:1", "payload": { "side": "enemy", "position": 1, "max_hp": 120000 } },
+    { "sequence": 2, "tick": 0, "type": "UNIT_SPAWNED", "source_unit_id": "enemy:H16:1", "payload": { "side": "enemy", "position": 3, "max_hp": 100000 } },
+    { "sequence": 3, "tick": 0, "type": "UNIT_SPAWNED", "source_unit_id": "enemy:H19:1", "payload": { "side": "enemy", "position": 5, "max_hp": 72000 } },
+    { "sequence": 4, "tick": 0, "type": "UNIT_SPAWNED", "source_unit_id": "enemy:H17:1", "payload": { "side": "enemy", "position": 7, "max_hp": 82000 } },
+    { "sequence": 5, "tick": 0, "type": "UNIT_SPAWNED", "source_unit_id": "player:H01:1", "payload": { "side": "player", "position": 18, "max_hp": 120000 } },
+    { "sequence": 6, "tick": 0, "type": "UNIT_SPAWNED", "source_unit_id": "player:H02:1", "payload": { "side": "player", "position": 19, "max_hp": 100000 } },
+    { "sequence": 7, "tick": 0, "type": "UNIT_SPAWNED", "source_unit_id": "player:H03:1", "payload": { "side": "player", "position": 20, "max_hp": 78000 } },
+    { "sequence": 8, "tick": 0, "type": "UNIT_SPAWNED", "source_unit_id": "player:H04:1", "payload": { "side": "player", "position": 22, "max_hp": 70000 } },
+    { "sequence": 9, "tick": 1, "type": "UNIT_MOVED", "source_unit_id": "enemy:H16:1", "target_unit_id": "player:H01:1", "payload": { "from": 3, "to": 6 } },
+    { "sequence": 10, "tick": 1, "type": "UNIT_MOVED", "source_unit_id": "player:H01:1", "target_unit_id": "enemy:H16:1", "payload": { "from": 18, "to": 15 } },
+    { "sequence": 11, "tick": 2, "type": "BASIC_ATTACK", "source_unit_id": "enemy:H16:1", "target_unit_id": "player:H01:1", "payload": { "is_critical": false } },
+    { "sequence": 12, "tick": 2, "type": "DAMAGE_APPLIED", "source_unit_id": "enemy:H16:1", "target_unit_id": "player:H01:1", "payload": { "amount": 25000, "damage_type": "physical", "remaining_hp": 95000 } },
+    { "sequence": 13, "tick": 3, "type": "CAST_STARTED", "source_unit_id": "player:H04:1", "target_unit_id": "enemy:H15:1", "payload": {} },
+    { "sequence": 14, "tick": 4, "type": "COMBAT_ENDED", "payload": { "winner": "player", "reason": "demo_complete" } }
   ]
 }

@@ -32,6 +32,7 @@ var side := "player"
 var is_defeated := false
 var animation_state := "idle"
 var portrait: Sprite2D
+var hero_id := ""
 var unique_item_id := ""
 var _animation_elapsed := 0.0
 
@@ -58,6 +59,7 @@ func configure(unit_side: String, position_index: int, unit_max_hp: int, hero_id
 	grid_index = position_index
 	max_hp = max(1, unit_max_hp)
 	hp = max_hp
+	self.hero_id = hero_id
 	unique_item_id = equipped_unique_item_id
 	_add_portrait(hero_id)
 	_add_unique_accessory()
@@ -154,3 +156,5 @@ func _draw() -> void:
 		draw_circle(anchor, 5.0, Color.WHITE)
 	draw_rect(Rect2(-52.0, 58.0, 104.0, 10.0), Color("#202438"), true)
 	draw_rect(Rect2(-52.0, 58.0, 104.0 * float(hp) / max_hp, 10.0), Color("#8ac926"), true)
+	if not hero_id.is_empty():
+		draw_string(ThemeDB.fallback_font, Vector2(-32.0, -66.0), hero_id, HORIZONTAL_ALIGNMENT_CENTER, 64.0, 16, Color.WHITE)

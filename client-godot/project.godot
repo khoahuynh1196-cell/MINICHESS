@@ -18,8 +18,8 @@ window/stretch/mode="canvas_items"
 
 [rendering]
 
-renderer/rendering_method="gl_compatibility"
-renderer/rendering_method.mobile="gl_compatibility"
+renderer/rendering_method="mobile"
+renderer/rendering_method.mobile="mobile"
 
 [rendering/textures/vram_compression]
 
