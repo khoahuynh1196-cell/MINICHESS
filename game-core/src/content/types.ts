@@ -7,7 +7,7 @@ export interface RawContentBundle {
   readonly normal_items: readonly RawIdentifiedContent[];
   readonly unique_items: readonly RawIdentifiedContent[];
   readonly transformations: readonly RawIdentifiedContent[];
-  readonly encounters: readonly RawIdentifiedContent[];
+  readonly encounters: readonly RawEncounter[];
 }
 
 export interface RawIdentifiedContent {
@@ -19,11 +19,16 @@ export interface RawHero extends RawIdentifiedContent {
   readonly species_trait_id: string;
   readonly class_trait_id: string;
   readonly cost: number;
+  readonly rarity: HeroRarity;
+  readonly tags: readonly string[];
+  readonly is_unique_hero: boolean;
   readonly base_stats: Readonly<Record<string, number>>;
   readonly star_multipliers: Readonly<Record<string, Readonly<Record<string, number>>>>;
   readonly skill_id: string;
   readonly visual_profile_id: string;
 }
+
+export type HeroRarity = 1 | 2 | 3 | 4 | 5;
 
 export interface RawSkill extends RawIdentifiedContent {
   readonly cast_time_ticks: number;
@@ -37,6 +42,10 @@ export interface RawEffect extends RawIdentifiedContent {
 }
 
 export interface RawVisualProfile extends RawIdentifiedContent {
+  readonly sprite_key: string;
+  readonly portrait_key: string;
+  readonly ability_icon_key: string;
+  readonly vfx_key: string;
   readonly anchors: readonly string[];
   readonly animations: readonly string[];
 }
@@ -100,13 +109,19 @@ export interface RawEncounterAffix {
 
 export interface RawEncounter extends RawIdentifiedContent {
   readonly round: number;
+  readonly biome: EncounterBiome;
+  readonly kind: string;
   readonly rewards: readonly RawEncounterReward[];
   readonly enemy_composition?: readonly RawEncounterEnemy[];
   readonly affix?: RawEncounterAffix;
 }
 
+export type EncounterBiome = "meadow" | "ruins" | "frost_keep" | "ember_citadel";
+
 export interface ContentManifest {
   readonly heroCount: number;
+  readonly shopHeroCount: number;
+  readonly uniqueHeroCount: number;
   readonly skillCount: number;
   readonly traitCount: number;
   readonly normalItemCount: number;

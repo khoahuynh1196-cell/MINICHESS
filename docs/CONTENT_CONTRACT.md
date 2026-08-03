@@ -1,5 +1,72 @@
 # Contract Content Alpha
 
+## Full PvE demo content additions
+
+The full PvE demo has 24 heroes: exactly 21 shop heroes and three reward-only
+Unique heroes. `ContentManifest.shopHeroCount` counts records where
+`is_unique_hero` is `false`; `ContentManifest.uniqueHeroCount` counts the
+remaining Unique records.
+
+A shop hero uses this canonical shape. `rarity` is an integer from 1 through
+5, `tags` is an array of non-empty identifiers, and only a non-Unique hero may
+have a positive shop `cost`.
+
+```json
+{
+  "id": "H01",
+  "display_key": "hero.h01.name",
+  "species_trait_id": "R_VERDANT",
+  "class_trait_id": "C_VANGUARD",
+  "cost": 1,
+  "rarity": 1,
+  "tags": ["verdant", "vanguard", "frontline"],
+  "is_unique_hero": false,
+  "skill_id": "S_H01",
+  "visual_profile_id": "VP_H01"
+}
+```
+
+A reward-only Unique hero has `is_unique_hero: true` and `cost: 0`; it is
+never placed in the shared shop pool.
+
+```json
+{
+  "id": "H22",
+  "cost": 0,
+  "rarity": 5,
+  "tags": ["aether", "arcanist", "unique"],
+  "is_unique_hero": true
+}
+```
+
+Every visual profile must reference its sprite, portrait, ability icon, and
+cast VFX keys:
+
+```json
+{
+  "id": "VP_H01",
+  "sprite_key": "heroes/h01/base",
+  "portrait_key": "heroes/h01/portrait",
+  "ability_icon_key": "heroes/h01/ability_icon",
+  "vfx_key": "vfx/heroes/h01/cast",
+  "anchors": ["head", "chest", "back", "feet", "weapon"],
+  "animations": ["idle", "move", "basic_attack", "hit", "skill_cast", "death"]
+}
+```
+
+Each encounter declares a non-empty `kind` and one legal biome:
+`meadow`, `ruins`, `frost_keep`, or `ember_citadel`.
+
+```json
+{
+  "id": "PVE_04",
+  "round": 4,
+  "kind": "miniboss",
+  "biome": "frost_keep",
+  "rewards": [{ "kind": "unique_reveal", "source": "run_preselected_unique" }]
+}
+```
+
 **Trạng thái:** Khóa cho implementation — 2026-08-03
 
 ## Bundle versioned

@@ -22,6 +22,7 @@ const REQUIRED_STATS = [
 ] as const;
 const REQUIRED_ANCHORS = ["head", "chest", "back", "feet", "weapon"] as const;
 const REQUIRED_ANIMATIONS = ["idle", "move", "basic_attack", "hit", "skill_cast", "death"] as const;
+const VALID_BIOMES = ["meadow", "ruins", "frost_keep", "ember_citadel"] as const;
 const ITEM_MODIFIER_STATS = [
   "max_hp", "attack_damage", "attack_speed", "armor", "magic_resist", "move_speed",
   "starting_mana", "max_mana", "crit_chance", "crit_multiplier", "skill_power",
@@ -97,11 +98,19 @@ function requireUniqueIds(values: readonly RawIdentifiedContent[], label: string
 
 function requireHero(value: unknown): RawHero {
   const hero = requireIdentified(value, "hero") as RawHero;
+  const raw = hero as Record<string, unknown>;
   requireString((hero as Record<string, unknown>).display_key, `${hero.id}.display_key`);
   requireString(hero.species_trait_id, `${hero.id}.species_trait_id`);
   requireString(hero.class_trait_id, `${hero.id}.class_trait_id`);
-  const cost = requireSafeInteger(hero.cost, `${hero.id}.cost`, 1);
-  if (cost > 3) throw new Error(`${hero.id}.cost must be <= 3`);
+  const rarity = requireSafeInteger(raw.rarity, `${hero.id}.rarity`, 1);
+  if (rarity > 5) throw new Error(`${hero.id}.rarity must be <= 5`);
+  const isUniqueHero = raw.is_unique_hero;
+  if (typeof isUniqueHero !== "boolean") throw new Error(`${hero.id}.is_unique_hero must be boolean`);
+  const cost = requireSafeInteger(hero.cost, `${hero.id}.cost`);
+  if (isUniqueHero ? cost !== 0 : cost < 1 || cost > 3) {
+    throw new Error(isUniqueHero ? `${hero.id}.Unique hero cost must be 0` : `${hero.id}.cost must be between 1 and 3`);
+  }
+  requireArray(raw.tags, `${hero.id}.tags`).forEach((tag, index) => requireString(tag, `${hero.id}.tags[${index}]`));
   if (!isRecord(hero.base_stats)) throw new Error(`${hero.id}.base_stats must be an object`);
   for (const stat of REQUIRED_STATS) requireSafeInteger(hero.base_stats[stat], `${hero.id}.base_stats.${stat}`, stat === "attack_range" || stat === "move_speed" || stat === "max_hp" || stat === "max_mana" ? 1 : 0);
   if (!isRecord(hero.star_multipliers)) throw new Error(`${hero.id}.star_multipliers must be an object`);
@@ -121,6 +130,8 @@ function requireVisualProfile(value: unknown): RawVisualProfile {
   const profile = requireIdentified(value, "visual profile") as RawVisualProfile;
   requireString((profile as Record<string, unknown>).sprite_key, `${profile.id}.sprite_key`);
   requireString((profile as Record<string, unknown>).portrait_key, `${profile.id}.portrait_key`);
+  requireString((profile as Record<string, unknown>).ability_icon_key, `${profile.id}.ability_icon_key`);
+  requireString((profile as Record<string, unknown>).vfx_key, `${profile.id}.vfx_key`);
   const anchors = requireArray(profile.anchors, `${profile.id}.anchors`).map((anchor) => requireString(anchor, `${profile.id}.anchor`));
   const animations = requireArray(profile.animations, `${profile.id}.animations`).map((animation) => requireString(animation, `${profile.id}.animation`));
   for (const anchor of REQUIRED_ANCHORS) if (!anchors.includes(anchor)) throw new Error(`${profile.id} is missing ${anchor} anchor`);
@@ -251,6 +262,9 @@ function requireEncounter(value: unknown): RawEncounter {
   const encounter = requireIdentified(value, "encounter") as RawEncounter;
   const raw = encounter as Record<string, unknown>;
   requireSafeInteger(raw.round, `${encounter.id}.round`, 1);
+  const biome = requireString(raw.biome, `${encounter.id}.biome`);
+  if (!(VALID_BIOMES as readonly string[]).includes(biome)) throw new Error(`${encounter.id}.biome is invalid`);
+  requireString(raw.kind, `${encounter.id}.kind`);
   requireArray(raw.rewards, `${encounter.id}.rewards`).forEach((reward) => {
     if (!isRecord(reward)) throw new Error(`${encounter.id}.reward must be an object`);
     const kind = requireString(reward.kind, `${encounter.id}.reward.kind`);
@@ -284,7 +298,7 @@ function requireEncounter(value: unknown): RawEncounter {
     if (value > 5_000) throw new Error(`${encounter.id}.affix.value must be <= 5000`);
     return { kind: "attack_speed_multiplier", value } satisfies RawEncounterAffix;
   })();
-  return { ...encounter, ...(enemyComposition === undefined ? {} : { enemy_composition: enemyComposition }), ...(affix === undefined ? {} : { affix }) };
+  return { ...encounter, biome: biome as RawEncounter["biome"], ...(enemyComposition === undefined ? {} : { enemy_composition: enemyComposition }), ...(affix === undefined ? {} : { affix }) };
 }
 
 function normalizeEffect(value: unknown): CombatEffect {
@@ -415,6 +429,8 @@ export function compileContentBundle(raw: unknown): CompiledContentBundle {
     contentHash: fnv1a64Hex(stableSerialize(canonical)),
     manifest: Object.freeze({
       heroCount: heroes.length,
+      shopHeroCount: heroes.filter((hero) => !hero.is_unique_hero).length,
+      uniqueHeroCount: heroes.filter((hero) => hero.is_unique_hero).length,
       skillCount: skills.length,
       traitCount: traits.length,
       normalItemCount: normalItems.length,

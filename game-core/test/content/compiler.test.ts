@@ -10,6 +10,9 @@ const baseBundle = {
     species_trait_id: "R_CAT",
     class_trait_id: "C_GUARDIAN",
     cost: 1,
+    rarity: 1,
+    tags: ["guardian"],
+    is_unique_hero: false,
     base_stats: {
       max_hp: 90_000,
       attack_damage: 5_000,
@@ -41,6 +44,8 @@ const baseBundle = {
     id: "VP_H01",
     sprite_key: "heroes/h01/base",
     portrait_key: "heroes/h01/portrait",
+    ability_icon_key: "heroes/h01/ability_icon",
+    vfx_key: "vfx/h01/cast",
     anchors: ["head", "chest", "back", "feet", "weapon"],
     animations: ["idle", "move", "basic_attack", "hit", "skill_cast", "death"],
   }],
@@ -55,6 +60,54 @@ async function loadCompiler(): Promise<{ compileContentBundle: (raw: unknown) =>
 }
 
 describe("content compiler", () => {
+  it("rejects a hero with a rarity outside the five shop tiers", async () => {
+    const compiler = await loadCompiler();
+    expect(compiler).toBeDefined();
+    if (compiler === undefined) return;
+
+    expect(() => compiler.compileContentBundle({
+      ...baseBundle,
+      heroes: [{ ...baseBundle.heroes[0]!, rarity: 6 }],
+    })).toThrow(/H01.*rarity/i);
+  });
+
+  it("rejects a Unique hero marked as purchasable", async () => {
+    const compiler = await loadCompiler();
+    expect(compiler).toBeDefined();
+    if (compiler === undefined) return;
+
+    expect(() => compiler.compileContentBundle({
+      ...baseBundle,
+      heroes: [{ ...baseBundle.heroes[0]!, is_unique_hero: true }],
+    })).toThrow(/H01.*Unique.*cost/i);
+  });
+
+  it("rejects an encounter with an illegal biome", async () => {
+    const compiler = await loadCompiler();
+    expect(compiler).toBeDefined();
+    if (compiler === undefined) return;
+
+    expect(() => compiler.compileContentBundle({
+      ...baseBundle,
+      encounters: [{ id: "PVE_01", round: 1, kind: "normal", biome: "void", rewards: [] }],
+    })).toThrow(/PVE_01.*biome/i);
+  });
+
+  it("rejects a visual profile without ability icon or cast VFX keys", async () => {
+    const compiler = await loadCompiler();
+    expect(compiler).toBeDefined();
+    if (compiler === undefined) return;
+
+    expect(() => compiler.compileContentBundle({
+      ...baseBundle,
+      visual_profiles: [{ ...baseBundle.visual_profiles[0]!, ability_icon_key: "" }],
+    })).toThrow(/VP_H01.*ability_icon_key/i);
+    expect(() => compiler.compileContentBundle({
+      ...baseBundle,
+      visual_profiles: [{ ...baseBundle.visual_profiles[0]!, vfx_key: "" }],
+    })).toThrow(/VP_H01.*vfx_key/i);
+  });
+
   it("rejects an Alpha v0.3 bundle that omits mandatory roster, item, and round content", async () => {
     const compiler = await loadCompiler();
     expect(compiler).toBeDefined();
@@ -105,7 +158,7 @@ describe("content compiler", () => {
 
     expect(() => compiler.compileContentBundle({
       ...baseBundle,
-      encounters: [{ id: "PVE_01", round: 1, rewards: [{ kind: "normal_item_choice" }] }],
+      encounters: [{ id: "PVE_01", round: 1, kind: "normal", biome: "meadow", rewards: [{ kind: "normal_item_choice" }] }],
     })).toThrow(/PVE_01.*options/i);
   });
 
@@ -131,6 +184,9 @@ describe("content compiler", () => {
           species_trait_id: "R_CAT",
           class_trait_id: "C_GUARDIAN",
           cost: 1,
+          rarity: 1,
+          tags: ["guardian"],
+          is_unique_hero: false,
           base_stats: { max_hp: 1, attack_damage: 0, attack_speed: 1, armor: 0, magic_resist: 0, attack_range: 1, move_speed: 1, starting_mana: 0, max_mana: 1, crit_chance: 0, crit_multiplier: 0, skill_power: 0 },
           star_multipliers: {},
           skill_id: "S01",
@@ -139,11 +195,11 @@ describe("content compiler", () => {
       ],
       skills: [{ id: "S01", cast_time_ticks: 1, effects: [] }],
       traits: [{ id: "R_CAT", kind: "species", breakpoints: [{ count: 1, effects: [] }] }, { id: "C_GUARDIAN", kind: "class", breakpoints: [{ count: 1, effects: [] }] }],
-      visual_profiles: [{ id: "V01", sprite_key: "hero", portrait_key: "hero", anchors: ["head", "chest", "back", "feet", "weapon"], animations: ["idle", "move", "basic_attack", "hit", "skill_cast", "death"] }],
+      visual_profiles: [{ id: "V01", sprite_key: "hero", portrait_key: "hero", ability_icon_key: "hero_icon", vfx_key: "hero_vfx", anchors: ["head", "chest", "back", "feet", "weapon"], animations: ["idle", "move", "basic_attack", "hit", "skill_cast", "death"] }],
       normal_items: [],
       unique_items: [],
       transformations: [],
-      encounters: [invalidEncounter],
+      encounters: [{ ...invalidEncounter, kind: "normal", biome: "meadow" }],
     };
 
     expect(() => compiler.compileContentBundle(bundle)).toThrow(/PVE_01.*enemy/i);
