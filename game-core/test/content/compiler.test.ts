@@ -55,11 +55,61 @@ const baseBundle = {
   encounters: [],
 };
 
-async function loadCompiler(): Promise<{ compileContentBundle: (raw: unknown) => { contentHash: string; normalItems: readonly unknown[] } } | undefined> {
-  return import(compilerModulePath).catch(() => undefined) as Promise<{ compileContentBundle: (raw: unknown) => { contentHash: string; normalItems: readonly unknown[] } } | undefined>;
+type Compiler = { compileContentBundle: (raw: unknown) => {
+  contentHash: string;
+  normalItems: readonly unknown[];
+  manifest: { heroCount: number; shopHeroCount: number; uniqueHeroCount: number };
+} };
+
+async function loadCompiler(): Promise<Compiler | undefined> {
+  return import(compilerModulePath).catch(() => undefined) as Promise<Compiler | undefined>;
+}
+
+function createFullDemoAlphaBundle() {
+  const heroes = Array.from({ length: 24 }, (_, index) => ({
+    ...baseBundle.heroes[0]!,
+    id: `H${String(index + 1).padStart(2, "0")}`,
+    cost: index < 21 ? 1 : 0,
+    is_unique_hero: index >= 21,
+  }));
+  const traits = [
+    ...baseBundle.traits,
+    ...Array.from({ length: 4 }, (_, index) => ({ id: `R_${index + 1}`, kind: "species", breakpoints: [{ count: 1, effects: [] }] })),
+    ...Array.from({ length: 4 }, (_, index) => ({ id: `C_${index + 1}`, kind: "class", breakpoints: [{ count: 1, effects: [] }] })),
+  ];
+  const transformations = Array.from({ length: 6 }, (_, index) => ({ id: `VT_${index + 1}` }));
+
+  return {
+    ...baseBundle,
+    version: "alpha-0.3.0",
+    heroes,
+    traits,
+    normal_items: Array.from({ length: 12 }, (_, index) => ({
+      id: `I${String(index + 1).padStart(2, "0")}`, kind: "normal", display_key: `item.i${index + 1}.name`, slot_cost: 1, stat_modifiers: [],
+    })),
+    unique_items: Array.from({ length: 6 }, (_, index) => ({
+      id: `U${String(index + 1).padStart(2, "0")}`, kind: "unique", display_key: `item.u${index + 1}.name`, slot_cost: 1, stat_modifiers: [],
+      visual_transformation_id: transformations[index]!.id, suggested_holder_tags: ["guardian", "fighter", "frontline"],
+    })),
+    transformations,
+    encounters: Array.from({ length: 8 }, (_, index) => ({
+      id: `PVE_${String(index + 1).padStart(2, "0")}`, round: index + 1, kind: "normal", biome: "meadow",
+      rewards: index === 3 ? [{ kind: "unique_reveal" }] : [],
+    })),
+  };
 }
 
 describe("content compiler", () => {
+  it("accepts the Alpha full-demo roster and reports 21 shop heroes with 3 Unique heroes", async () => {
+    const compiler = await loadCompiler();
+    expect(compiler).toBeDefined();
+    if (compiler === undefined) return;
+
+    const compiled = compiler.compileContentBundle(createFullDemoAlphaBundle());
+
+    expect(compiled.manifest).toMatchObject({ heroCount: 24, shopHeroCount: 21, uniqueHeroCount: 3 });
+  });
+
   it("rejects a hero with a rarity outside the five shop tiers", async () => {
     const compiler = await loadCompiler();
     expect(compiler).toBeDefined();
@@ -113,7 +163,7 @@ describe("content compiler", () => {
     expect(compiler).toBeDefined();
     if (compiler === undefined) return;
 
-    expect(() => compiler.compileContentBundle({ ...baseBundle, version: "alpha-0.3.0" })).toThrow(/Alpha.*20 heroes.*8 encounters/i);
+    expect(() => compiler.compileContentBundle({ ...baseBundle, version: "alpha-0.3.0" })).toThrow(/Alpha.*24 heroes.*21 shop.*3 Unique.*8 encounters/i);
   });
 
   it("normalizes legacy item trigger spelling into the canonical combat-start trigger", async () => {

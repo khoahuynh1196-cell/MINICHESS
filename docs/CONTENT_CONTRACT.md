@@ -7,37 +7,11 @@ Unique heroes. `ContentManifest.shopHeroCount` counts records where
 `is_unique_hero` is `false`; `ContentManifest.uniqueHeroCount` counts the
 remaining Unique records.
 
-A shop hero uses this canonical shape. `rarity` is an integer from 1 through
-5, `tags` is an array of non-empty identifiers, and only a non-Unique hero may
-have a positive shop `cost`.
-
-```json
-{
-  "id": "H01",
-  "display_key": "hero.h01.name",
-  "species_trait_id": "R_VERDANT",
-  "class_trait_id": "C_VANGUARD",
-  "cost": 1,
-  "rarity": 1,
-  "tags": ["verdant", "vanguard", "frontline"],
-  "is_unique_hero": false,
-  "skill_id": "S_H01",
-  "visual_profile_id": "VP_H01"
-}
-```
-
-A reward-only Unique hero has `is_unique_hero: true` and `cost: 0`; it is
-never placed in the shared shop pool.
-
-```json
-{
-  "id": "H22",
-  "cost": 0,
-  "rarity": 5,
-  "tags": ["aether", "arcanist", "unique"],
-  "is_unique_hero": true
-}
-```
+A shop hero has `is_unique_hero: false` and a positive shop `cost`; a
+reward-only Unique hero has `is_unique_hero: true` and `cost: 0`. `rarity` is
+an integer from 1 through 5, and `tags` is an array of non-empty identifiers.
+The full canonical records are defined in the Hero and Reward-only Unique hero
+sections below.
 
 Every visual profile must reference its sprite, portrait, ability icon, and
 cast VFX keys:
@@ -88,7 +62,7 @@ bộ bundle, validate, sắp theo ID và tạo digest trước khi publish.
 
 ## Quy ước chung
 
-- Public ID là string in hoa: hero `H01`–`H20`, Unique `U01`–`U06`, item thường
+- Public ID là string in hoa: hero `H01`–`H24`, Unique `U01`–`U06`, item thường
   `I01`–`I12`, trait `R_*` hoặc `C_*`, effect `E_*`.
 - Không đổi, tái dùng hoặc suy luận public ID từ tên hiển thị. Localization là
   field riêng.
@@ -107,6 +81,9 @@ bộ bundle, validate, sắp theo ID và tạo digest trước khi publish.
   "species_trait_id": "R_CAT",
   "class_trait_id": "C_GUARDIAN",
   "cost": 1,
+  "rarity": 1,
+  "tags": ["guardian", "frontline"],
+  "is_unique_hero": false,
   "base_stats": {
     "max_hp": 90000,
     "attack_damage": 5000,
@@ -131,8 +108,44 @@ bộ bundle, validate, sắp theo ID và tạo digest trước khi publish.
 ```
 
 `base_stats` phải có đủ 12 stat. `max_hp`, `max_mana`, `attack_range` và
-`move_speed` phải dương; `cost` thuộc `[1,3]`. Star multiplier không áp dụng
+`move_speed` phải dương; `cost` thuộc `[1,3]` cho hero shop, còn Unique có
+`cost: 0`; `rarity` thuộc `[1,5]`. Star multiplier không áp dụng
 cho stat không được liệt kê; compiler tạo stat cuối cùng bằng integer math.
+
+## Reward-only Unique hero
+
+```json
+{
+  "id": "H22",
+  "display_key": "hero.h22.name",
+  "species_trait_id": "R_AETHER",
+  "class_trait_id": "C_ARCANIST",
+  "cost": 0,
+  "rarity": 5,
+  "tags": ["aether", "arcanist", "unique"],
+  "is_unique_hero": true,
+  "base_stats": {
+    "max_hp": 100000,
+    "attack_damage": 6000,
+    "attack_speed": 1000,
+    "armor": 20000,
+    "magic_resist": 20000,
+    "attack_range": 3,
+    "move_speed": 1000,
+    "starting_mana": 0,
+    "max_mana": 100000,
+    "crit_chance": 0,
+    "crit_multiplier": 1500,
+    "skill_power": 0
+  },
+  "star_multipliers": {
+    "two": { "max_hp": 1600, "attack_damage": 1500 },
+    "three": { "max_hp": 2500, "attack_damage": 2300 }
+  },
+  "skill_id": "S_H22",
+  "visual_profile_id": "VP_H22"
+}
+```
 
 ## Skill và effect chain
 
@@ -208,7 +221,7 @@ bao giờ gồm bench, summon hoặc duplicate hero ID.
     "trigger": "on_hp_below",
     "threshold_percent": 500,
     "once_per_combat": true,
-    "effects": [{ "primitive": "stun", "target": "adjacent_enemies", "duration_ticks": 20 }]
+    "effects": [{ "id": "E_U01_STUN", "primitive": "stun", "target": "adjacent_enemies", "duration_ticks": 20 }]
   }],
   "visual_transformation_id": "VT_LION_CROWN",
   "suggested_holder_tags": ["guardian", "fighter", "frontline"]
@@ -226,7 +239,8 @@ không phụ thuộc bắt buộc vào đúng một trait/class.
   "id": "PVE_R4_BOSS",
   "round": 4,
   "kind": "boss",
-  "enemy_roster": [{ "enemy_id": "E_BOSS_01", "star": 1, "position": 1 }],
+  "biome": "frost_keep",
+  "enemy_composition": [{ "hero_id": "H01", "position": 1, "stat_multiplier": 1000 }],
   "rewards": [
     { "kind": "gold", "amount": 5000 },
     { "kind": "hero_choice", "options": 3 },
@@ -262,6 +276,8 @@ Vòng 1–8 phải có một encounter duy nhất. Vòng 4 bắt buộc có mộ
   "id": "VP_H01",
   "sprite_key": "heroes/h01/base",
   "portrait_key": "heroes/h01/portrait",
+  "ability_icon_key": "heroes/h01/ability_icon",
+  "vfx_key": "vfx/heroes/h01/cast",
   "anchors": ["head", "chest", "back", "feet", "weapon"],
   "animations": ["idle", "move", "basic_attack", "hit", "skill_cast", "death"]
 }
@@ -285,7 +301,8 @@ transformation tham chiếu anchor không có; runtime không fallback anchor kh
 
 ## Validation bắt buộc trước publish
 
-1. Đủ đúng 20 hero, 5 species trait, 5 class trait, 12 item thường và 6 Unique.
+1. Đủ đúng 24 hero: 21 hero shop và 3 hero Unique reward-only; 5 species trait,
+   5 class trait, 12 item thường và 6 Unique item.
 2. Hero distribution và mỗi class có đúng 4 hero theo kế hoạch v0.3.
 3. Mọi effect primitive, target, trigger, stat, duration và reference hợp lệ.
 4. Không hero/item/trait ID trùng; public ID đã xóa không được tái sử dụng.

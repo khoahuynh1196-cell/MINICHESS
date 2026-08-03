@@ -116,7 +116,8 @@ export interface RawEncounter extends RawIdentifiedContent {
   readonly affix?: RawEncounterAffix;
 }
 
-export type EncounterBiome = "meadow" | "ruins" | "frost_keep" | "ember_citadel";
+export const ENCOUNTER_BIOMES = ["meadow", "ruins", "frost_keep", "ember_citadel"] as const;
+export type EncounterBiome = (typeof ENCOUNTER_BIOMES)[number];
 
 export interface ContentManifest {
   readonly heroCount: number;

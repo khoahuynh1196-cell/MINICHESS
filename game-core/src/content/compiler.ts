@@ -1,4 +1,5 @@
 import { validateEffectDefinition, type CombatEffect } from "../effects/definitions.js";
+import { ENCOUNTER_BIOMES } from "./types.js";
 import type {
   CompiledContentBundle,
   CompiledCombatTrigger,
@@ -22,7 +23,6 @@ const REQUIRED_STATS = [
 ] as const;
 const REQUIRED_ANCHORS = ["head", "chest", "back", "feet", "weapon"] as const;
 const REQUIRED_ANIMATIONS = ["idle", "move", "basic_attack", "hit", "skill_cast", "death"] as const;
-const VALID_BIOMES = ["meadow", "ruins", "frost_keep", "ember_citadel"] as const;
 const ITEM_MODIFIER_STATS = [
   "max_hp", "attack_damage", "attack_speed", "armor", "magic_resist", "move_speed",
   "starting_mana", "max_mana", "crit_chance", "crit_multiplier", "skill_power",
@@ -263,7 +263,7 @@ function requireEncounter(value: unknown): RawEncounter {
   const raw = encounter as Record<string, unknown>;
   requireSafeInteger(raw.round, `${encounter.id}.round`, 1);
   const biome = requireString(raw.biome, `${encounter.id}.biome`);
-  if (!(VALID_BIOMES as readonly string[]).includes(biome)) throw new Error(`${encounter.id}.biome is invalid`);
+  if (!(ENCOUNTER_BIOMES as readonly string[]).includes(biome)) throw new Error(`${encounter.id}.biome is invalid`);
   requireString(raw.kind, `${encounter.id}.kind`);
   requireArray(raw.rewards, `${encounter.id}.rewards`).forEach((reward) => {
     if (!isRecord(reward)) throw new Error(`${encounter.id}.reward must be an object`);
@@ -372,12 +372,14 @@ function validateAlphaV03Cardinality(input: {
   if (input.version !== "alpha-0.3.0") return;
   const speciesTraits = input.traits.filter((trait) => (trait as Record<string, unknown>).kind === "species").length;
   const classTraits = input.traits.filter((trait) => (trait as Record<string, unknown>).kind === "class").length;
+  const shopHeroes = input.heroes.filter((hero) => !hero.is_unique_hero).length;
+  const uniqueHeroes = input.heroes.filter((hero) => hero.is_unique_hero).length;
   const uniqueRevealCount = input.encounters.flatMap((encounter) => encounter.rewards).filter((reward) => reward.kind === "unique_reveal").length;
   const validRounds = input.encounters.length === 8 && input.encounters.every((encounter) => encounter.round >= 1 && encounter.round <= 8);
   if (
-    input.heroes.length !== 20 || speciesTraits !== 5 || classTraits !== 5 || input.normalItems.length !== 12 ||
+    input.heroes.length !== 24 || shopHeroes !== 21 || uniqueHeroes !== 3 || speciesTraits !== 5 || classTraits !== 5 || input.normalItems.length !== 12 ||
     input.uniqueItems.length !== 6 || input.transformations.length !== 6 || !validRounds || uniqueRevealCount !== 1
-  ) throw new Error("Alpha v0.3 content requires 20 heroes, 5 species traits, 5 class traits, 12 normal items, 6 Unique items, 6 transformations, 8 encounters, and one unique_reveal");
+  ) throw new Error("Alpha v0.3 content requires 24 heroes (21 shop and 3 Unique), 5 species traits, 5 class traits, 12 normal items, 6 Unique items, 6 transformations, 8 encounters, and one unique_reveal");
 }
 
 export function compileContentBundle(raw: unknown): CompiledContentBundle {
