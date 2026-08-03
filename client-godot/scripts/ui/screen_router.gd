@@ -2,14 +2,20 @@ class_name ScreenRouter
 extends CanvasLayer
 
 const SCREEN_IDS := ["lobby", "map", "prepare", "combat", "reward", "recap", "collection", "settings"]
+const LobbyScreenScript = preload("res://scripts/ui/lobby_screen.gd")
+const EncounterMapScreenScript = preload("res://scripts/ui/encounter_map_screen.gd")
+const SettingsScreenScript = preload("res://scripts/ui/settings_screen.gd")
 
 var current_screen_id := ""
 var _screens: Dictionary = {}
+var lobby_screen
+var encounter_map_screen
+var settings_screen
 
 func _init() -> void:
 	layer = 10
 	for screen_id in SCREEN_IDS:
-		var screen := Control.new()
+		var screen: Control = _create_screen(screen_id)
 		screen.name = "%s_screen" % screen_id
 		screen.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 		screen.clip_contents = true
@@ -18,6 +24,20 @@ func _init() -> void:
 		add_child(screen)
 		_screens[screen_id] = screen
 	show_screen("lobby")
+
+func _create_screen(screen_id: String) -> Control:
+	match screen_id:
+		"lobby":
+			lobby_screen = LobbyScreenScript.new()
+			return lobby_screen
+		"map":
+			encounter_map_screen = EncounterMapScreenScript.new()
+			return encounter_map_screen
+		"settings":
+			settings_screen = SettingsScreenScript.new()
+			return settings_screen
+		_:
+			return Control.new()
 
 func show_screen(screen_id: String) -> bool:
 	if not _screens.has(screen_id):

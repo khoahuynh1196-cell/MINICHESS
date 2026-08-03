@@ -569,6 +569,20 @@ func _create_mobile_ui() -> void:
 	audio_feedback.configure(settings)
 	screen_router = ScreenRouterScript.new()
 	add_child(screen_router)
+	screen_router.lobby_screen.start_pve_requested.connect(func() -> void: show_mobile_screen("map"))
+	screen_router.lobby_screen.continue_requested.connect(func() -> void:
+		var cached_view := local_run_store.load_run()
+		request_resume_run(String(cached_view.get("id", "")))
+	)
+	screen_router.lobby_screen.collection_requested.connect(func() -> void: show_mobile_screen("collection"))
+	screen_router.lobby_screen.settings_requested.connect(func() -> void: show_mobile_screen("settings"))
+	screen_router.encounter_map_screen.encounter_selected.connect(_select_encounter)
+	screen_router.encounter_map_screen.back_requested.connect(func() -> void: show_mobile_screen("lobby"))
+	screen_router.settings_screen.settings_changed.connect(_apply_screen_settings)
+	screen_router.settings_screen.language_requested.connect(_toggle_language)
+	screen_router.settings_screen.text_scale_requested.connect(_toggle_text_scale)
+	screen_router.settings_screen.clear_saved_run_requested.connect(_clear_saved_run_from_settings)
+	screen_router.settings_screen.back_requested.connect(func() -> void: show_mobile_screen("lobby"))
 	show_mobile_screen("lobby")
 
 func set_reduced_motion(enabled: bool) -> void:
@@ -580,7 +594,37 @@ func set_reduced_motion(enabled: bool) -> void:
 func show_mobile_screen(screen_id: String) -> void:
 	if screen_router == null or not screen_router.show_screen(screen_id):
 		return
-	_build_mobile_screen(screen_id)
+	match screen_id:
+		"lobby":
+			screen_router.lobby_screen.set_continue_available(not local_run_store.load_run().is_empty())
+		"map":
+			screen_router.encounter_map_screen.set_encounters([], run_state.round if not run_state.run_id.is_empty() else 1)
+		"settings":
+			screen_router.settings_screen.set_settings(settings)
+		_:
+			_build_mobile_screen(screen_id)
+
+func _select_encounter(_round: int) -> void:
+	if run_state.run_id.is_empty():
+		request_new_run()
+	else:
+		show_mobile_screen("prepare")
+
+func _apply_screen_settings(updated_settings: Dictionary) -> void:
+	settings = updated_settings.duplicate(true)
+	for unit in unit_views.values():
+		unit.set_reduced_motion(bool(settings.get("reduced_motion", false)))
+	audio_feedback.configure(settings)
+
+func _toggle_text_scale() -> void:
+	settings["text_scale"] = 1.15 if float(settings.get("text_scale", 1.0)) <= 1.0 else 1.0
+	settings_store.save_settings(settings)
+	show_mobile_screen("settings")
+
+func _clear_saved_run_from_settings() -> void:
+	local_run_store.clear_run()
+	_set_status("Saved run cleared")
+	show_mobile_screen("lobby")
 
 func _refresh_mobile_screen() -> void:
 	if screen_router == null:
@@ -625,14 +669,11 @@ func _build_mobile_screen(screen_id: String) -> void:
 	root.add_child(status)
 	mobile_status_label = status
 	match screen_id:
-		"lobby": _build_lobby_screen(root)
-		"map": _build_map_screen(root)
 		"prepare": _build_prepare_screen(root)
 		"combat": _build_combat_screen(root)
 		"reward": _build_reward_screen(root)
 		"recap": _build_recap_screen(root)
 		"collection": _build_collection_screen(root)
-		"settings": _build_settings_screen(root)
 
 func _screen_title(screen_id: String) -> String:
 	return localization.text("screen.%s" % screen_id)
