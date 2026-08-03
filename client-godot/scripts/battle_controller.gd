@@ -725,6 +725,9 @@ func _create_mobile_ui() -> void:
 	screen_router.settings_screen.text_scale_requested.connect(_toggle_text_scale)
 	screen_router.settings_screen.clear_saved_run_requested.connect(_clear_saved_run_from_settings)
 	screen_router.settings_screen.back_requested.connect(func() -> void: show_mobile_screen("lobby"))
+	screen_router.reward_screen.select_reward.connect(request_select_reward)
+	screen_router.reward_screen.ack_unique.connect(request_ack_unique_reveal)
+	screen_router.collection_screen.back_requested.connect(func() -> void: show_mobile_screen("lobby"))
 	show_mobile_screen("lobby")
 
 func set_reduced_motion(enabled: bool) -> void:
@@ -745,6 +748,10 @@ func show_mobile_screen(screen_id: String) -> void:
 			screen_router.encounter_map_screen.set_encounters([], run_state.round if not run_state.run_id.is_empty() else 1)
 		"settings":
 			screen_router.settings_screen.set_settings(settings)
+		"reward":
+			screen_router.reward_screen.bind_reward(run_state.round_reward_plan, run_state.items, bool(settings.get("reduced_motion", false)))
+		"collection":
+			screen_router.collection_screen.bind_collection()
 		_:
 			_build_mobile_screen(screen_id)
 
@@ -1045,6 +1052,8 @@ func _build_collection_screen(root: Control) -> void:
 	panel.add_child(_mobile_button("Back", func() -> void: show_mobile_screen("lobby"), ThemeTokensScript.GOLD))
 
 func collection_hero_ids() -> Array[String]:
+	if screen_router != null and screen_router.collection_screen != null:
+		return screen_router.collection_screen.visible_hero_ids()
 	var ids: Array[String] = []
 	for hero_id in HeroVisualCatalogScript.hero_ids():
 		var profile: Dictionary = HeroVisualCatalogScript.profile(hero_id)
@@ -1058,6 +1067,8 @@ func collection_hero_ids() -> Array[String]:
 func set_collection_filters(species: String, role: String) -> void:
 	_collection_species_filter = species if species in ["all", "cat", "dog", "rabbit", "cow", "exotic"] else "all"
 	_collection_role_filter = role if role in ["all", "guardian", "fighter", "ranger", "mage", "support"] else "all"
+	if screen_router != null and screen_router.collection_screen != null:
+		screen_router.collection_screen.set_filters(_collection_species_filter, _collection_role_filter)
 	if screen_router != null and screen_router.current_screen_id == "collection":
 		show_mobile_screen("collection")
 

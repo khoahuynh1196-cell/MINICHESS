@@ -27,6 +27,27 @@ func _init() -> void:
 	_expect(ThemeTokensScript.font_size("title") > ThemeTokensScript.font_size("body"), "theme tokens must provide a semantic type scale")
 	_expect(ThemeTokensScript.motion_duration(0.2, true) == 0.0, "reduced motion must suppress transition duration")
 	var controller = BattleControllerScript.new()
+	controller._create_mobile_ui()
+	controller.apply_run_view({
+		"id": "run-router-reward", "state": "REWARD", "round": 4, "revision": 7,
+		"gold": 8, "health": 30, "shop": [], "bench": [], "board": [],
+		"items": [{ "instanceId": "unique:router:U01", "itemId": "U01", "kind": "unique" }],
+		"roundRewardPlan": { "round": 4, "offers": [
+			{ "id": "reward:4:hero_choice:1", "kind": "hero_choice", "options": [{ "id": "H02", "kind": "hero" }] },
+			{ "id": "reward:4:normal_item_choice:0", "kind": "normal_item_choice", "options": [{ "id": "I01", "kind": "normal_item" }] },
+		] },
+	})
+	var reward_root: Control = controller.screen_router.screen_root("reward")
+	_expect(reward_root.has_signal("select_reward") and reward_root.has_signal("ack_unique"), "router must host the dedicated reward screen rather than a generic control")
+	var reward_commands: Array = []
+	controller.command_requested.connect(func(payload: Dictionary) -> void: reward_commands.append(payload))
+	reward_root.choose_server_option("reward:4:hero_choice:1", "H02")
+	_expect(reward_commands.is_empty(), "the reward bridge must not claim until every server offer has a selection")
+	reward_root.choose_server_option("reward:4:normal_item_choice:0", "I01")
+	_expect(reward_commands == [{ "command_id": "client-reward-7", "expected_run_revision": 7, "type": "CLAIM_ROUND_REWARD", "reward_selections": [{ "offer_id": "reward:4:hero_choice:1", "option_id": "H02" }, { "offer_id": "reward:4:normal_item_choice:0", "option_id": "I01" }] }], "reward UI selection must bridge each item and hero choice to one authoritative claim without mutating the local run")
+	controller.show_mobile_screen("collection")
+	var collection_root: Control = controller.screen_router.screen_root("collection")
+	_expect(collection_root.has_method("visible_hero_ids") and collection_root.visible_hero_ids().size() == 20, "router must host the dedicated 20-card collection screen")
 	var unit = UnitViewScript.new()
 	controller.unit_views["test-unit"] = unit
 	controller.set_reduced_motion(true)
