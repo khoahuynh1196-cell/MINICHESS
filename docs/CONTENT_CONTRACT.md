@@ -62,7 +62,7 @@ bộ bundle, validate, sắp theo ID và tạo digest trước khi publish.
 
 ## Quy ước chung
 
-- Public ID là string in hoa: hero `H01`–`H24`, Unique `U01`–`U06`, item thường
+- Public ID là string in hoa: hero `H01`–`H24`, Unique `U01`–`U03`, item thường
   `I01`–`I12`, trait `R_*` hoặc `C_*`, effect `E_*`.
 - Không đổi, tái dùng hoặc suy luận public ID từ tên hiển thị. Localization là
   field riêng.
@@ -301,8 +301,8 @@ transformation tham chiếu anchor không có; runtime không fallback anchor kh
 
 ## Validation bắt buộc trước publish
 
-1. Đủ đúng 24 hero: 21 hero shop và 3 hero Unique reward-only; 5 species trait,
-   5 class trait, 12 item thường và 6 Unique item.
+1. Đủ đúng 24 hero: 21 hero shop và 3 hero Unique reward-only; 6 faction/species
+   trait, 6 class trait, 12 item thường, 3 Unique item và 3 transformation.
 2. Hero distribution và mỗi class có đúng 4 hero theo kế hoạch v0.3.
 3. Mọi effect primitive, target, trigger, stat, duration và reference hợp lệ.
 4. Không hero/item/trait ID trùng; public ID đã xóa không được tái sử dụng.
