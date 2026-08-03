@@ -24,6 +24,9 @@ const BOARD_ROWS := 8
 const CELL_WIDTH := 340.0
 const CELL_HEIGHT := 130.0
 const BOARD_RECT := Rect2(0.0, 0.0, CELL_WIDTH * BOARD_COLUMNS, CELL_HEIGHT * BOARD_ROWS)
+const COMBAT_NOTICE_BODY_FONT_SIZE := 20.0
+const COMBAT_NOTICE_BODY_LINES := 4.0
+const COMBAT_NOTICE_VERTICAL_PADDING := 44.0
 const CONTENT_VERSION := "alpha-0.3.0"
 const MOBILE_CONTROLS_RECT := Rect2(24.0, 1110.0, 1032.0, 760.0)
 
@@ -914,8 +917,11 @@ func _build_combat_screen(root: Control) -> void:
 func combat_layout() -> Dictionary:
 	var margin := 24.0
 	var controls := Rect2(margin, BOARD_RECT.end.y + margin, 1080.0 - margin * 2.0, 220.0)
-	var message := Rect2(margin, controls.end.y + 20.0, 1080.0 - margin * 2.0, 520.0)
+	var message := Rect2(margin, controls.end.y + 20.0, 1080.0 - margin * 2.0, combat_notice_height())
 	return { "controls": controls, "message": message }
+
+func combat_notice_height() -> float:
+	return float(ThemeTokensScript.font_size("section")) + COMBAT_NOTICE_BODY_FONT_SIZE * COMBAT_NOTICE_BODY_LINES + ThemeTokensScript.TOUCH_GAP * 3.0 + COMBAT_NOTICE_VERTICAL_PADDING
 
 func _build_reward_screen(root: Control) -> void:
 	var panel := _screen_panel(root, Rect2(40.0, 165.0, 1000.0, 1420.0), "Choose every offer before claiming")

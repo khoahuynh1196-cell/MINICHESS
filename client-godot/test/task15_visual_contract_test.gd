@@ -61,7 +61,13 @@ func _init() -> void:
 		var message_rect: Rect2 = layout.get("message", Rect2())
 		_expect(controls_rect.position.y <= 1064.0, "the replay control rail must begin directly after the 3x8 board")
 		_expect(message_rect.position.y <= controls_rect.end.y + 24.0, "the board message must follow the replay control rail without a giant gap")
-		_expect(message_rect.end.y <= 1896.0 and message_rect.size.y >= 380.0, "combat controls and board message must use the portrait capture viewport")
+		_expect(message_rect.end.y <= 1896.0 and message_rect.size.y > 0.0, "combat controls and board message must use the portrait capture viewport")
+		_expect(controller.has_method("combat_notice_height"), "combat notice height must be derived from its readable content")
+		if controller.has_method("combat_notice_height"):
+			_expect(is_equal_approx(message_rect.size.y, float(controller.call("combat_notice_height"))), "combat notice layout must use the content-driven height")
+			_expect(message_rect.size.y >= 160.0 and message_rect.size.y <= 220.0, "combat notice must stay compact while retaining readable portrait copy")
+			var notice_panel := combat_screen.get_node_or_null("CombatBoardMessage") as PanelContainer
+			_expect(notice_panel != null and is_equal_approx(notice_panel.size.y, message_rect.size.y), "combat notice panel must retain the compact readable layout at runtime")
 	var status_unit = UnitViewScript.new()
 	status_unit.configure("player", 12, 100000, manifest.call("hero_profile", "H01"))
 	controller.unit_views["status-target"] = status_unit
