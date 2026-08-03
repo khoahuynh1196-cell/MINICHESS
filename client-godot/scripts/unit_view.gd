@@ -17,7 +17,7 @@ var hero_id := ""
 var visual_profile: Dictionary = {}
 var unique_item_id := ""
 var mana := 0
-var max_mana := 100
+var max_mana := 100000
 var status := ""
 var _animation_elapsed := 0.0
 var reduced_motion := false
@@ -104,7 +104,7 @@ func set_hp(next_hp: int) -> void:
 		present("death")
 	queue_redraw()
 
-func set_mana(next_mana: int, next_max_mana: int = 100) -> void:
+func set_mana(next_mana: int, next_max_mana: int = 100000) -> void:
 	max_mana = max(1, next_max_mana)
 	mana = clampi(next_mana, 0, max_mana)
 	queue_redraw()

@@ -23,6 +23,7 @@ const BOARD_COLUMNS := 3
 const BOARD_ROWS := 8
 const CELL_WIDTH := 340.0
 const CELL_HEIGHT := 130.0
+const BOARD_RECT := Rect2(0.0, 0.0, CELL_WIDTH * BOARD_COLUMNS, CELL_HEIGHT * BOARD_ROWS)
 const CONTENT_VERSION := "alpha-0.3.0"
 const MOBILE_CONTROLS_RECT := Rect2(24.0, 1110.0, 1032.0, 760.0)
 
@@ -128,6 +129,8 @@ func apply_event(event) -> void:
 			_update_unit_hp(event, "hit")
 		"HEAL_APPLIED":
 			_update_unit_hp(event, "skill")
+		"MANA_CHANGED":
+			_update_unit_mana(event)
 		"EFFECT_APPLIED", "SHIELD_APPLIED", "STAT_MODIFIER_APPLIED":
 			_present_target(event, "skill")
 		"CLEANSE_APPLIED":
@@ -507,6 +510,12 @@ func _update_unit_hp(event, animation_state: String) -> void:
 		if unit.hp > 0:
 			unit.present(animation_state)
 
+func _update_unit_mana(event) -> void:
+	var unit = _targeted_unit(event)
+	if unit != null and event.payload.has("mana"):
+		var max_mana := int(event.payload.get("max_mana", event.payload.get("maxMana", unit.max_mana)))
+		unit.set_mana(int(event.payload["mana"]), max_mana)
+
 func _mark_unit_defeated(event) -> void:
 	var unit = _targeted_unit(event)
 	if unit != null:
@@ -572,10 +581,17 @@ func _show_biome_layer(biome_id: String) -> void:
 	if layer == null:
 		layer = Sprite2D.new()
 		layer.name = "BiomeLayer"
-		layer.position = Vector2(540.0, 540.0)
-		layer.z_index = -10
+		layer.position = BOARD_RECT.get_center()
+		layer.z_index = -1
 		add_child(layer)
 	layer.texture = texture
+	layer.scale = Vector2(BOARD_RECT.size.x / texture.get_size().x, BOARD_RECT.size.y / texture.get_size().y)
+
+func board_tile_fill_color() -> Color:
+	return Color(0.12, 0.16, 0.22, 0.56)
+
+func board_base_color() -> Color:
+	return Color(0.04, 0.07, 0.12, 0.22)
 
 func _ensure_manifest_hud_item_icon() -> void:
 	var icon := get_node_or_null("ManifestHudItemIcon") as Sprite2D
@@ -726,6 +742,13 @@ func _build_mobile_screen(screen_id: String) -> void:
 		background.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 		background.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		root.add_child(background)
+	else:
+		var combat_backdrop := ColorRect.new()
+		combat_backdrop.name = "CombatBackdrop"
+		combat_backdrop.color = Color("#0b13268c")
+		combat_backdrop.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		combat_backdrop.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		root.add_child(combat_backdrop)
 	var title := Label.new()
 	title.position = Vector2(40.0, 38.0)
 	title.size = Vector2(1000.0, 58.0)
@@ -860,9 +883,11 @@ func _place_hero_on_first_open_tile(hero_instance_id: String) -> void:
 		request_move_bench_hero(hero_instance_id, destination)
 
 func _build_combat_screen(root: Control) -> void:
-	var panel := _screen_panel(root, Rect2(40.0, 165.0, 1000.0, 290.0), "Authoritative combat replay")
+	var layout := combat_layout()
+	var panel := _screen_panel(root, Rect2(layout.controls), "Authoritative combat replay")
+	panel.get_parent().name = "CombatReplayControls"
 	var detail := Label.new()
-	detail.text = "Combat results come from the server. Pause and speed only affect this client presentation."
+	detail.text = "Resolved server replay. Pause and speed only change this local presentation."
 	detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	detail.add_theme_font_size_override("font_size", 22)
 	panel.add_child(detail)
@@ -872,12 +897,25 @@ func _build_combat_screen(root: Control) -> void:
 	controls.add_child(_mobile_button("1x", func() -> void: set_playback_speed(1.0), ThemeTokensScript.STONE_RAISED))
 	controls.add_child(_mobile_button("2x", func() -> void: set_playback_speed(2.0), ThemeTokensScript.STONE_RAISED))
 	panel.add_child(controls)
-	var notice := _screen_panel(root, Rect2(40.0, 1430.0, 1000.0, 210.0), "Battle board")
+	var notice := _screen_panel(root, Rect2(layout.message), "Battle board")
+	notice.get_parent().name = "CombatBoardMessage"
 	var label := Label.new()
-	label.text = "Hero health, animations and combat VFX are displayed directly on the board above this panel."
+	label.text = "Live board above: hero and monster cutouts, side outlines, health/mana bars, status labels, and replay VFX."
 	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	label.add_theme_font_size_override("font_size", 20)
 	notice.add_child(label)
+	var provenance := Label.new()
+	provenance.text = "Positions and outcomes stay server-authoritative; controls never change combat simulation."
+	provenance.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	provenance.add_theme_font_size_override("font_size", 20)
+	provenance.add_theme_color_override("font_color", ThemeTokensScript.MUTED)
+	notice.add_child(provenance)
+
+func combat_layout() -> Dictionary:
+	var margin := 24.0
+	var controls := Rect2(margin, BOARD_RECT.end.y + margin, 1080.0 - margin * 2.0, 220.0)
+	var message := Rect2(margin, controls.end.y + 20.0, 1080.0 - margin * 2.0, 520.0)
+	return { "controls": controls, "message": message }
 
 func _build_reward_screen(root: Control) -> void:
 	var panel := _screen_panel(root, Rect2(40.0, 165.0, 1000.0, 1420.0), "Choose every offer before claiming")
@@ -1172,10 +1210,10 @@ func _slots_text(slots: Array, key: String) -> String:
 	return ", ".join(labels)
 
 func _draw() -> void:
-	draw_rect(Rect2(Vector2.ZERO, Vector2(CELL_WIDTH * BOARD_COLUMNS, CELL_HEIGHT * BOARD_ROWS)), Color("#111827"), true)
+	draw_rect(BOARD_RECT, board_base_color(), true)
 	for row in BOARD_ROWS:
 		for column in BOARD_COLUMNS:
 			var cell := Rect2(column * CELL_WIDTH, row * CELL_HEIGHT, CELL_WIDTH, CELL_HEIGHT)
-			draw_rect(cell.grow(-6.0), Color("#1f2937"), true)
+			draw_rect(cell.grow(-6.0), board_tile_fill_color(), true)
 			draw_rect(cell.grow(-6.0), Color("#334155"), false, 2.0)
 	draw_string(ThemeDB.fallback_font, Vector2(24.0, 176.0), "AUTO BATTLER ALPHA  •  REPLAY BOARD", HORIZONTAL_ALIGNMENT_LEFT, -1, 22, Color("#93c5fd"))

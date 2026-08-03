@@ -41,11 +41,27 @@ func _init() -> void:
 		controller.call("_show_biome_layer", biome_id)
 		var layer := controller.get_node_or_null("BiomeLayer") as Sprite2D
 		_expect(layer != null and layer.texture != null, "%s must select a data-driven board layer" % biome_id)
+		if layer != null and layer.texture != null:
+			_expect(layer.z_index == -1, "%s biome art must render immediately behind the readable board grid" % biome_id)
+			_expect(layer.position.is_equal_approx(Vector2(510.0, 520.0)), "%s biome art must be centered in the 3x8 board" % biome_id)
+			_expect(layer.scale.is_equal_approx(Vector2(1020.0 / layer.texture.get_size().x, 1040.0 / layer.texture.get_size().y)), "%s biome art must be scaled to cover the 3x8 board" % biome_id)
+	_expect(controller.has_method("board_tile_fill_color") and controller.call("board_tile_fill_color").a < 1.0, "the readable board tile overlay must remain translucent over the biome art")
+	_expect(controller.has_method("board_base_color") and controller.call("board_base_color").a < 1.0, "the board base must not cover the data-driven biome art")
 	controller.call("_create_mobile_ui")
 	controller.show_mobile_screen("combat")
 	var combat_screen: Control = controller.screen_router.screen_root("combat")
 	var opaque_backgrounds := combat_screen.get_children().filter(func(child): return child is ColorRect and child.color.a >= 1.0)
 	_expect(opaque_backgrounds.is_empty(), "combat UI must leave the runtime board visible behind its panels")
+	var combat_backdrop := combat_screen.get_node_or_null("CombatBackdrop") as ColorRect
+	_expect(combat_backdrop != null and combat_backdrop.color.a <= 0.6, "combat backdrop must preserve readable biome art rather than dim it behind an opaque veil")
+	_expect(controller.has_method("combat_layout"), "combat must expose a responsive portrait composition")
+	if controller.has_method("combat_layout"):
+		var layout: Dictionary = controller.call("combat_layout")
+		var controls_rect: Rect2 = layout.get("controls", Rect2())
+		var message_rect: Rect2 = layout.get("message", Rect2())
+		_expect(controls_rect.position.y <= 1064.0, "the replay control rail must begin directly after the 3x8 board")
+		_expect(message_rect.position.y <= controls_rect.end.y + 24.0, "the board message must follow the replay control rail without a giant gap")
+		_expect(message_rect.end.y <= 1896.0 and message_rect.size.y >= 380.0, "combat controls and board message must use the portrait capture viewport")
 	var status_unit = UnitViewScript.new()
 	status_unit.configure("player", 12, 100000, manifest.call("hero_profile", "H01"))
 	controller.unit_views["status-target"] = status_unit
@@ -53,6 +69,8 @@ func _init() -> void:
 	_expect(status_unit.status == "stunned", "status events must feed the UnitView status indicator")
 	controller.apply_event(CombatEventScript.from_dictionary({ "sequence": 2, "tick": 2, "type": "CLEANSE_APPLIED", "target_unit_id": "status-target", "payload": {} }))
 	_expect(status_unit.status.is_empty(), "cleanse events must clear the UnitView status indicator")
+	controller.apply_event(CombatEventScript.from_dictionary({ "sequence": 3, "tick": 3, "type": "MANA_CHANGED", "source_unit_id": "status-target", "payload": { "mana": 45000, "reason": "basic_attack" } }))
+	_expect(status_unit.mana == 45000 and status_unit.max_mana == 100000, "an authoritative MANA_CHANGED event must update the unit mana bar state")
 	status_unit.free()
 	controller.free()
 	if _failed:
