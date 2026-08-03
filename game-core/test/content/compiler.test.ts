@@ -58,7 +58,7 @@ const baseBundle = {
 type Compiler = { compileContentBundle: (raw: unknown) => {
   contentHash: string;
   normalItems: readonly unknown[];
-  manifest: { heroCount: number; shopHeroCount: number; uniqueHeroCount: number };
+  manifest: { heroCount: number; shopHeroCount: number; uniqueHeroCount: number; traitCount: number };
 } };
 
 async function loadCompiler(): Promise<Compiler | undefined> {
@@ -69,13 +69,15 @@ function createFullDemoAlphaBundle() {
   const heroes = Array.from({ length: 24 }, (_, index) => ({
     ...baseBundle.heroes[0]!,
     id: `H${String(index + 1).padStart(2, "0")}`,
+    species_trait_id: index % 6 === 0 ? "R_CAT" : `R_${index % 6}`,
+    class_trait_id: index % 6 === 0 ? "C_GUARDIAN" : `C_${index % 6}`,
     cost: index < 21 ? 1 : 0,
     is_unique_hero: index >= 21,
   }));
   const traits = [
     ...baseBundle.traits,
-    ...Array.from({ length: 4 }, (_, index) => ({ id: `R_${index + 1}`, kind: "species", breakpoints: [{ count: 1, effects: [] }] })),
-    ...Array.from({ length: 4 }, (_, index) => ({ id: `C_${index + 1}`, kind: "class", breakpoints: [{ count: 1, effects: [] }] })),
+    ...Array.from({ length: 5 }, (_, index) => ({ id: `R_${index + 1}`, kind: "species", breakpoints: [{ count: 1, effects: [] }] })),
+    ...Array.from({ length: 5 }, (_, index) => ({ id: `C_${index + 1}`, kind: "class", breakpoints: [{ count: 1, effects: [] }] })),
   ];
   const transformations = Array.from({ length: 6 }, (_, index) => ({ id: `VT_${index + 1}` }));
 
@@ -100,14 +102,14 @@ function createFullDemoAlphaBundle() {
 }
 
 describe("content compiler", () => {
-  it("accepts the Alpha full-demo roster and reports 21 shop heroes with 3 Unique heroes", async () => {
+  it("accepts the Alpha full-demo roster with six faction and six class traits", async () => {
     const compiler = await loadCompiler();
     expect(compiler).toBeDefined();
     if (compiler === undefined) return;
 
     const compiled = compiler.compileContentBundle(createFullDemoAlphaBundle());
 
-    expect(compiled.manifest).toMatchObject({ heroCount: 24, shopHeroCount: 21, uniqueHeroCount: 3 });
+    expect(compiled.manifest).toMatchObject({ heroCount: 24, shopHeroCount: 21, uniqueHeroCount: 3, traitCount: 12 });
   });
 
   it("rejects a hero with a rarity outside the five shop tiers", async () => {
