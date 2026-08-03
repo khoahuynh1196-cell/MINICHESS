@@ -6,6 +6,11 @@ var _failed := false
 
 func _init() -> void:
 	var main_scene = load("res://scenes/main.tscn").instantiate()
+	var controls_rect: Rect2 = main_scene.mobile_controls_rect()
+	if not _expect(controls_rect.position.y >= 0.0 and controls_rect.end.y <= 1920.0, "mobile controls must remain inside the portrait viewport"):
+		main_scene.free()
+		_finish()
+		return
 	if not main_scene.has_method("load_replay") or not main_scene.has_method("advance_replay"):
 		main_scene.free()
 		_fail("Main scene must expose normal replay controls")

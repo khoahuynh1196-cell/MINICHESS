@@ -1,7 +1,7 @@
 extends Node2D
 
-const CELL_WIDTH := 280.0
-const CELL_HEIGHT := 190.0
+const CELL_WIDTH := 340.0
+const CELL_HEIGHT := 130.0
 const HERO_PORTRAITS := {
 	"H01": preload("res://assets/sprites/h01-cotton-shield-cat-chibi-v2.png"),
 	"H02": preload("res://assets/sprites/h02-ember-duelist-cat-chibi-v2.png"),

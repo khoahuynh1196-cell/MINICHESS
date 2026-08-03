@@ -8,9 +8,10 @@ const RunStateScript = preload("res://scripts/run_state.gd")
 const RunApiClientScript = preload("res://scripts/run_api_client.gd")
 const BOARD_COLUMNS := 3
 const BOARD_ROWS := 8
-const CELL_WIDTH := 280.0
-const CELL_HEIGHT := 190.0
+const CELL_WIDTH := 340.0
+const CELL_HEIGHT := 130.0
 const CONTENT_VERSION := "alpha-0.3.0"
+const MOBILE_CONTROLS_RECT := Rect2(24.0, 1110.0, 1032.0, 760.0)
 
 var unit_views: Dictionary = {}
 var status_text := "Waiting for replay"
@@ -346,16 +347,42 @@ func _set_status(next_status: String) -> void:
 
 func _create_controls() -> void:
 	var layer := CanvasLayer.new()
-	var controls := VBoxContainer.new()
-	controls.position = Vector2(16.0, 1060.0)
-	controls.size = Vector2(1048.0, 820.0)
-	layer.add_child(controls)
+	var header_background := ColorRect.new()
+	header_background.color = Color("#101827e8")
+	header_background.position = Vector2(16.0, 16.0)
+	header_background.size = Vector2(1048.0, 118.0)
+	header_background.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	layer.add_child(header_background)
+	var header := VBoxContainer.new()
+	header.position = Vector2(32.0, 26.0)
+	header.size = Vector2(1016.0, 96.0)
+	header.add_theme_constant_override("separation", 4)
+	layer.add_child(header)
 
 	status_label = Label.new()
 	status_label.text = status_text
-	controls.add_child(status_label)
+	status_label.add_theme_font_size_override("font_size", 30)
+	header.add_child(status_label)
 	run_label = Label.new()
-	controls.add_child(run_label)
+	run_label.add_theme_font_size_override("font_size", 24)
+	header.add_child(run_label)
+
+	var panel_background := ColorRect.new()
+	panel_background.color = Color("#172033f2")
+	panel_background.position = MOBILE_CONTROLS_RECT.position
+	panel_background.size = MOBILE_CONTROLS_RECT.size
+	panel_background.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	layer.add_child(panel_background)
+	var scroll := ScrollContainer.new()
+	scroll.position = MOBILE_CONTROLS_RECT.position + Vector2(16.0, 16.0)
+	scroll.size = MOBILE_CONTROLS_RECT.size - Vector2(32.0, 32.0)
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	layer.add_child(scroll)
+	var controls := VBoxContainer.new()
+	controls.custom_minimum_size = Vector2(968.0, 1040.0)
+	controls.add_theme_constant_override("separation", 14)
+	scroll.add_child(controls)
+
 	shop_label = Label.new()
 	shop_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	controls.add_child(shop_label)
@@ -399,8 +426,12 @@ func _create_controls() -> void:
 func _button(label: String, action: Callable) -> Button:
 	var button := Button.new()
 	button.text = label
+	button.add_theme_font_size_override("font_size", 24)
 	button.pressed.connect(action)
 	return button
+
+func mobile_controls_rect() -> Rect2:
+	return MOBILE_CONTROLS_RECT
 
 func _refresh_run_ui() -> void:
 	if run_label == null:
@@ -556,4 +587,4 @@ func _draw() -> void:
 			var cell := Rect2(column * CELL_WIDTH, row * CELL_HEIGHT, CELL_WIDTH, CELL_HEIGHT)
 			draw_rect(cell.grow(-6.0), Color("#1f2937"), true)
 			draw_rect(cell.grow(-6.0), Color("#334155"), false, 2.0)
-	draw_string(ThemeDB.fallback_font, Vector2(24.0, 42.0), status_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 24, Color.WHITE)
+	draw_string(ThemeDB.fallback_font, Vector2(24.0, 176.0), "AUTO BATTLER ALPHA  •  REPLAY BOARD", HORIZONTAL_ALIGNMENT_LEFT, -1, 22, Color("#93c5fd"))

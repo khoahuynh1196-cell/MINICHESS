@@ -27,7 +27,7 @@
 - Consumes: `BattleController._create_controls() -> void` and the current `Label`, `Button`, `HBoxContainer`, and `VBoxContainer` fields.
 - Produces: `BattleController.mobile_controls_rect() -> Rect2`, used by the scene smoke test to assert the visible panel bounds.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Add the assertion after `main_scene` instantiation in `main_scene_smoke_test.gd`:
 
@@ -39,13 +39,13 @@ if not _expect(controls_rect.position.y >= 0.0 and controls_rect.end.y <= 1920.0
 	return
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `& '<godot-console>' --headless --path 'D:\CODE\client-godot' --script 'res://test/main_scene_smoke_test.gd'`
 
 Expected: FAIL because `mobile_controls_rect` does not exist.
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 In `battle_controller.gd`, create a visible `CanvasLayer` with a top header and replace the fixed `VBoxContainer` at `Vector2(16.0, 1060.0)` with a `ScrollContainer` positioned inside the lower visible viewport. Return its fixed panel bounds from:
 
@@ -56,15 +56,15 @@ func mobile_controls_rect() -> Rect2:
 
 Lay out controls at `Vector2(24.0, 1180.0)` inside the scroll panel and size it to `Vector2(1032.0, 700.0)`; add header labels at `Vector2(24.0, 24.0)` and `Vector2(24.0, 74.0)` so status and run state are visible.
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run the same headless scene smoke test. Expected: `PASS main_scene_smoke_test`.
 
-- [ ] **Step 5: Run all Godot regression tests**
+- [x] **Step 5: Run all Godot regression tests**
 
 Run every existing script under `client-godot/test/` with the Godot console binary. Expected: all seven test scripts exit with code 0.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 Run: `git add client-godot/scripts/battle_controller.gd client-godot/test/main_scene_smoke_test.gd`
 
