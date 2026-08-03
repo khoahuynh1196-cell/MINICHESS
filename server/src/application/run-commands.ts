@@ -40,6 +40,8 @@ export interface RunRecord {
   readonly board?: readonly (HeroInstance | null)[];
   readonly lockedSnapshot?: LockedRoundSnapshot;
   readonly combatRecord?: CombatRecord;
+	/** Immutable, server-derived presentation summary for a resolved terminal combat. */
+	readonly recap?: RunRecap;
   /** The completed combat round whose base reward was already applied. */
   readonly rewardClaimedRound?: number;
   /** Server-derived rewards for the current resolved round. */
@@ -56,6 +58,15 @@ export interface CombatRecord {
   readonly finalTick: number;
   readonly reason: "elimination" | "timeout";
   readonly events: readonly CombatEvent[];
+}
+
+export interface RunRecap {
+	readonly winner: "player" | "enemy";
+	readonly round: number;
+	readonly mvp: string;
+	readonly damageByHero: Readonly<Record<string, number>>;
+	readonly healByHero: Readonly<Record<string, number>>;
+	readonly activeTraits: readonly string[];
 }
 
 export interface HeroInstance {

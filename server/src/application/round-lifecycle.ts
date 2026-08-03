@@ -1,5 +1,5 @@
-import type { CombatResult, CompiledContentBundle } from "@auto-battler/game-core";
-import type { CombatRecord, HeroInstance, ItemInstance, RunRecord } from "./run-commands.js";
+import type { CombatEvent, CombatResult, CompiledContentBundle } from "@auto-battler/game-core";
+import type { CombatRecord, HeroInstance, ItemInstance, RunRecap, RunRecord } from "./run-commands.js";
 import { buildRoundRewardPlan, type RewardSelection } from "./reward-selection.js";
 import { cloneShopPool, reserveHeroFromShopPool } from "./shop-pool.js";
 
@@ -37,10 +37,61 @@ export function recordResolvedCombat(run: RunRecord, result: CombatResult): RunR
 
 /** Binds immutable, seed-derived content rewards to the completed round. */
 export function attachContentRoundRewards(run: RunRecord, content: CompiledContentBundle): RunRecord {
-  if (run.state !== "REWARD" || run.combatRecord === undefined || run.runSeed === undefined) return run;
-  if (run.roundRewardPlan?.round === run.combatRecord.round) return run;
-  const roundRewardPlan = buildRoundRewardPlan({ runSeed: run.runSeed, round: run.combatRecord.round, content });
-  return Object.freeze({ ...run, roundRewardPlan });
+	if ((run.state !== "REWARD" && run.state !== "COMPLETE") || run.combatRecord === undefined) return run;
+	const recap = run.lockedSnapshot === undefined ? run.recap : buildAuthoritativeRecap(run.lockedSnapshot.board, run.combatRecord, content);
+	if (run.state !== "REWARD" || run.runSeed === undefined) return recap === undefined ? run : Object.freeze({ ...run, recap });
+	if (run.roundRewardPlan?.round === run.combatRecord.round) return recap === undefined ? run : Object.freeze({ ...run, recap });
+	const roundRewardPlan = buildRoundRewardPlan({ runSeed: run.runSeed, round: run.combatRecord.round, content });
+	return Object.freeze({ ...run, ...(recap === undefined ? {} : { recap }), roundRewardPlan });
+}
+
+function buildAuthoritativeRecap(board: readonly (HeroInstance | null)[], combatRecord: CombatRecord, content: CompiledContentBundle): RunRecap {
+	const heroByCombatUnitId = new Map<string, string>();
+	const distinctHeroIdsByTrait = new Map<string, Set<string>>();
+	for (const instance of board) {
+		if (instance === null) continue;
+		heroByCombatUnitId.set(`player:${instance.instanceId}`, instance.heroId);
+		const hero = content.heroesById.get(instance.heroId);
+		if (hero === undefined) continue;
+		for (const traitId of [hero.species_trait_id, hero.class_trait_id]) {
+			const heroes = distinctHeroIdsByTrait.get(traitId) ?? new Set<string>();
+			heroes.add(hero.id);
+			distinctHeroIdsByTrait.set(traitId, heroes);
+		}
+	}
+	const damageByHero: Record<string, number> = {};
+	const healByHero: Record<string, number> = {};
+	for (const event of combatRecord.events) {
+		const heroId = event.sourceUnitId === undefined ? undefined : heroByCombatUnitId.get(event.sourceUnitId);
+		if (heroId === undefined) continue;
+		const amount = eventAmount(event);
+		if (event.type === "DAMAGE_APPLIED") damageByHero[heroId] = (damageByHero[heroId] ?? 0) + amount;
+		if (event.type === "HEAL_APPLIED") healByHero[heroId] = (healByHero[heroId] ?? 0) + amount;
+	}
+	const heroIds = [...new Set(heroByCombatUnitId.values())].sort();
+	const mvp = heroIds.sort((left, right) => (damageByHero[right] ?? 0) - (damageByHero[left] ?? 0)
+		|| (healByHero[right] ?? 0) - (healByHero[left] ?? 0) || left.localeCompare(right))[0] ?? "";
+	const activeTraits = [...distinctHeroIdsByTrait.entries()]
+		.flatMap(([traitId, heroIdsForTrait]) => {
+			const breakpoints = content.traitsById.get(traitId)?.breakpoints;
+			const active = Array.isArray(breakpoints) && breakpoints.some((breakpoint) => typeof breakpoint === "object" && breakpoint !== null
+				&& typeof (breakpoint as Record<string, unknown>).count === "number" && (breakpoint as Record<string, unknown>).count as number <= heroIdsForTrait.size);
+			return active ? [`${traitId} ${heroIdsForTrait.size}`] : [];
+		})
+		.sort();
+	return Object.freeze({
+		winner: combatRecord.winner,
+		round: combatRecord.round,
+		mvp,
+		damageByHero: Object.freeze({ ...damageByHero }),
+		healByHero: Object.freeze({ ...healByHero }),
+		activeTraits: Object.freeze(activeTraits),
+	});
+}
+
+function eventAmount(event: CombatEvent): number {
+	const amount = event.payload.amount;
+	return typeof amount === "number" && Number.isSafeInteger(amount) && amount >= 0 ? amount : 0;
 }
 
 /**

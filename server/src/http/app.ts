@@ -1,12 +1,12 @@
 import Fastify from "fastify";
 import { randomUUID } from "node:crypto";
 import type { CompiledContentBundle } from "@auto-battler/game-core";
-import { applyRunCommand, createInMemoryRunRepository, createRun, progressionForRun, type RunRecord, type RunRepository, type ShopGenerator } from "../application/run-commands.js";
+import { applyRunCommand, createInMemoryRunRepository, createRun, progressionForRun, type RunRecord, type RunRecap, type RunRepository, type ShopGenerator } from "../application/run-commands.js";
 import { shopOddsForLevel, type ShopTierOdds } from "../application/shop-pool.js";
 import type { RewardSelection } from "../application/reward-selection.js";
 import { resolveRunCombat } from "../application/resolve-run-combat.js";
 
-type PublicRunView = Pick<RunRecord, "id" | "contentVersion" | "state" | "round" | "revision" | "gold" | "health" | "shop" | "shopLocked" | "bench" | "board" | "items" | "freeRefreshes" | "roundRewardPlan" | "rewardHeroes"> & ReturnType<typeof progressionForRun> & { readonly shopOdds: ShopTierOdds };
+type PublicRunView = Pick<RunRecord, "id" | "contentVersion" | "state" | "round" | "revision" | "gold" | "health" | "shop" | "shopLocked" | "bench" | "board" | "items" | "freeRefreshes" | "roundRewardPlan" | "rewardHeroes" | "recap"> & ReturnType<typeof progressionForRun> & { readonly shopOdds: ShopTierOdds };
 
 export interface ContentManifestRepository {
   getByVersion(version: string): Promise<CompiledContentBundle | undefined>;
@@ -78,6 +78,7 @@ function toPublicRunView(run: RunRecord): PublicRunView {
     ...(run.freeRefreshes === undefined ? {} : { freeRefreshes: run.freeRefreshes }),
     ...(run.roundRewardPlan === undefined ? {} : { roundRewardPlan: run.roundRewardPlan }),
     ...(run.rewardHeroes === undefined ? {} : { rewardHeroes: run.rewardHeroes }),
+	...(run.recap === undefined ? {} : { recap: run.recap }),
   };
 }
 

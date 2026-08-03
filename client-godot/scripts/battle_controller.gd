@@ -1013,14 +1013,7 @@ func _bind_combat_hud() -> void:
 		combat_hud.bind_snapshot({ "paused": _paused, "playbackSpeed": _playback_speed })
 
 func _authoritative_recap_snapshot() -> Dictionary:
-	return {
-		"winner": _public_run_view.get("winner", ""),
-		"round": _public_run_view.get("round", ""),
-		"mvp": _public_run_view.get("mvp", ""),
-		"damageByHero": _public_run_view.get("damageByHero", {}),
-		"healByHero": _public_run_view.get("healByHero", {}),
-		"activeTraits": _public_run_view.get("activeTraits", []),
-	}
+	return run_state.recap.duplicate(true)
 
 func _build_collection_screen(root: Control) -> void:
 	var panel := _screen_panel(root, Rect2(40.0, 165.0, 1000.0, 1550.0), "20 current heroes  •  no reward-only Unique heroes")

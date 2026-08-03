@@ -37,3 +37,29 @@ No capture is claimed. A desktop runtime was launched, but the automation surfac
 
 - Commit: `feat: add combat HUD VFX and run recap` (this report is included in that commit).
 - Remaining gate: capture real combat, victory, and defeat states in an unambiguous runtime; capture resolution/provenance must be recorded and desktop/non-native captures must not close Android/native QA.
+
+## Review correction: authoritative recap and presentation lifecycle
+
+### Changed contract
+
+Completed public run views now expose an immutable nested `recap` record:
+
+```text
+{ winner, round, mvp, damageByHero, healByHero, activeTraits }
+```
+
+The server derives it from the locked authoritative board, resolved `CombatRecord.events`, and immutable compiled content. Damage/heal are accumulated only from resolved player event sources; MVP is selected server-side by those recorded values; active traits are the server-evaluated unlocked trait set. The Godot `RunState` stores `recap` verbatim, and `BattleController` passes that record directly to `RunRecapScreen`; the client does not calculate outcomes or statistics.
+
+### TDD RED/GREEN evidence
+
+1. **RED — recap contract:** the completion API integration assertion failed because `GET /v1/runs/:id` omitted `data.recap`.
+2. **RED — HUD semantics:** controls failed the focus/touch-target/token-style assertions, and `RunState.recap` was absent from the real `apply_run_view` test.
+3. **RED — VFX lifecycle:** a pooled reduced-motion VFX released on its next process call because its duration was `0.0`.
+4. **GREEN:** server now persists/serializes authoritative recap data for terminal combat, `RunState` consumes it, all three HUD controls use `ThemeTokens.apply_button_style`, `FOCUS_ALL`, labelled tooltips, and 44px minimum targets; reduced motion keeps static readable text for 1.5 seconds. The VFX test verifies parented instance expiry -> pool release -> acquisition of that same instance.
+
+### Verification (review correction)
+
+- `pnpm --filter @auto-battler/server test -- http.test.ts` — **10 files / 142 tests passed**. Its completion lifecycle test verifies the public recap winner equals the persisted authoritative combat result, along with `round: 8`, `mvp: "H20"`, recorded `damageByHero.H20`, and active trait `R_EXOTIC 1` from the actual HTTP completion flow.
+- Focused Godot: `combat_hud_test.gd` and `combat_vfx_pool_test.gd` — passed.
+- Full Godot sweep: **30 test scripts passed**.
+- `git diff --check` — passed before the full Godot sweep.

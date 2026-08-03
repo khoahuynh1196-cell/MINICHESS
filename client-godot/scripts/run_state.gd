@@ -19,6 +19,7 @@ var shop_odds: Dictionary = {}
 var shop_locked := false
 var round_reward_plan: Dictionary = {}
 var reward_heroes: Array = []
+var recap: Dictionary = {}
 
 func apply_server_view(view: Dictionary) -> void:
 	apply_public_view(view)
@@ -43,6 +44,7 @@ func apply_public_view(view: Dictionary) -> void:
 	shop_locked = bool(view.get("shopLocked", false))
 	round_reward_plan = Dictionary(view.get("roundRewardPlan", {})).duplicate(true)
 	reward_heroes = Array(view.get("rewardHeroes", [])).duplicate(true)
+	recap = Dictionary(view.get("recap", {})).duplicate(true)
 
 func can_start_round() -> bool:
 	return state == "PREPARE" and board.any(func(slot): return slot != null)

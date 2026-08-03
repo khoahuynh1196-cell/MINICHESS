@@ -31,7 +31,7 @@ func activate(next_cue_id: String, next_color: Color, floating_text: String, use
 	reduced_motion = use_reduced_motion
 	visible = true
 	play(next_cue_id, next_color)
-	duration = 0.0 if reduced_motion else duration
+	duration = 1.5 if reduced_motion else duration
 	if combat_label == null:
 		combat_label = Label.new()
 		combat_label.name = "FloatingCombatText"
@@ -51,6 +51,8 @@ func _process(delta: float) -> void:
 			expired.emit()
 		else:
 			queue_free()
+		return
+	if reduced_motion:
 		return
 	queue_redraw()
 

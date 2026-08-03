@@ -313,7 +313,24 @@ describe("HTTP adapter", () => {
       expect(resolved).toMatchObject({ state: "REWARD", round, combatRecord: { round, events: expect.any(Array) } });
       expect(claim.statusCode).toBe(200);
     }
-    await expect(repository.get("run-http-eight", "tenant-a")).resolves.toMatchObject({ state: "COMPLETE", round: 8, rewardClaimedRound: 8, uniqueRevealed: true });
+    const terminalRun = await repository.get("run-http-eight", "tenant-a");
+    expect(terminalRun).toMatchObject({ state: "COMPLETE", round: 8, rewardClaimedRound: 8, uniqueRevealed: true });
+
+	const completed = await app.inject({ method: "GET", url: "/v1/runs/run-http-eight" });
+	expect(completed.statusCode).toBe(200);
+	expect(completed.json()).toMatchObject({
+		data: {
+			state: "COMPLETE",
+			recap: {
+				winner: terminalRun!.combatRecord!.winner,
+				round: 8,
+				mvp: "H20",
+				damageByHero: { H20: expect.any(Number) },
+				healByHero: expect.any(Object),
+				activeTraits: expect.arrayContaining(["R_EXOTIC 1"]),
+			},
+		},
+	});
   });
 
   it("does not allow another tenant to start a round", async () => {

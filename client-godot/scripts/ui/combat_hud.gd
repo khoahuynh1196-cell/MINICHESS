@@ -1,6 +1,8 @@
 class_name CombatHud
 extends VBoxContainer
 
+const ThemeTokensScript = preload("res://scripts/ui/theme_tokens.gd")
+
 signal pause_requested
 signal speed_requested(speed: float)
 
@@ -19,18 +21,24 @@ func _init() -> void:
 	pause_button.name = "PauseReplayButton"
 	pause_button.text = "Pause"
 	pause_button.tooltip_text = "Pause replay presentation"
+	pause_button.focus_mode = Control.FOCUS_ALL
+	ThemeTokensScript.apply_button_style(pause_button, ThemeTokensScript.GOLD)
 	pause_button.pressed.connect(func() -> void: pause_requested.emit())
 	controls.add_child(pause_button)
 	speed_1x_button = Button.new()
 	speed_1x_button.name = "ReplaySpeed1xButton"
 	speed_1x_button.text = "1x"
 	speed_1x_button.tooltip_text = "Set replay presentation to normal speed"
+	speed_1x_button.focus_mode = Control.FOCUS_ALL
+	ThemeTokensScript.apply_button_style(speed_1x_button, ThemeTokensScript.STONE_RAISED)
 	speed_1x_button.pressed.connect(func() -> void: speed_requested.emit(1.0))
 	controls.add_child(speed_1x_button)
 	speed_2x_button = Button.new()
 	speed_2x_button.name = "ReplaySpeed2xButton"
 	speed_2x_button.text = "2x"
 	speed_2x_button.tooltip_text = "Set replay presentation to double speed"
+	speed_2x_button.focus_mode = Control.FOCUS_ALL
+	ThemeTokensScript.apply_button_style(speed_2x_button, ThemeTokensScript.STONE_RAISED)
 	speed_2x_button.pressed.connect(func() -> void: speed_requested.emit(2.0))
 	controls.add_child(speed_2x_button)
 	speed_label = Label.new()
