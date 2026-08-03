@@ -31,6 +31,7 @@ function contentSkill(skillId: string): { id: string; castTimeTicks: number; eff
         target: effect.target as CombatEffect["target"],
         ...(typeof raw.base_value === "number" ? { baseValue: raw.base_value } : {}),
         ...(typeof raw.duration_ticks === "number" ? { durationTicks: raw.duration_ticks } : {}),
+        ...(typeof raw.damage_type === "string" ? { damageType: raw.damage_type as NonNullable<CombatEffect["damageType"]> } : {}),
         ...(typeof raw.distance === "number" ? { distance: raw.distance } : {}),
         ...(typeof raw.stat === "string" ? { stat: raw.stat as CombatEffect["stat"] } : {}),
         ...(typeof raw.mode === "string" ? { modifierMode: raw.mode as CombatEffect["modifierMode"] } : {}),
@@ -60,6 +61,17 @@ function contentPassive(ownerId: string, trigger: (typeof content.normalItems)[n
     ...(trigger.basicOnly === undefined ? {} : { basicOnly: trigger.basicOnly }),
     ...(trigger.lifestealPerThousand === undefined ? {} : { lifestealPerThousand: trigger.lifestealPerThousand }),
   };
+}
+
+function runContentSkill(skillId: string, targetPosition = 4) {
+  return runHeadlessCombat({
+    ...snapshot,
+    maxTicks: 11,
+    units: [
+      { ...snapshot.units[0]!, position: 1, attackSpeed: 0, startingMana: 100_000, maxMana: 100_000, skill: contentSkill(skillId) },
+      { ...snapshot.units[1]!, position: targetPosition, attackSpeed: 0, attackRange: 20, maxHp: 1_000_000 },
+    ],
+  });
 }
 
 const snapshot: CombatSnapshot = {
@@ -104,6 +116,42 @@ const snapshot: CombatSnapshot = {
 };
 
 describe("deterministic combat kernel", () => {
+  it("executes Alpha damage skill S_H03 against its locked target", () => {
+    expect(runContentSkill("S_H03").events).toContainEqual(expect.objectContaining({
+      type: "DAMAGE_APPLIED", sourceUnitId: "enemy:E01:1", payload: expect.objectContaining({ amount: 18_000 }),
+    }));
+  });
+
+  it("executes Alpha shield skill S_H01 on its caster", () => {
+    expect(runContentSkill("S_H01").events).toContainEqual(expect.objectContaining({
+      type: "SHIELD_APPLIED", sourceUnitId: "enemy:E01:1", targetUnitId: "enemy:E01:1", payload: expect.objectContaining({ amount: 22_000 }),
+    }));
+  });
+
+  it("executes Alpha stun skill S_H07 against its locked target", () => {
+    expect(runContentSkill("S_H07").events).toContainEqual(expect.objectContaining({
+      type: "STUN_APPLIED", sourceUnitId: "enemy:E01:1", targetUnitId: "player:H01:1",
+    }));
+  });
+
+  it("executes Alpha buff skill S_H08 on its caster", () => {
+    expect(runContentSkill("S_H08").events).toContainEqual(expect.objectContaining({
+      type: "STAT_MODIFIER_APPLIED", sourceUnitId: "enemy:E01:1", targetUnitId: "enemy:E01:1", payload: { stat: "attack_damage", value: 1_500 },
+    }));
+  });
+
+  it("executes Alpha dash skill S_H02 toward its locked target", () => {
+    expect(runContentSkill("S_H02", 10).events).toContainEqual(expect.objectContaining({
+      type: "UNIT_DISPLACED", sourceUnitId: "enemy:E01:1", targetUnitId: "enemy:E01:1", payload: { from: 1, to: 7 },
+    }));
+  });
+
+  it("executes Alpha knockback skill S_H16 against its locked target", () => {
+    expect(runContentSkill("S_H16").events).toContainEqual(expect.objectContaining({
+      type: "UNIT_DISPLACED", sourceUnitId: "enemy:E01:1", targetUnitId: "player:H01:1", payload: { from: 4, to: 10 },
+    }));
+  });
+
   it("executes the Alpha debuff, summon, and cleanse skills as content-defined effects", () => {
     const debuff = runHeadlessCombat({
       ...snapshot,

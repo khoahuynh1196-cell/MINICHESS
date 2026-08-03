@@ -236,7 +236,15 @@ function traitHealShieldPowerByHero(content: CompiledContentBundle, board: reado
   return valuesByHero;
 }
 
+function toCombatSummon(value: unknown): CombatEffect["summon"] | undefined {
+  if (typeof value !== "object" || value === null) return undefined;
+  const raw = value as Record<string, unknown>;
+  if (typeof raw.id !== "string" || typeof raw.max_hp !== "number" || typeof raw.duration_ticks !== "number") return undefined;
+  return { id: raw.id, maxHp: raw.max_hp, durationTicks: raw.duration_ticks };
+}
+
 function toCombatEffect(rawEffect: { readonly id: string; readonly primitive: string; readonly target: string; readonly [key: string]: unknown }): CombatEffect {
+  const summon = toCombatSummon(rawEffect.summon);
   return {
     id: rawEffect.id,
     primitive: rawEffect.primitive as CombatEffect["primitive"],
@@ -249,6 +257,7 @@ function toCombatEffect(rawEffect: { readonly id: string; readonly primitive: st
     ...(typeof rawEffect.stat === "string" ? { stat: rawEffect.stat as NonNullable<CombatEffect["stat"]> } : {}),
     ...(typeof rawEffect.mode === "string" ? { modifierMode: rawEffect.mode as NonNullable<CombatEffect["modifierMode"]> } : {}),
     ...(typeof rawEffect.distance === "number" ? { distance: rawEffect.distance } : {}),
+    ...(summon === undefined ? {} : { summon }),
     ...(rawEffect.scales_with_skill_power === true ? { scalesWithSkillPower: true } : {}),
     ...(rawEffect.scales_with_max_hp === true ? { scalesWithMaxHp: true } : {}),
     ...(rawEffect.scales_with_target_max_hp === true ? { scalesWithTargetMaxHp: true } : {}),
