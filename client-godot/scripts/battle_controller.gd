@@ -8,6 +8,7 @@ const RunStateScript = preload("res://scripts/run_state.gd")
 const RunApiClientScript = preload("res://scripts/run_api_client.gd")
 const LocalRunStoreScript = preload("res://scripts/local_run_store.gd")
 const ScreenRouterScript = preload("res://scripts/ui/screen_router.gd")
+const PrepareScreenScript = preload("res://scripts/ui/prepare_screen.gd")
 const ThemeTokensScript = preload("res://scripts/ui/theme_tokens.gd")
 const SettingsStoreScript = preload("res://scripts/ui/settings_store.gd")
 const FormationControllerScript = preload("res://scripts/ui/formation_controller.gd")
@@ -47,7 +48,9 @@ var settings_store = SettingsStoreScript.new()
 var settings: Dictionary = {}
 var run_api_client
 var screen_router
+var prepare_screen
 var legacy_controls_layer: CanvasLayer
+var _public_run_view: Dictionary = {}
 var _unknown_event_types: Dictionary = {}
 var _scheduler
 var _replay_path := "res://fixtures/combat-replay.json"
@@ -137,6 +140,7 @@ func apply_event(event) -> void:
 
 func apply_run_view(view: Dictionary) -> void:
 	run_state.apply_public_view(view)
+	_public_run_view = view.duplicate(true)
 	_request_in_flight = false
 	if run_state.state != "PREPARE" or (formation_controller.has_selection() and not _has_hero_instance(formation_controller.selected_hero_instance_id)):
 		formation_controller.clear_selection()
@@ -152,6 +156,8 @@ func apply_run_view(view: Dictionary) -> void:
 	if start_round_button == null:
 		_create_controls()
 	_refresh_run_ui()
+	if screen_router == null:
+		_create_mobile_ui()
 	_refresh_mobile_screen()
 
 func build_command_payload(command_id: String, command_type: String, fields: Dictionary = {}) -> Dictionary:
@@ -215,6 +221,9 @@ func request_refresh_shop() -> void:
 	if run_state.state != "PREPARE" or (run_state.free_refreshes <= 0 and run_state.gold < 2):
 		return
 	command_requested.emit(build_command_payload("client-refresh-%s" % run_state.revision, "REFRESH_SHOP"))
+
+func request_lock_shop() -> void:
+	_set_status("Shop locking is not supported by the server yet")
 
 func request_buy_xp() -> void:
 	if not run_state.can_buy_xp():
@@ -648,6 +657,9 @@ func _build_mobile_screen(screen_id: String) -> void:
 		return
 	for child in root.get_children():
 		child.queue_free()
+	if screen_id == "prepare":
+		_build_prepare_screen(root)
+		return
 	var background := ColorRect.new()
 	background.color = ThemeTokensScript.NAVY
 	background.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -746,6 +758,16 @@ func _build_prepare_screen(root: Control) -> void:
 	if run_state.run_id.is_empty():
 		_build_empty_run_state(root, "Start an expedition from the map to prepare a party.")
 		return
+	prepare_screen = PrepareScreenScript.new()
+	root.add_child(prepare_screen)
+	prepare_screen.buy_shop_slot.connect(request_buy_shop_slot)
+	prepare_screen.refresh_shop.connect(request_refresh_shop)
+	prepare_screen.lock_shop.connect(request_lock_shop)
+	prepare_screen.buy_xp.connect(request_buy_xp)
+	prepare_screen.start_round.connect(request_start_round)
+	prepare_screen.sell_hero.connect(request_sell_hero)
+	prepare_screen.bind_run(_public_run_view)
+	return
 	var summary := _screen_panel(root, Rect2(40.0, 165.0, 1000.0, 140.0), "Round %d  |  %d HP  |  %d gold  |  Level %d" % [run_state.round, run_state.health, run_state.gold, run_state.level])
 	summary.add_child(_mobile_button("Buy 4 XP (%d / %d)" % [run_state.experience, run_state.experience_to_next], request_buy_xp, ThemeTokensScript.PLAYER))
 	var board_panel := _screen_panel(root, Rect2(40.0, 325.0, 1000.0, 540.0), "Formation  •  %d / %d deployed" % [_board_hero_count(), run_state.board_cap])

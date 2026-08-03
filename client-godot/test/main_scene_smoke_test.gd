@@ -81,6 +81,16 @@ func _init() -> void:
 		main_scene.free()
 		_finish()
 		return
+	if not _expect(main_scene.prepare_screen != null and main_scene.prepare_screen.find_child("BuySlot0", true, false) != null, "the routed Prepare shell must render authoritative shop controls"):
+		main_scene.free()
+		_finish()
+		return
+	main_scene.prepare_screen.find_child("BuySlot0", true, false).pressed.emit()
+	if not _expect(emitted_commands == [{ "command_id": "client-buy-0-0", "expected_run_revision": 0, "type": "BUY_SHOP_HERO", "shop_slot_index": 0 }], "Prepare shop intents must bridge to authoritative controller requests"):
+		main_scene.free()
+		_finish()
+		return
+	emitted_commands.clear()
 	main_scene.request_buy_shop_slot(0)
 	main_scene.request_move_bench_hero("hero-bench", 12)
 	main_scene.request_refresh_shop()
