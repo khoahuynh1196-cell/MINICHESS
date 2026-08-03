@@ -1,13 +1,13 @@
 # Demo Release Checklist
 
-Last audited: 2026-08-03
+Last audited: 2026-08-04
 
 ## Verified in this workspace
 
-- [x] TypeScript typecheck and test suites pass: 99 `game-core` tests and 140 `server` tests.
-- [x] Godot replay, run, UI, asset-manifest, feedback, and accessibility suite passes: 20 headless tests.
+- [x] TypeScript typecheck and test suites pass: 100 `game-core` tests and 142 `server` tests.
+- [x] Godot replay, run, UI, asset-manifest, feedback, and accessibility suite passes: 27 headless tests.
 - [x] Portrait mobile flow reaches Lobby, Map, Prepare, Combat, Reward, Recap, Collection, and Settings.
-- [x] Prepare supports tap-select formation moves, board swaps, board-to-bench moves, item selection/equip feedback, sell, XP, shop refresh, and start round intents.
+- [x] Prepare supports tap-select formation moves, board swaps, board-to-bench moves, item selection/equip feedback, sell, XP, five-card shop, tier odds, authoritative shop lock, and start-round intents.
 - [x] Combat presentation uses the hero rig when a source texture is supplied; reduced-motion reaches that rig.
 - [x] Collection provides 20 roster entries and species/role filtering.
 - [x] English and Vietnamese UI catalog infrastructure, sound/haptic settings, and reduced-motion settings are covered by tests.
@@ -20,7 +20,7 @@ Last audited: 2026-08-03
 - [ ] Capture and review real portrait screenshots for every primary game state on a physical Android device.
 - [ ] Install the exported APK on the agreed reference device and record 60 FPS frame-time and texture-memory results in `ANDROID_QA.md`.
 - [ ] Decide whether server authentication, Supabase persistence, and RLS are required for this offline-first Alpha. Adding them needs a provisioned Supabase project and environment secrets; they are not safely inferable from source code alone.
-- [ ] Decide whether shop locking and displayed tier odds are part of the Alpha rule contract. The current authoritative command protocol has no lock command or odds field, so a client-only control would be misleading.
+- [x] Shop locking and displayed tier odds are part of the Alpha rule contract: `LOCK_SHOP` persists on the server and the client renders only the returned state.
 - [ ] Publish a signed release build with a non-debug signing key and complete the physical-device QA checklist.
 
 ## Reproducible checks
