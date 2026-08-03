@@ -12,6 +12,7 @@ func _init() -> void:
 	_expect(_label(screen, "LevelValue") == "Level 4", "Prepare header must render level from the authoritative public view")
 	_expect(_all_core_controls_fit(screen), "Prepare core controls must fit within the 1080 x 1920 portrait viewport")
 	_expect(not _button(screen, "BuySlot0").disabled and not _button(screen, "BuyXp").disabled and not _button(screen, "StartRound").disabled, "Prepare controls must be available during PREPARE")
+	_expect(_board_cell_count(screen) == 12 and _button(screen, "BoardCell11") != null and _button(screen, "BoardCell12") == null, "Prepare must render exactly the 12 legal player-half board slots")
 
 	var intents: Array = []
 	screen.buy_shop_slot.connect(func(index: int) -> void: intents.append(["buy", index]))
@@ -65,7 +66,7 @@ func _init() -> void:
 
 func _prepare_view() -> Dictionary:
 	var board: Array = []
-	board.resize(24)
+	board.resize(12)
 	board.fill(null)
 	board[0] = { "instanceId": "board-h01", "heroId": "H01", "stars": 1 }
 	return {
@@ -106,6 +107,13 @@ func _buttons(root: Node) -> Array[Button]:
 			buttons.append(child)
 		buttons.append_array(_buttons(child))
 	return buttons
+
+func _board_cell_count(screen: Control) -> int:
+	var count := 0
+	for button in _buttons(screen):
+		if String(button.name).begins_with("BoardCell"):
+			count += 1
+	return count
 
 func _expect(condition: bool, message: String) -> void:
 	if not condition:

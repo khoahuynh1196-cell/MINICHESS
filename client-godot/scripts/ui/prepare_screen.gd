@@ -9,7 +9,7 @@ const FormationSlotButtonScript = preload("res://scripts/ui/formation_slot_butto
 
 const PORTRAIT_RECT := Rect2(0.0, 0.0, 1080.0, 1920.0)
 const BOARD_COLUMNS := 3
-const BOARD_ROWS := 8
+const PLAYER_BOARD_ROWS := 4
 const SHOP_SLOT_COUNT := 5
 const BENCH_SLOT_COUNT := 8
 
@@ -79,7 +79,7 @@ func _board() -> void:
 	_panel("BoardPanel", Rect2(40.0, 175.0, 1000.0, 520.0))
 	_label("BoardHeading", "FORMATION  •  %d / %d deployed" % [_deployed_count(), int(_view.get("boardCap", 0))], Rect2(64.0, 190.0, 600.0, 28.0), ThemeTokensScript.TYPE_META, ThemeTokensScript.PARCHMENT)
 	var board: Array = Array(_view.get("board", []))
-	for index in BOARD_COLUMNS * BOARD_ROWS:
+	for index in BOARD_COLUMNS * PLAYER_BOARD_ROWS:
 		var hero = board[index] if index < board.size() else null
 		var column := index % BOARD_COLUMNS
 		var row := index / BOARD_COLUMNS
