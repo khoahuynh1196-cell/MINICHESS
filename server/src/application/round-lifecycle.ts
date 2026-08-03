@@ -1,6 +1,7 @@
 import type { CombatResult, CompiledContentBundle } from "@auto-battler/game-core";
 import type { CombatRecord, HeroInstance, ItemInstance, RunRecord } from "./run-commands.js";
 import { buildRoundRewardPlan, type RewardSelection } from "./reward-selection.js";
+import { cloneShopPool, reserveHeroFromShopPool } from "./shop-pool.js";
 
 const BASE_WIN_GOLD = 5;
 
@@ -47,7 +48,7 @@ export function attachContentRoundRewards(run: RunRecord, content: CompiledConte
  * Keeping the claimed round on the run makes a retry after a successful
  * persistence write a no-op instead of duplicating currency.
  */
-function materializeRewardSelections(run: RunRecord, selections: readonly RewardSelection[]): Pick<RunRecord, "items" | "rewardHeroes"> {
+function materializeRewardSelections(run: RunRecord, selections: readonly RewardSelection[]): Pick<RunRecord, "items" | "rewardHeroes" | "shopPool"> {
   const plan = run.roundRewardPlan;
   if (plan === undefined || plan.offers.length === 0) {
     if (selections.length !== 0) throw new Error("REWARD_SELECTION_INVALID");
@@ -59,6 +60,7 @@ function materializeRewardSelections(run: RunRecord, selections: readonly Reward
   }
   const selectedItems: ItemInstance[] = [];
   const selectedHeroes: HeroInstance[] = [];
+  let shopPool = run.shopPool;
   for (const selection of selections) {
     const offer = byOfferId.get(selection.offerId);
     if (offer === undefined) throw new Error("REWARD_SELECTION_INVALID");
@@ -68,12 +70,17 @@ function materializeRewardSelections(run: RunRecord, selections: readonly Reward
     if (option.kind === "normal_item") {
       selectedItems.push({ instanceId, itemId: option.id, kind: "normal" });
     } else {
-      selectedHeroes.push({ instanceId, heroId: option.id, cost: option.cost!, stars: 1 });
+      if (shopPool !== undefined) {
+        shopPool = shopPool === run.shopPool ? cloneShopPool(shopPool) : shopPool;
+        reserveHeroFromShopPool(shopPool, option.id);
+      }
+      selectedHeroes.push({ instanceId, heroId: option.id, cost: option.cost!, stars: 1, poolCopies: shopPool === undefined ? 0 : 1 });
     }
   }
   return {
     ...(selectedItems.length === 0 ? {} : { items: [...(run.items ?? []), ...selectedItems] }),
     ...(selectedHeroes.length === 0 ? {} : { rewardHeroes: [...(run.rewardHeroes ?? []), ...selectedHeroes] }),
+    ...(shopPool === run.shopPool ? {} : { shopPool }),
   };
 }
 

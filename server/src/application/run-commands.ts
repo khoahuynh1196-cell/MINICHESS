@@ -52,7 +52,14 @@ export interface CombatRecord {
   readonly events: readonly CombatEvent[];
 }
 
-export interface HeroInstance { readonly instanceId: string; readonly heroId: string; readonly cost: number; readonly stars?: 1 | 2 | 3; }
+export interface HeroInstance {
+  readonly instanceId: string;
+  readonly heroId: string;
+  readonly cost: number;
+  readonly stars?: 1 | 2 | 3;
+  /** Number of pool copies reserved for this instance; absent only on migrated records. */
+  readonly poolCopies?: number;
+}
 export interface ItemInstance { readonly instanceId: string; readonly itemId: string; readonly kind: "normal" | "unique"; readonly equippedHeroInstanceId?: string; }
 export interface LockedRoundSnapshot {
   readonly runId: string;
@@ -149,7 +156,16 @@ interface MergedRoster {
 }
 
 function heroStars(hero: HeroInstance): 1 | 2 | 3 {
-  return hero.stars ?? 1;
+  const stars = hero.stars ?? 1;
+  if (stars !== 1 && stars !== 2 && stars !== 3) throw new Error("GAME_RULE_VIOLATION");
+  return stars;
+}
+
+function reservedPoolCopies(hero: HeroInstance): number {
+  const representedCopies = 3 ** (heroStars(hero) - 1);
+  const copies = hero.poolCopies ?? representedCopies;
+  if (!Number.isSafeInteger(copies) || copies < 0 || copies > representedCopies) throw new Error("GAME_RULE_VIOLATION");
+  return copies;
 }
 
 function returnItemsFromMergedHeroes(items: readonly ItemInstance[], mergedHeroIds: ReadonlySet<string>): readonly ItemInstance[] {
@@ -175,7 +191,7 @@ function mergeEligibleHeroes(boardInput: readonly (HeroInstance | null)[], bench
       const selected = candidates.filter((candidate) => candidate.hero.heroId === mergeGroup.hero.heroId && heroStars(candidate.hero) === stars).slice(0, 3);
       const selectedIds = new Set(selected.map((candidate) => candidate.hero.instanceId));
       const survivor = selected[0]!;
-      const mergedHero: HeroInstance = { ...survivor.hero, stars: (stars + 1) as 2 | 3 };
+      const mergedHero: HeroInstance = { ...survivor.hero, stars: (stars + 1) as 2 | 3, poolCopies: selected.reduce((total, candidate) => total + reservedPoolCopies(candidate.hero), 0) };
       if (survivor.location === "board") {
         board = board.map((hero) => hero !== null && selectedIds.has(hero.instanceId) ? null : hero);
         bench = bench.filter((hero) => !selectedIds.has(hero.instanceId));
@@ -194,7 +210,7 @@ function mergeEligibleHeroes(boardInput: readonly (HeroInstance | null)[], bench
 
 function assertValidShop(shop: unknown, slotCount = 4): asserts shop is readonly ShopSlot[] {
   if (!Array.isArray(shop) || shop.length !== slotCount || shop.some((slot) =>
-    typeof slot?.heroId !== "string" || slot.heroId !== slot.heroId.trim() || slot.heroId.length === 0 || !Number.isInteger(slot.cost) || slot.cost < 1 || slot.cost > 3,
+    typeof slot?.heroId !== "string" || slot.heroId !== slot.heroId.trim() || slot.heroId.length === 0 || !Number.isInteger(slot.cost) || slot.cost < 1 || slot.cost > 5,
   )) throw new Error("GAME_RULE_VIOLATION");
 }
 
@@ -334,14 +350,14 @@ export async function applyRunCommand(input: RunCommandInput, repository: RunRep
       ? currentBoard.map((hero) => hero?.instanceId === input.heroInstanceId ? null : hero)
       : run.board;
   const bench = input.type === "BUY_SHOP_HERO"
-    ? [...(run.bench ?? []), { instanceId: `hero:${run.id}:${input.commandId}`, heroId: purchasedSlot!.heroId, cost: purchasedSlot!.cost, stars: 1 as const }]
+    ? [...(run.bench ?? []), { instanceId: `hero:${run.id}:${input.commandId}`, heroId: purchasedSlot!.heroId, cost: purchasedSlot!.cost, stars: 1 as const, poolCopies: 1 }]
     : input.type === "CLAIM_REWARD_HERO" ? [...currentBench, claimedRewardHero!]
     : input.type === "SELL_HERO" ? (run.bench ?? []).filter((hero) => hero.instanceId !== input.heroInstanceId)
       : input.type === "MOVE_HERO" ? (benchSourceIndex !== -1 ? [...currentBench.filter((hero) => hero.instanceId !== input.heroInstanceId), ...(displacedHero === null ? [] : [displacedHero])] : currentBench) : run.bench;
   const gold = input.type === "REFRESH_SHOP" ? (usesFreeRefresh ? run.gold : run.gold - 2) : input.type === "BUY_SHOP_HERO" ? run.gold - purchasedSlot!.cost : input.type === "SELL_HERO" ? run.gold + soldHero!.cost : run.gold;
   const freeRefreshes = input.type === "REFRESH_SHOP" && usesFreeRefresh ? (run.freeRefreshes ?? 0) - 1 : run.freeRefreshes;
   const shopPool = input.type === "SELL_HERO" && run.shopPool !== undefined ? cloneShopPool(run.shopPool) : refreshedPool ?? run.shopPool;
-  if (input.type === "SELL_HERO" && shopPool !== undefined) returnHeroToShopPool(shopPool, soldHero!.heroId);
+  if (input.type === "SELL_HERO" && shopPool !== undefined) returnHeroToShopPool(shopPool, soldHero!.heroId, reservedPoolCopies(soldHero!));
   const items = input.type === "EQUIP_ITEM"
     ? currentItems.map((item) => item.instanceId === input.itemInstanceId ? { ...item, equippedHeroInstanceId: input.heroInstanceId! } : item)
     : input.type === "UNEQUIP_ITEM"
@@ -357,7 +373,7 @@ export async function applyRunCommand(input: RunCommandInput, repository: RunRep
     ? mergeEligibleHeroes(movedBoard ?? currentBoard, bench ?? currentBench, items ?? currentItems)
     : undefined;
   const lockedSnapshot = input.type === "START_ROUND" ? lockRoundSnapshot(run, currentBoard, currentItems) : run.lockedSnapshot;
-  await repository.save({
+  const saved = Object.freeze({
     ...run,
     gold,
     ...(shop === undefined ? {} : { shop }),
@@ -374,5 +390,6 @@ export async function applyRunCommand(input: RunCommandInput, repository: RunRep
     commandResponses: { ...run.commandResponses, [input.commandId]: result },
     commandRequests: { ...run.commandRequests, [input.commandId]: fingerprint },
   });
+  if (await repository.saveIfRevision(saved, run.revision) === undefined) throw new Error("RUN_REVISION_CONFLICT");
   return result;
 }

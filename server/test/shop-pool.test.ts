@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 const runSeed = "000102030405060708090a0b0c0d0e0f";
 
-function contentWithHeroes(heroes: readonly { id: string; cost: number; rarity: 1 | 2 | 3; is_unique_hero: boolean }[]) {
+function contentWithHeroes(heroes: readonly { id: string; cost: number; rarity: 1 | 2 | 3 | 4 | 5; is_unique_hero: boolean }[]) {
   return { heroesById: new Map(heroes.map((hero) => [hero.id, hero])) };
 }
 
@@ -55,5 +55,21 @@ describe("deterministic shop pool", () => {
     const second = shopPool.createShopPool(content, runSeed);
 
     expect(shopPool.rollShop(first, 3, "shop:2:4")).toEqual(shopPool.rollShop(second, 3, "shop:2:4"));
+  });
+
+  it("makes five-cost heroes available at the supported high tier", async () => {
+    const shopPool = await import("../src/application/shop-pool.js") as {
+      createShopPool(content: unknown, seed: string): unknown;
+      rollShop(pool: unknown, level: number, stream: string): readonly { heroId: string; cost: number }[];
+    };
+    const content = contentWithHeroes([
+      { id: "H01", cost: 1, rarity: 1, is_unique_hero: false },
+      { id: "H05", cost: 5, rarity: 5, is_unique_hero: false },
+    ]);
+    const levelOne = shopPool.rollShop(shopPool.createShopPool(content, runSeed), 1, "shop:1:0");
+    const levelTenSlots = Array.from({ length: 20 }, (_, refresh) => shopPool.rollShop(shopPool.createShopPool(content, runSeed), 10, `shop:1:${refresh}`)).flat();
+
+    expect(levelOne.every((slot) => slot.cost === 1)).toBe(true);
+    expect(levelTenSlots.some((slot) => slot.cost === 5)).toBe(true);
   });
 });

@@ -170,6 +170,30 @@ describe("run commands", () => {
     });
   });
 
+  it("reserves a current hero-choice reward before claim and returns that reservation on sale", async () => {
+    const module = await import(modulePath) as typeof import("../src/application/run-commands.js");
+    const shopPool = await import("../src/application/shop-pool.js") as typeof import("../src/application/shop-pool.js");
+    const repository = module.createInMemoryRunRepository();
+    const pool = shopPool.createShopPool({ heroesById: new Map([["H01", { id: "H01", cost: 1, rarity: 1 as const, is_unique_hero: false }]]) } as never, "000102030405060708090a0b0c0d0e0f");
+    await repository.save({
+      id: "run-reward-pool", tenantId: "tenant-a", contentVersion: "alpha-0.3.0", state: "REWARD", round: 4, revision: 0, gold: 20, commandResponses: {}, shopPool: pool,
+      combatRecord: { round: 4, winner: "player", resultHash: "rewardpool123456", finalTick: 1, reason: "elimination", events: [] },
+      roundRewardPlan: { round: 4, supplementalGold: 0, freeRefreshes: 0, offers: [{ id: "reward:4:hero_choice:0", kind: "hero_choice", options: [{ id: "H01", kind: "hero", cost: 1 }] }] },
+    });
+
+    await module.applyRunCommand({ actorId: "actor-a", tenantId: "tenant-a", runId: "run-reward-pool", commandId: "cmd-materialize-hero-reward", expectedRevision: 0, type: "CLAIM_ROUND_REWARD", rewardSelections: [{ offerId: "reward:4:hero_choice:0", optionId: "H01" }] }, repository);
+    const materialized = await repository.get("run-reward-pool", "tenant-a");
+    expect(materialized?.shopPool?.heroes.H01?.remainingCopies).toBe(28);
+    expect(materialized?.rewardHeroes).toMatchObject([{ heroId: "H01", poolCopies: 1 }]);
+    const rewardHeroId = materialized?.rewardHeroes?.[0]?.instanceId;
+    if (rewardHeroId === undefined) throw new Error("expected materialized reward hero");
+
+    await module.applyRunCommand({ actorId: "actor-a", tenantId: "tenant-a", runId: "run-reward-pool", commandId: "cmd-claim-hero-reward-pool", expectedRevision: 1, type: "CLAIM_REWARD_HERO", heroInstanceId: rewardHeroId }, repository);
+    await module.applyRunCommand({ actorId: "actor-a", tenantId: "tenant-a", runId: "run-reward-pool", commandId: "cmd-sell-hero-reward-pool", expectedRevision: 2, type: "SELL_HERO", heroInstanceId: rewardHeroId }, repository);
+
+    await expect(repository.get("run-reward-pool", "tenant-a")).resolves.toMatchObject({ shopPool: { heroes: { H01: { remainingCopies: 29 } } }, bench: [] });
+  });
+
   it("moves a claimed hero reward into an available bench slot and runs star merge", async () => {
     const module = await import(modulePath) as typeof import("../src/application/run-commands.js");
     const repository = module.createInMemoryRunRepository();
@@ -974,7 +998,7 @@ describe("run commands", () => {
     { name: "does not contain exactly four slots", shop: [{ heroId: "H01", cost: 1 }] },
     { name: "contains an empty hero ID", shop: [{ heroId: "H01", cost: 1 }, { heroId: "  ", cost: 2 }, { heroId: "H03", cost: 1 }, { heroId: "H04", cost: 3 }] },
     { name: "contains a whitespace-padded hero ID", shop: [{ heroId: "H01", cost: 1 }, { heroId: " H02 ", cost: 2 }, { heroId: "H03", cost: 1 }, { heroId: "H04", cost: 3 }] },
-    { name: "contains a cost outside the allowed range", shop: [{ heroId: "H01", cost: 1 }, { heroId: "H02", cost: 4 }, { heroId: "H03", cost: 1 }, { heroId: "H04", cost: 3 }] },
+    { name: "contains a cost outside the allowed range", shop: [{ heroId: "H01", cost: 1 }, { heroId: "H02", cost: 6 }, { heroId: "H03", cost: 1 }, { heroId: "H04", cost: 3 }] },
     { name: "contains a fractional cost", shop: [{ heroId: "H01", cost: 1 }, { heroId: "H02", cost: 1.5 }, { heroId: "H03", cost: 1 }, { heroId: "H04", cost: 3 }] },
   ];
 
@@ -1121,6 +1145,14 @@ describe("run commands", () => {
 
     await expect(module.createRun({ id: "run-shop", tenantId: "tenant-a", contentVersion: "alpha-0.3.0" }, repository, shopGenerator))
       .resolves.toMatchObject({ shop: [{ heroId: "H01", cost: 1 }, { heroId: "H02", cost: 2 }, { heroId: "H03", cost: 1 }, { heroId: "H04", cost: 3 }] });
+  });
+
+  it("accepts a valid five-cost shop slot", async () => {
+    const module = await import(modulePath) as typeof import("../src/application/run-commands.js");
+    const repository = module.createInMemoryRunRepository();
+    const shopGenerator = { initialShop: () => [{ heroId: "H01", cost: 1 }, { heroId: "H02", cost: 5 }, { heroId: "H03", cost: 3 }, { heroId: "H04", cost: 2 }] };
+
+    await expect(module.createRun({ id: "run-high-tier-shop", tenantId: "tenant-a", contentVersion: "alpha-0.3.0" }, repository, shopGenerator)).resolves.toMatchObject({ shop: expect.arrayContaining([{ heroId: "H02", cost: 5 }]) });
   });
 
   it("persists the five-slot pool and conserves a bought then sold hero across a free refresh", async () => {
@@ -1284,6 +1316,37 @@ describe("run commands", () => {
     expect(updatedRun?.items).toEqual([{ instanceId: item.instanceId, itemId: "I03", kind: "normal" }]);
   });
 
+  it.each([
+    { stars: 1, poolCopies: 1, remainingCopies: 20, expectedCopies: 21 },
+    { stars: 2, poolCopies: 3, remainingCopies: 20, expectedCopies: 23 },
+    { stars: 3, poolCopies: 9, remainingCopies: 20, expectedCopies: 29 },
+  ] as const)("returns every reserved copy when selling a $stars-star hero", async ({ stars, poolCopies, remainingCopies, expectedCopies }) => {
+    const module = await import(modulePath) as typeof import("../src/application/run-commands.js");
+    const shopPool = await import("../src/application/shop-pool.js") as typeof import("../src/application/shop-pool.js");
+    const repository = module.createInMemoryRunRepository();
+    const pool = shopPool.createShopPool({ heroesById: new Map([["H01", { id: "H01", cost: 1, rarity: 1 as const, is_unique_hero: false }]]) } as never, "000102030405060708090a0b0c0d0e0f");
+    pool.heroes.H01!.remainingCopies = remainingCopies;
+    const hero = { instanceId: `hero-sell-${stars}`, heroId: "H01", cost: 1, stars, poolCopies };
+    await repository.save({ id: `run-sell-${stars}`, tenantId: "tenant-a", contentVersion: "alpha-0.3.0", state: "PREPARE", revision: 0, gold: 6, commandResponses: {}, shopPool: pool, bench: [hero] });
+
+    await module.applyRunCommand({ actorId: "actor-a", tenantId: "tenant-a", runId: `run-sell-${stars}`, commandId: `cmd-sell-${stars}`, expectedRevision: 0, type: "SELL_HERO", heroInstanceId: hero.instanceId }, repository);
+
+    await expect(repository.get(`run-sell-${stars}`, "tenant-a")).resolves.toMatchObject({ shopPool: { heroes: { H01: { remainingCopies: expectedCopies } } } });
+  });
+
+  it("rejects a sale whose star rank does not represent a valid pool quantity", async () => {
+    const module = await import(modulePath) as typeof import("../src/application/run-commands.js");
+    const shopPool = await import("../src/application/shop-pool.js") as typeof import("../src/application/shop-pool.js");
+    const repository = module.createInMemoryRunRepository();
+    const pool = shopPool.createShopPool({ heroesById: new Map([["H01", { id: "H01", cost: 1, rarity: 1 as const, is_unique_hero: false }]]) } as never, "000102030405060708090a0b0c0d0e0f");
+    pool.heroes.H01!.remainingCopies = 20;
+    const initialRun = { id: "run-invalid-star-sale", tenantId: "tenant-a", contentVersion: "alpha-0.3.0", state: "PREPARE" as const, revision: 0, gold: 6, commandResponses: {}, shopPool: pool, bench: [{ instanceId: "hero-invalid-star", heroId: "H01", cost: 1, stars: 4, poolCopies: 3 }] };
+    await repository.save(initialRun as never);
+
+    await expect(module.applyRunCommand({ actorId: "actor-a", tenantId: "tenant-a", runId: initialRun.id, commandId: "cmd-invalid-star-sale", expectedRevision: 0, type: "SELL_HERO", heroInstanceId: "hero-invalid-star" }, repository)).rejects.toThrow("GAME_RULE_VIOLATION");
+    await expect(repository.get(initialRun.id, "tenant-a")).resolves.toEqual(initialRun);
+  });
+
   it("replaces the shop through the content port when refreshed", async () => {
     const module = await import(modulePath) as typeof import("../src/application/run-commands.js");
     const repository = module.createInMemoryRunRepository();
@@ -1360,6 +1423,28 @@ describe("run commands", () => {
     expect(await module.applyRunCommand(input, repository)).toEqual({ runRevision: 1, status: "APPLIED" });
     expect(await module.applyRunCommand(input, repository)).toEqual({ runRevision: 1, status: "APPLIED" });
     expect(await repository.get("run-1", "tenant-a")).toMatchObject({ gold: 6, revision: 1 });
+  });
+
+  it("rejects one of two concurrent refreshes that read the same revision", async () => {
+    const module = await import(modulePath) as typeof import("../src/application/run-commands.js");
+    const backingRepository = module.createInMemoryRunRepository();
+    const initialRun = { id: "run-concurrent-refresh", tenantId: "tenant-a", contentVersion: "alpha-0.3.0", state: "PREPARE" as const, revision: 0, gold: 8, commandResponses: {} };
+    await backingRepository.save(initialRun);
+    const repository = {
+      ...backingRepository,
+      get: async () => initialRun,
+    };
+    const first = { actorId: "actor-a", tenantId: "tenant-a", runId: initialRun.id, commandId: "cmd-refresh-first", expectedRevision: 0, type: "REFRESH_SHOP" as const };
+    const second = { ...first, commandId: "cmd-refresh-second" };
+
+    const results = await Promise.allSettled([
+      module.applyRunCommand(first, repository),
+      module.applyRunCommand(second, repository),
+    ]);
+
+    expect(results.filter((result) => result.status === "fulfilled")).toHaveLength(1);
+    expect(results.filter((result) => result.status === "rejected").map((result) => result.status === "rejected" ? result.reason.message : undefined)).toEqual(["RUN_REVISION_CONFLICT"]);
+    await expect(backingRepository.get(initialRun.id, initialRun.tenantId)).resolves.toMatchObject({ revision: 1, gold: 6, shopRefreshes: 1 });
   });
 
   it("rejects reuse of a command ID with a different request", async () => {

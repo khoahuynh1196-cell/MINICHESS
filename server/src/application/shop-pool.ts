@@ -124,10 +124,17 @@ export function rollShop(pool: ShopPool, level: number, stream: string): ShopSlo
   return Object.freeze(slots) as ShopSlot[];
 }
 
-export function returnHeroToShopPool(pool: ShopPool, heroId: string): void {
+export function returnHeroToShopPool(pool: ShopPool, heroId: string, copies = 1): void {
   const hero = pool.heroes[heroId];
-  if (hero === undefined || hero.remainingCopies >= hero.totalCopies) throw new Error("GAME_RULE_VIOLATION");
-  hero.remainingCopies += 1;
+  if (hero === undefined || !Number.isSafeInteger(copies) || copies < 1 || hero.remainingCopies + copies > hero.totalCopies) throw new Error("GAME_RULE_VIOLATION");
+  hero.remainingCopies += copies;
+}
+
+/** Reserves copies granted outside a shop roll, such as a selected hero reward. */
+export function reserveHeroFromShopPool(pool: ShopPool, heroId: string, copies = 1): void {
+  const hero = pool.heroes[heroId];
+  if (hero === undefined || !Number.isSafeInteger(copies) || copies < 1 || hero.remainingCopies < copies) throw new Error("GAME_RULE_VIOLATION");
+  hero.remainingCopies -= copies;
 }
 
 /** Returns all unbought slots to the pool before a refresh replaces them. */
