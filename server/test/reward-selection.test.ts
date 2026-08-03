@@ -57,12 +57,42 @@ describe("deterministic round reward selection", () => {
     const content = compileContentBundle(JSON.parse(readFileSync(fileURLToPath(new URL("../../content/alpha-0.3.0/bundle.json", import.meta.url)), "utf8")));
     const input = { runSeed: "000102030405060708090a0b0c0d0e0f", content };
 
-    expect(buildRoundRewardPlan({ ...input, round: 4 }).offers).toEqual([
+    const roundFour = buildRoundRewardPlan({ ...input, round: 4 });
+    const roundSix = buildRoundRewardPlan({ ...input, round: 6 });
+    const roundEight = buildRoundRewardPlan({ ...input, round: 8 });
+
+    expect(roundFour).toEqual(buildRoundRewardPlan({ ...input, round: 4 }));
+    expect(roundFour.offers).toEqual([
       expect.objectContaining({ kind: "hero_choice", options: expect.arrayContaining([expect.objectContaining({ kind: "hero" })]) }),
     ]);
-    expect(buildRoundRewardPlan({ ...input, round: 6 }).offers.map((offer) => offer.kind)).toEqual(["hero_choice", "upgrade_choice"]);
-    expect(buildRoundRewardPlan({ ...input, round: 8 }).offers).toEqual([
+    expect(roundFour.offers[0]?.options.every((option) => /^H(?:0[1-9]|1\\d|20)$/.test(option.id))).toBe(true);
+    expect(roundSix.offers.map((offer) => offer.kind)).toEqual(["hero_choice", "upgrade_choice"]);
+    expect(roundEight.offers).toEqual([
       expect.objectContaining({ kind: "final_chest", options: expect.arrayContaining([expect.objectContaining({ kind: "normal_item" })]) }),
     ]);
+  });
+
+  it("does not make deferred Unique heroes eligible for a hero-choice reward", async () => {
+    const { compileContentBundle } = await import("@auto-battler/game-core");
+    const { buildRoundRewardPlan } = await import("../src/application/reward-selection.js");
+    const content = compileContentBundle(JSON.parse(readFileSync(fileURLToPath(new URL("../../content/alpha-0.3.0/bundle.json", import.meta.url)), "utf8")));
+    const eligibleHeroes = ["H01", "H02", "H03"].map((heroId) => content.heroesById.get(heroId));
+    if (eligibleHeroes.some((hero) => hero === undefined)) throw new Error("the standard reward fixture requires H01 through H03");
+    const baseHero = eligibleHeroes[0]!;
+    const futureContent = {
+      ...content,
+      heroesById: new Map([
+        ...eligibleHeroes.map((hero) => [hero!.id, hero!] as const),
+        ["H21", { ...baseHero, id: "H21", is_unique_hero: true }],
+      ]),
+    };
+
+    const reward = buildRoundRewardPlan({
+      runSeed: "00000000000000000000000000000000",
+      round: 4,
+      content: futureContent,
+    });
+
+    expect(reward.offers[0]?.options.map((option) => option.id)).not.toContain("H21");
   });
 });

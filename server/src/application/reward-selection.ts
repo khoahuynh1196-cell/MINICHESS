@@ -76,7 +76,9 @@ export function buildRoundRewardPlan(input: BuildRoundRewardPlanInput): RoundRew
   let supplementalGold = 0;
   let freeRefreshes = 0;
   const offers: RewardOffer[] = [];
-  const heroOptions = [...input.content.heroesById.values()].map((hero) => ({ id: hero.id, kind: "hero" as const, cost: hero.cost }));
+  const heroOptions = [...input.content.heroesById.values()]
+    .filter((hero) => !hero.is_unique_hero)
+    .map((hero) => ({ id: hero.id, kind: "hero" as const, cost: hero.cost }));
   const itemOptions = input.content.normalItems.map((item) => ({ id: item.id, kind: "normal_item" as const }));
 
   for (const [index, reward] of encounter.rewards.entries()) {

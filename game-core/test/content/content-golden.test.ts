@@ -13,7 +13,7 @@ describe("Alpha content manifest", () => {
     const second = compileContentBundle(raw);
 
     expect(second.contentHash).toBe(first.contentHash);
-    expect(first.contentHash).toBe("f70e2f139408262e");
+    expect(first.contentHash).toBe("8c7f11c01e670b1e");
     expect(first.manifest).toEqual({
       heroCount: 20,
       shopHeroCount: 20,

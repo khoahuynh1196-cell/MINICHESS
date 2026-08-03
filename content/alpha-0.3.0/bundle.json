@@ -2814,7 +2814,7 @@
       "id": "PVE_04",
       "round": 4,
       "biome": "ruins",
-      "kind": "boss",
+      "kind": "miniboss",
       "enemy_composition": [
         { "hero_id": "H16", "position": 0, "stat_multiplier": 1100 },
         { "hero_id": "H19", "position": 4, "stat_multiplier": 1100 },
@@ -2899,7 +2899,7 @@
       "id": "PVE_08",
       "round": 8,
       "biome": "ember_citadel",
-      "kind": "final_boss",
+      "kind": "boss",
       "enemy_composition": [
         { "hero_id": "H01", "position": 0, "stat_multiplier": 1800 },
         { "hero_id": "H04", "position": 1, "stat_multiplier": 1800 },

@@ -139,6 +139,20 @@ describe("Alpha content bundle", () => {
     if (!existsSync(bundlePath)) throw new Error("Alpha bundle fixture is missing");
 
     const inventory = compileContentBundle(JSON.parse(readFileSync(bundlePath, "utf8")));
+    expect(inventory.encounters.map((encounter) => ({
+      round: encounter.round,
+      biome: encounter.biome,
+      kind: encounter.kind,
+    }))).toEqual([
+      { round: 1, biome: "meadow", kind: "normal" },
+      { round: 2, biome: "meadow", kind: "normal" },
+      { round: 3, biome: "ruins", kind: "elite" },
+      { round: 4, biome: "ruins", kind: "miniboss" },
+      { round: 5, biome: "frost_keep", kind: "affix" },
+      { round: 6, biome: "frost_keep", kind: "hard" },
+      { round: 7, biome: "ember_citadel", kind: "elite" },
+      { round: 8, biome: "ember_citadel", kind: "boss" },
+    ]);
     expect(inventory.encounters.map((encounter) => encounter.enemy_composition?.length)).toEqual([2, 3, 3, 4, 4, 5, 5, 6]);
     expect(inventory.encounters.map((encounter) => encounter.enemy_composition?.[0]?.stat_multiplier)).toEqual([550, 700, 900, 1100, 1200, 1350, 1550, 1800]);
     for (const encounter of inventory.encounters) {
@@ -148,6 +162,8 @@ describe("Alpha content bundle", () => {
     }
     expect(inventory.encounters.filter((encounter) => encounter.affix !== undefined).map((encounter) => encounter.round)).toEqual([5]);
     expect(inventory.encounters.find((encounter) => encounter.round === 5)?.affix).toEqual({ kind: "attack_speed_multiplier", value: 150 });
+    expect(inventory.encounters.find((encounter) => encounter.round === 4)?.rewards.map((reward) => reward.kind)).toEqual(["unique_reveal", "hero_choice"]);
+    expect(inventory.encounters.find((encounter) => encounter.round === 8)?.rewards.map((reward) => reward.kind)).toEqual(["final_chest"]);
   });
 
   it("rejects a Unique item whose transformation is not in the bundle", () => {
