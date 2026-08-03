@@ -112,6 +112,17 @@ describe("content compiler", () => {
     expect(compiled.manifest).toMatchObject({ heroCount: 20, shopHeroCount: 20, uniqueHeroCount: 0, traitCount: 10 });
   });
 
+  it("rejects an Alpha roster that replaces H20 with deferred H21", async () => {
+    const compiler = await loadCompiler();
+    expect(compiler).toBeDefined();
+    if (compiler === undefined) return;
+
+    const bundle = createInitialDemoAlphaBundle();
+    bundle.heroes[19] = { ...bundle.heroes[19]!, id: "H21" };
+
+    expect(() => compiler.compileContentBundle(bundle)).toThrow(/H01.*H20/i);
+  });
+
   it("rejects a hero with a rarity outside the five shop tiers", async () => {
     const compiler = await loadCompiler();
     expect(compiler).toBeDefined();
