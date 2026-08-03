@@ -1,12 +1,16 @@
 class_name CombatVfx2D
 extends Node2D
 
+signal expired
 
 var cue_id := "attack_flash"
 var color := Color.WHITE
 var duration := 0.28
 var age := 0.0
 var direction := 1.0
+var pooled := false
+var reduced_motion := false
+var combat_label: Label
 
 func play(next_cue_id: String, next_color: Color, next_direction: float = 1.0, layer_texture: Texture2D = null) -> void:
 	cue_id = next_cue_id
@@ -23,10 +27,30 @@ func play(next_cue_id: String, next_color: Color, next_direction: float = 1.0, l
 		add_child(layer)
 	queue_redraw()
 
+func activate(next_cue_id: String, next_color: Color, floating_text: String, use_reduced_motion: bool) -> void:
+	reduced_motion = use_reduced_motion
+	visible = true
+	play(next_cue_id, next_color)
+	duration = 0.0 if reduced_motion else duration
+	if combat_label == null:
+		combat_label = Label.new()
+		combat_label.name = "FloatingCombatText"
+		combat_label.position = Vector2(-54.0, -88.0)
+		combat_label.size = Vector2(108.0, 28.0)
+		combat_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		combat_label.add_theme_font_size_override("font_size", 20)
+		add_child(combat_label)
+	combat_label.text = floating_text
+	combat_label.tooltip_text = floating_text
+	combat_label.modulate = next_color
+
 func _process(delta: float) -> void:
 	age += delta
 	if age >= duration:
-		queue_free()
+		if pooled:
+			expired.emit()
+		else:
+			queue_free()
 		return
 	queue_redraw()
 

@@ -19,6 +19,9 @@ const ItemInventoryScript = preload("res://scripts/ui/item_inventory.gd")
 const HeroVisualCatalogScript = preload("res://scripts/presentation/hero_visual_catalog.gd")
 const LocalizationCatalogScript = preload("res://scripts/localization_catalog.gd")
 const AudioFeedbackScript = preload("res://scripts/audio_feedback.gd")
+const CombatHudScript = preload("res://scripts/ui/combat_hud.gd")
+const CombatVfxPoolScript = preload("res://scripts/combat_vfx_pool.gd")
+const RunRecapScreenScript = preload("res://scripts/ui/run_recap_screen.gd")
 const BOARD_COLUMNS := 3
 const BOARD_ROWS := 8
 const CELL_WIDTH := 340.0
@@ -74,10 +77,15 @@ var _collection_species_filter := "all"
 var _collection_role_filter := "all"
 var _collection_detail_hero_id := ""
 var _request_in_flight := false
+var combat_hud
+var combat_vfx_pool
+var combat_camera: Camera2D
+var camera_focus_position := Vector2.ZERO
 
 signal command_requested(payload: Dictionary)
 
 func _ready() -> void:
+	_ensure_combat_presentation()
 	_create_mobile_ui()
 	attach_run_api(RunApiClientScript.new())
 	_resume_local_run()
@@ -112,13 +120,20 @@ func restart_replay() -> void:
 
 func set_playback_speed(speed: float) -> void:
 	_playback_speed = speed
+	_bind_combat_hud()
 	_set_status("Replaying combat at %s×" % speed)
 
 func toggle_pause() -> void:
 	_paused = not _paused
 	_set_status("Paused" if _paused else "Replaying combat")
+	_bind_combat_hud()
 
 func apply_event(event) -> void:
+	_ensure_combat_presentation()
+	if combat_hud != null:
+		combat_hud.present_event(event)
+	if combat_vfx_pool != null:
+		combat_vfx_pool.present(event)
 	match event.type:
 		"UNIT_SPAWNED":
 			_spawn_unit(event)
@@ -128,6 +143,7 @@ func apply_event(event) -> void:
 			_present_source(event, "basic_attack")
 		"CAST_STARTED", "CAST_RESOLVED":
 			_present_source(event, "skill")
+			_emphasize_camera(_source_unit(event))
 		"DAMAGE_APPLIED":
 			_update_unit_hp(event, "hit")
 		"HEAL_APPLIED":
@@ -483,6 +499,8 @@ func _spawn_unit(event) -> void:
 	unit.set_reduced_motion(bool(settings.get("reduced_motion", false)))
 	unit_views[unit_id] = unit
 	add_child(unit)
+	if side == "enemy" and _is_boss_unit(unit):
+		_emphasize_camera(unit)
 	_ensure_manifest_hud_item_icon()
 
 func _move_unit(event) -> void:
@@ -527,6 +545,41 @@ func _mark_unit_defeated(event) -> void:
 func _targeted_unit(event):
 	var unit_id: String = String(event.target_unit_id if not event.target_unit_id.is_empty() else event.source_unit_id)
 	return unit_views.get(unit_id)
+
+func _source_unit(event):
+	return unit_views.get(String(event.source_unit_id))
+
+func _is_boss_unit(unit) -> bool:
+	return str(unit.get("monster_id")).contains("boss") or str(unit.get("tier")) in ["boss", "boss_family"]
+
+func _ensure_combat_presentation() -> void:
+	if combat_vfx_pool == null:
+		combat_vfx_pool = CombatVfxPoolScript.new()
+		combat_vfx_pool.name = "CombatVfxPool"
+		combat_vfx_pool.unit_position_resolver = func(unit_id: String) -> Vector2:
+			var unit = unit_views.get(unit_id)
+			return unit.position if unit != null else BOARD_RECT.get_center()
+		combat_vfx_pool.set_reduced_motion(bool(settings.get("reduced_motion", false)))
+		add_child(combat_vfx_pool)
+	if combat_camera == null:
+		combat_camera = Camera2D.new()
+		combat_camera.name = "CombatCamera"
+		combat_camera.position = BOARD_RECT.get_center()
+		combat_camera.enabled = true
+		add_child(combat_camera)
+		camera_focus_position = combat_camera.position
+
+func _emphasize_camera(unit) -> void:
+	if unit == null:
+		return
+	_ensure_combat_presentation()
+	camera_focus_position = unit.position
+	combat_camera.position = camera_focus_position
+	combat_camera.zoom = Vector2(1.08, 1.08)
+	if bool(settings.get("reduced_motion", false)):
+		return
+	var reset := create_tween()
+	reset.tween_property(combat_camera, "zoom", Vector2.ONE, 0.22)
 
 func _hero_id_from_unit_id(unit_id: String) -> String:
 	var instance_id := unit_id.trim_prefix("player:")
@@ -650,6 +703,7 @@ func _set_status(next_status: String) -> void:
 	queue_redraw()
 
 func _create_mobile_ui() -> void:
+	_ensure_combat_presentation()
 	if screen_router != null:
 		return
 	settings = settings_store.load_settings()
@@ -677,6 +731,8 @@ func set_reduced_motion(enabled: bool) -> void:
 	settings["reduced_motion"] = enabled
 	for unit in unit_views.values():
 		unit.set_reduced_motion(enabled)
+	_ensure_combat_presentation()
+	combat_vfx_pool.set_reduced_motion(enabled)
 	settings_store.save_settings(settings)
 
 func show_mobile_screen(screen_id: String) -> void:
@@ -702,6 +758,8 @@ func _apply_screen_settings(updated_settings: Dictionary) -> void:
 	settings = updated_settings.duplicate(true)
 	for unit in unit_views.values():
 		unit.set_reduced_motion(bool(settings.get("reduced_motion", false)))
+	_ensure_combat_presentation()
+	combat_vfx_pool.set_reduced_motion(bool(settings.get("reduced_motion", false)))
 	audio_feedback.configure(settings)
 
 func _toggle_text_scale() -> void:
@@ -894,12 +952,11 @@ func _build_combat_screen(root: Control) -> void:
 	detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	detail.add_theme_font_size_override("font_size", 22)
 	panel.add_child(detail)
-	var controls := HBoxContainer.new()
-	controls.add_theme_constant_override("separation", ThemeTokensScript.TOUCH_GAP)
-	controls.add_child(_mobile_button("Pause" if not _paused else "Play", toggle_pause, ThemeTokensScript.GOLD))
-	controls.add_child(_mobile_button("1x", func() -> void: set_playback_speed(1.0), ThemeTokensScript.STONE_RAISED))
-	controls.add_child(_mobile_button("2x", func() -> void: set_playback_speed(2.0), ThemeTokensScript.STONE_RAISED))
-	panel.add_child(controls)
+	combat_hud = CombatHudScript.new()
+	combat_hud.pause_requested.connect(toggle_pause)
+	combat_hud.speed_requested.connect(set_playback_speed)
+	panel.add_child(combat_hud)
+	_bind_combat_hud()
 	var notice := _screen_panel(root, Rect2(layout.message), "Battle board")
 	notice.get_parent().name = "CombatBoardMessage"
 	var label := Label.new()
@@ -945,14 +1002,25 @@ func _build_reward_screen(root: Control) -> void:
 
 func _build_recap_screen(root: Control) -> void:
 	var panel := _screen_panel(root, Rect2(40.0, 185.0, 1000.0, 700.0), "The expedition is complete")
-	var result := Label.new()
-	result.text = "Reached round %d with %d health remaining. Replay data remains deterministic and your local resumable run has been cleared." % [run_state.round, run_state.health]
-	result.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	result.add_theme_font_size_override("font_size", 24)
-	result.add_theme_color_override("font_color", ThemeTokensScript.PARCHMENT)
-	panel.add_child(result)
+	var recap = RunRecapScreenScript.new()
+	recap.bind_snapshot(_authoritative_recap_snapshot())
+	panel.add_child(recap)
 	panel.add_child(_mobile_button("Return to Lobby", func() -> void: show_mobile_screen("lobby"), ThemeTokensScript.GOLD))
 	panel.add_child(_mobile_button("Replay Combat", restart_replay, ThemeTokensScript.STONE_RAISED))
+
+func _bind_combat_hud() -> void:
+	if combat_hud != null:
+		combat_hud.bind_snapshot({ "paused": _paused, "playbackSpeed": _playback_speed })
+
+func _authoritative_recap_snapshot() -> Dictionary:
+	return {
+		"winner": _public_run_view.get("winner", ""),
+		"round": _public_run_view.get("round", ""),
+		"mvp": _public_run_view.get("mvp", ""),
+		"damageByHero": _public_run_view.get("damageByHero", {}),
+		"healByHero": _public_run_view.get("healByHero", {}),
+		"activeTraits": _public_run_view.get("activeTraits", []),
+	}
 
 func _build_collection_screen(root: Control) -> void:
 	var panel := _screen_panel(root, Rect2(40.0, 165.0, 1000.0, 1550.0), "20 current heroes  •  no reward-only Unique heroes")
