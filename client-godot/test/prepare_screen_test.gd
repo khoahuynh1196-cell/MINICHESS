@@ -12,18 +12,18 @@ func _init() -> void:
 	_expect(_label(screen, "LevelValue") == "Level 4", "Prepare header must render level from the authoritative public view")
 	_expect(_all_core_controls_fit(screen), "Prepare core controls must fit within the 1080 x 1920 portrait viewport")
 	_expect(not _button(screen, "BuySlot0").disabled and not _button(screen, "BuyXp").disabled and not _button(screen, "StartRound").disabled, "Prepare controls must be available during PREPARE")
+	_expect(_label(screen, "TierOdds") == "T1 45%  T2 35%  T3 18%  T4 2%  T5 0%", "Prepare must pass authoritative shop odds into its presentation panel")
+	_expect(_button(screen, "LockShop") == null and _label(screen, "LockUnavailable") == "Lock unavailable: server support pending", "Prepare must not offer a fake lock action before the server supports one")
 	_expect(_board_cell_count(screen) == 12 and _button(screen, "BoardCell11") != null and _button(screen, "BoardCell12") == null, "Prepare must render exactly the 12 legal player-half board slots")
 
 	var intents: Array = []
 	screen.buy_shop_slot.connect(func(index: int) -> void: intents.append(["buy", index]))
 	screen.buy_xp.connect(func() -> void: intents.append(["xp"]))
-	screen.lock_shop.connect(func() -> void: intents.append(["lock"]))
 	screen.start_round.connect(func() -> void: intents.append(["start"]))
 	_button(screen, "BuySlot0").pressed.emit()
 	_button(screen, "BuyXp").pressed.emit()
-	_button(screen, "LockShop").pressed.emit()
 	_button(screen, "StartRound").pressed.emit()
-	_expect(intents == [["buy", 0], ["xp"], ["lock"], ["start"]], "Prepare controls must emit typed presentation intents")
+	_expect(intents == [["buy", 0], ["xp"], ["start"]], "Prepare controls must emit typed presentation intents")
 	var interaction_intents: Array = []
 	if screen.has_signal("formation_hero_pressed"):
 		screen.connect("formation_hero_pressed", func(instance_id: String, destination: int) -> void: interaction_intents.append(["hero", instance_id, destination]))
@@ -72,6 +72,7 @@ func _prepare_view() -> Dictionary:
 	return {
 		"id": "prepare-screen-fixture", "state": "PREPARE", "round": 3, "revision": 7,
 		"gold": 12, "health": 31, "level": 4, "experience": 2, "experienceToNext": 10, "boardCap": 4,
+		"shopOdds": { "tier1": 45, "tier2": 35, "tier3": 18, "tier4": 2, "tier5": 0 },
 		"shop": [
 			{ "heroId": "H01", "cost": 1 }, { "heroId": "H02", "cost": 2 }, { "heroId": "H03", "cost": 3 }, { "heroId": "H04", "cost": 4 }, { "heroId": "H20", "cost": 5 },
 		],

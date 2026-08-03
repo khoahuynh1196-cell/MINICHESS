@@ -15,6 +15,8 @@ var bench: Array = []
 var board: Array = []
 var items: Array = []
 var free_refreshes := 0
+var shop_odds: Dictionary = {}
+var shop_locked := false
 var round_reward_plan: Dictionary = {}
 var reward_heroes: Array = []
 
@@ -37,6 +39,8 @@ func apply_public_view(view: Dictionary) -> void:
 	board = Array(view.get("board", [])).duplicate(true)
 	items = Array(view.get("items", [])).duplicate(true)
 	free_refreshes = int(view.get("freeRefreshes", 0))
+	shop_odds = Dictionary(view.get("shopOdds", {})).duplicate(true)
+	shop_locked = bool(view.get("shopLocked", false))
 	round_reward_plan = Dictionary(view.get("roundRewardPlan", {})).duplicate(true)
 	reward_heroes = Array(view.get("rewardHeroes", [])).duplicate(true)
 

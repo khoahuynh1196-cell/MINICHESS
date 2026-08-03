@@ -6,6 +6,7 @@ const TraitSummaryScript = preload("res://scripts/ui/trait_summary.gd")
 const ItemInventoryScript = preload("res://scripts/ui/item_inventory.gd")
 const HeroVisualCatalogScript = preload("res://scripts/presentation/hero_visual_catalog.gd")
 const FormationSlotButtonScript = preload("res://scripts/ui/formation_slot_button.gd")
+const ShopPanelScript = preload("res://scripts/ui/shop_panel.gd")
 
 const PORTRAIT_RECT := Rect2(0.0, 0.0, 1080.0, 1920.0)
 const BOARD_COLUMNS := 3
@@ -132,22 +133,16 @@ func _inventory() -> void:
 			button.pressed.connect(func() -> void: item_selected.emit(String(item.get("instanceId", ""))))
 
 func _shop() -> void:
-	_panel("ShopPanel", Rect2(40.0, 1110.0, 1000.0, 245.0))
-	_label("ShopHeading", "SHOP  •  five shared-pool offers", Rect2(64.0, 1125.0, 560.0, 28.0), ThemeTokensScript.TYPE_META, ThemeTokensScript.PARCHMENT)
-	var shop: Array = Array(_view.get("shop", []))
-	for index in SHOP_SLOT_COUNT:
-		var slot = shop[index] if index < shop.size() else null
-		var text := "Sold"
-		if slot != null:
-			text = "%s\n%dg" % [_hero_name(slot), int(slot.get("cost", 0))]
-		var card := _button("BuySlot%d" % index, text, Rect2(60.0 + index * 194.0, 1170.0, 180.0, 104.0), ThemeTokensScript.GOLD)
-		card.disabled = slot == null or not _prepare_enabled or int(_view.get("gold", 0)) < int(slot.get("cost", 0)) or Array(_view.get("bench", [])).size() >= BENCH_SLOT_COUNT
-		if slot != null:
-			card.pressed.connect(func() -> void: buy_shop_slot.emit(index))
-	var refresh_cost := "free" if int(_view.get("freeRefreshes", 0)) > 0 else "2g"
-	var refresh := _button("RefreshShop", "Refresh  •  %s" % refresh_cost, Rect2(60.0, 1290.0, 240.0, 44.0), ThemeTokensScript.PLAYER)
-	refresh.disabled = not _prepare_enabled or (int(_view.get("freeRefreshes", 0)) <= 0 and int(_view.get("gold", 0)) < 2)
-	refresh.pressed.connect(func() -> void: refresh_shop.emit())
+	var panel = ShopPanelScript.new()
+	panel.position = Vector2(40.0, 1110.0)
+	panel.size = Vector2(1000.0, 245.0)
+	panel.set_catalog(_shop_catalog())
+	panel.set_purchase_context(int(_view.get("gold", 0)), Array(_view.get("bench", [])).size(), _prepare_enabled, int(_view.get("freeRefreshes", 0)))
+	panel.bind_shop(Array(_view.get("shop", [])), Dictionary(_view.get("shopOdds", {})), bool(_view.get("shopLocked", false)))
+	panel.buy_shop_slot.connect(func(index: int) -> void: buy_shop_slot.emit(index))
+	panel.refresh_shop.connect(func() -> void: refresh_shop.emit())
+	panel.lock_shop.connect(func() -> void: lock_shop.emit())
+	add_child(panel)
 
 func _action_rail() -> void:
 	_panel("ActionRail", Rect2(40.0, 1375.0, 1000.0, 145.0), ThemeTokensScript.STONE_RAISED)
@@ -155,17 +150,13 @@ func _action_rail() -> void:
 	var xp := _button("BuyXp", "Buy 4 XP", Rect2(60.0, 1435.0, 170.0, 56.0), ThemeTokensScript.PLAYER)
 	xp.disabled = not _prepare_enabled or int(_view.get("gold", 0)) < 4 or int(_view.get("experienceToNext", 0)) <= 0
 	xp.pressed.connect(func() -> void: buy_xp.emit())
-	var lock := _button("LockShop", "Lock Shop", Rect2(250.0, 1435.0, 150.0, 56.0), ThemeTokensScript.STONE_RAISED)
-	lock.disabled = true
-	lock.tooltip_text = "Shop locking is not available until the server supports it."
-	lock.pressed.connect(func() -> void: lock_shop.emit())
-	var start := _button("StartRound", "Start Round", Rect2(420.0, 1435.0, 170.0, 56.0), ThemeTokensScript.SUCCESS)
+	var start := _button("StartRound", "Start Round", Rect2(250.0, 1435.0, 170.0, 56.0), ThemeTokensScript.SUCCESS)
 	start.disabled = not _prepare_enabled or _deployed_count() == 0
 	start.pressed.connect(func() -> void: start_round.emit())
-	var sell := _button("SellSelected", "Sell selected", Rect2(610.0, 1435.0, 180.0, 56.0), ThemeTokensScript.DANGER)
+	var sell := _button("SellSelected", "Sell selected", Rect2(440.0, 1435.0, 180.0, 56.0), ThemeTokensScript.DANGER)
 	sell.disabled = not _prepare_enabled or _selected_hero_instance_id.is_empty()
 	sell.pressed.connect(func() -> void: sell_hero.emit(_selected_hero_instance_id))
-	var collection := _button("ViewCollection", "Collection", Rect2(810.0, 1435.0, 180.0, 56.0), ThemeTokensScript.GOLD)
+	var collection := _button("ViewCollection", "Collection", Rect2(640.0, 1435.0, 180.0, 56.0), ThemeTokensScript.GOLD)
 	collection.disabled = not _prepare_enabled
 	collection.pressed.connect(func() -> void: collection_requested.emit())
 
@@ -231,3 +222,9 @@ func _hero_name(hero: Dictionary) -> String:
 	if HeroVisualCatalogScript.hero_ids().has(hero_id):
 		return String(HeroVisualCatalogScript.profile(hero_id).get("display_name", hero_id))
 	return hero_id
+
+func _shop_catalog() -> Dictionary:
+	var catalog := {}
+	for hero_id in HeroVisualCatalogScript.hero_ids():
+		catalog[hero_id] = HeroVisualCatalogScript.profile(hero_id)
+	return catalog
