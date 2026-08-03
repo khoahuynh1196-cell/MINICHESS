@@ -1,6 +1,7 @@
 extends SceneTree
 
 const BattleControllerScript = preload("res://scripts/battle_controller.gd")
+const FormationSlotButtonScript = preload("res://scripts/ui/formation_slot_button.gd")
 
 var _failed := false
 
@@ -16,8 +17,20 @@ func _init() -> void:
 		"board": _board(), "items": [{ "instanceId": "item-a", "itemId": "I01", "kind": "normal" }],
 	})
 	_expect(controller.prepare_screen != null, "a PREPARE run must render the routed Prepare shell")
-	controller.prepare_screen.find_child("BenchSlot00", true, false).pressed.emit()
-	controller.prepare_screen.find_child("BoardCell00", true, false).pressed.emit()
+	var bench_slot = controller.prepare_screen.find_child("BenchSlot00", true, false)
+	var board_cell = controller.prepare_screen.find_child("BoardCell00", true, false)
+	var has_drag_controls := bench_slot is FormationSlotButtonScript and board_cell is FormationSlotButtonScript
+	_expect(has_drag_controls, "formation slots must provide actual drag/drop controls")
+	if has_drag_controls:
+		board_cell._drop_data(Vector2.ZERO, { "hero_instance_id": "bench-a", "origin": 0 })
+		var drag_command: Dictionary = commands[0] if commands.size() > 0 else {}
+		_expect(String(drag_command.get("type", "")) == "MOVE_HERO" and int(drag_command.get("destination", -1)) == 12, "dragging a bench hero onto board cell must bridge to MOVE_HERO")
+	commands.clear()
+	bench_slot = controller.prepare_screen.find_child("BenchSlot00", true, false)
+	board_cell = controller.prepare_screen.find_child("BoardCell00", true, false)
+	bench_slot.pressed.emit()
+	board_cell = controller.prepare_screen.find_child("BoardCell00", true, false)
+	board_cell.pressed.emit()
 	var move_command: Dictionary = commands[0] if commands.size() > 0 else {}
 	_expect(String(move_command.get("type", "")) == "MOVE_HERO", "tap formation flow must emit a MOVE_HERO command")
 	_expect(int(move_command.get("destination", -1)) == 12, "formation command must preserve the selected destination")

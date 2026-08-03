@@ -5,6 +5,7 @@ const ThemeTokensScript = preload("res://scripts/ui/theme_tokens.gd")
 const TraitSummaryScript = preload("res://scripts/ui/trait_summary.gd")
 const ItemInventoryScript = preload("res://scripts/ui/item_inventory.gd")
 const HeroVisualCatalogScript = preload("res://scripts/presentation/hero_visual_catalog.gd")
+const FormationSlotButtonScript = preload("res://scripts/ui/formation_slot_button.gd")
 
 const PORTRAIT_RECT := Rect2(0.0, 0.0, 1080.0, 1920.0)
 const BOARD_COLUMNS := 3
@@ -20,6 +21,7 @@ signal start_round
 signal sell_hero(instance_id: String)
 signal formation_hero_pressed(instance_id: String, destination: int)
 signal formation_destination_selected(destination: int)
+signal formation_drag_dropped(instance_id: String, destination: int)
 signal item_selected(instance_id: String)
 signal unequip_item_requested(instance_id: String)
 signal collection_requested
@@ -85,12 +87,12 @@ func _board() -> void:
 		if hero != null:
 			text = "%s  ★%d" % [_hero_name(hero), int(hero.get("stars", 1))]
 		var selected := hero != null and String(hero.get("instanceId", "")) == _selected_hero_instance_id
-		var cell := _button("BoardCell%02d" % index, text, Rect2(60.0 + column * 325.0, 230.0 + row * 56.0, 310.0, 48.0), ThemeTokensScript.GOLD if selected else ThemeTokensScript.STONE_RAISED if hero != null else ThemeTokensScript.PLAYER)
-		cell.disabled = not _prepare_enabled
+		var cell := _formation_slot("BoardCell%02d" % index, text, Rect2(60.0 + column * 325.0, 230.0 + row * 56.0, 310.0, 48.0), ThemeTokensScript.GOLD if selected else ThemeTokensScript.STONE_RAISED if hero != null else ThemeTokensScript.PLAYER, String(hero.get("instanceId", "")) if hero != null else "", 12 + index)
+		cell.move_dropped.connect(func(instance_id: String, destination: int) -> void: formation_drag_dropped.emit(instance_id, destination))
 		if hero == null:
-			cell.pressed.connect(func() -> void: formation_destination_selected.emit(12 + index))
+			cell.pressed.connect(_emit_formation_destination.bind(12 + index))
 		else:
-			cell.pressed.connect(func() -> void: formation_hero_pressed.emit(String(hero.get("instanceId", "")), 12 + index))
+			cell.pressed.connect(_emit_formation_hero.bind(String(hero.get("instanceId", "")), 12 + index))
 
 func _bench() -> void:
 	_panel("BenchPanel", Rect2(40.0, 715.0, 1000.0, 150.0))
@@ -99,12 +101,12 @@ func _bench() -> void:
 	for index in BENCH_SLOT_COUNT:
 		var hero = bench[index] if index < bench.size() else null
 		var selected := hero != null and String(hero.get("instanceId", "")) == _selected_hero_instance_id
-		var button := _button("BenchSlot%02d" % index, "Open bench" if hero == null else _hero_name(hero), Rect2(60.0 + index * 123.0, 775.0, 116.0, 58.0), ThemeTokensScript.GOLD if selected else ThemeTokensScript.STONE_RAISED if hero != null else ThemeTokensScript.PLAYER)
-		button.disabled = not _prepare_enabled
+		var button := _formation_slot("BenchSlot%02d" % index, "Open bench" if hero == null else _hero_name(hero), Rect2(60.0 + index * 123.0, 775.0, 116.0, 58.0), ThemeTokensScript.GOLD if selected else ThemeTokensScript.STONE_RAISED if hero != null else ThemeTokensScript.PLAYER, String(hero.get("instanceId", "")) if hero != null else "", index)
+		button.move_dropped.connect(func(instance_id: String, destination: int) -> void: formation_drag_dropped.emit(instance_id, destination))
 		if hero == null:
-			button.pressed.connect(func() -> void: formation_destination_selected.emit(index))
+			button.pressed.connect(_emit_formation_destination.bind(index))
 		else:
-			button.pressed.connect(func() -> void: formation_hero_pressed.emit(String(hero.get("instanceId", "")), index))
+			button.pressed.connect(_emit_formation_hero.bind(String(hero.get("instanceId", "")), index))
 
 func _traits() -> void:
 	_panel("TraitPanel", Rect2(40.0, 885.0, 1000.0, 95.0))
@@ -201,6 +203,25 @@ func _button(node_name: String, text: String, rect: Rect2, accent: Color) -> But
 	ThemeTokensScript.apply_button_style(button, accent)
 	add_child(button)
 	return button
+
+func _formation_slot(node_name: String, label_text: String, rect: Rect2, accent: Color, hero_instance_id: String, destination: int) -> FormationSlotButton:
+	var button := FormationSlotButtonScript.new()
+	button.name = node_name
+	button.text = label_text
+	button.position = rect.position
+	button.size = rect.size
+	button.focus_mode = Control.FOCUS_ALL
+	button.tooltip_text = label_text.replace("\n", " ")
+	ThemeTokensScript.apply_button_style(button, accent)
+	button.configure_slot(hero_instance_id, destination, _prepare_enabled)
+	add_child(button)
+	return button
+
+func _emit_formation_hero(instance_id: String, destination: int) -> void:
+	formation_hero_pressed.emit(instance_id, destination)
+
+func _emit_formation_destination(destination: int) -> void:
+	formation_destination_selected.emit(destination)
 
 func _deployed_count() -> int:
 	return Array(_view.get("board", [])).filter(func(hero): return hero != null).size()

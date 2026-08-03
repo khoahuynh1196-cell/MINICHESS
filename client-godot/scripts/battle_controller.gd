@@ -349,6 +349,12 @@ func _interact_with_hero(hero: Dictionary, destination: int) -> void:
 		return
 	select_formation_hero(hero_instance_id)
 
+func request_drag_formation_move(hero_instance_id: String, destination: int) -> void:
+	if formation_controller.request_drag_drop(hero_instance_id, destination, run_state.state):
+		request_move_hero(hero_instance_id, destination)
+		_set_status("Formation move requested")
+		_refresh_mobile_screen()
+
 func _interact_with_prepare_hero(hero_instance_id: String, destination: int) -> void:
 	for hero in run_state.bench + run_state.board:
 		if hero != null and String(hero.get("instanceId", "")) == hero_instance_id:
@@ -689,6 +695,7 @@ func _build_prepare_screen(root: Control) -> void:
 	prepare_screen.sell_hero.connect(request_sell_hero)
 	prepare_screen.formation_hero_pressed.connect(_interact_with_prepare_hero)
 	prepare_screen.formation_destination_selected.connect(request_selected_formation_move)
+	prepare_screen.formation_drag_dropped.connect(request_drag_formation_move)
 	prepare_screen.item_selected.connect(select_item)
 	prepare_screen.unequip_item_requested.connect(request_unequip_item)
 	prepare_screen.collection_requested.connect(func() -> void: show_mobile_screen("collection"))
