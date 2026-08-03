@@ -10,6 +10,7 @@ const HeroSfx = preload("res://scripts/presentation/hero_sfx_bus.gd")
 signal action_finished(action: String)
 
 var hero_id := "H01"
+var unique_item_id := ""
 var profile: Dictionary = {}
 var animation_state := "idle"
 var facing := 1.0
@@ -24,8 +25,9 @@ var anchors: Dictionary = {}
 var layered_parts: Dictionary = {}
 var reduced_motion := false
 
-func configure(next_hero_id: String, base_texture: Texture2D = null, faces_right: bool = true) -> void:
+func configure(next_hero_id: String, base_texture: Texture2D = null, faces_right: bool = true, next_unique_item_id: String = "") -> void:
 	hero_id = next_hero_id
+	unique_item_id = next_unique_item_id
 	profile = Catalog.profile(hero_id)
 	facing = 1.0 if faces_right else -1.0
 	if base_texture == null:
@@ -144,7 +146,8 @@ func _spawn_vfx(cue_id: String) -> void:
 	vfx.name = "Vfx_%s" % cue_id
 	vfx.z_index = 8
 	var palette: Dictionary = profile.palette
-	vfx.play(cue_id, Color.from_string(String(palette.accent), Color.WHITE), facing, AssetManifestScript.resolve_vfx_texture("transformations/lion_crown/vfx"))
+	var manifest_texture := AssetManifestScript.resolve_transformation_vfx_texture(unique_item_id) if not unique_item_id.is_empty() else AssetManifestScript.resolve_hero_vfx_texture(hero_id)
+	vfx.play(cue_id, Color.from_string(String(palette.accent), Color.WHITE), facing, manifest_texture)
 	add_child(vfx)
 
 func _apply_pose(t: float) -> void:

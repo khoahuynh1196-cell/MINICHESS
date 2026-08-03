@@ -67,7 +67,7 @@ func _add_portrait(hero_id: String) -> void:
 	hero_rig = HeroRigScript.new()
 	hero_rig.name = "HeroRig"
 	hero_rig.z_index = 2
-	hero_rig.configure(hero_id, manifest_texture, side == "player")
+	hero_rig.configure(hero_id, manifest_texture, side == "player", unique_item_id)
 	hero_rig.set_reduced_motion(reduced_motion)
 	add_child(hero_rig)
 	# Retain the named texture node for fixture compatibility; the rig is visible.

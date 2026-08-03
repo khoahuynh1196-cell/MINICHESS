@@ -2,6 +2,7 @@ extends SceneTree
 
 const CONTROLLER_PATH := "res://scripts/battle_controller.gd"
 const CombatEventScript = preload("res://scripts/combat_event.gd")
+const AssetManifestScript = preload("res://scripts/presentation/asset_manifest.gd")
 
 func _init() -> void:
 	set_meta("failed", false)
@@ -11,6 +12,18 @@ func _init() -> void:
 		return
 
 	var controller = controller_script.new()
+	controller.run_state.items = [{ "itemId": "I02", "kind": "normal" }]
+	controller._ensure_manifest_hud_item_icon()
+	var normal_hud_icon = controller.get_node_or_null("ManifestHudItemIcon")
+	_expect(normal_hud_icon != null and _texture_key(normal_hud_icon.texture) == _texture_key(AssetManifestScript.resolve_item_texture("I02")), "HUD must display an authoritative owned item instead of a fixed I01 icon")
+	var normal_hud_key := _texture_key(normal_hud_icon.texture) if normal_hud_icon != null else ""
+	controller.run_state.items = [{ "itemId": "U02", "kind": "unique", "equippedHeroInstanceId": "hero-1" }]
+	controller._ensure_manifest_hud_item_icon()
+	var equipped_hud_icon = controller.get_node_or_null("ManifestHudItemIcon")
+	_expect(equipped_hud_icon != null and _texture_key(equipped_hud_icon.texture) == _texture_key(AssetManifestScript.resolve_item_texture("U02")) and _texture_key(equipped_hud_icon.texture) != normal_hud_key, "HUD must refresh to the authoritative equipped Unique icon")
+	controller.run_state.items = []
+	controller._ensure_manifest_hud_item_icon()
+	_expect(equipped_hud_icon.is_queued_for_deletion(), "HUD must not invent an item icon when the authoritative item list is empty")
 	controller.apply_event(_event("UNIT_SPAWNED", "player:H01:1", "", { "side": "player", "position": 22, "max_hp": 100000 }))
 	controller.apply_event(_event("BASIC_ATTACK", "player:H01:1", "enemy:E01:1", {}))
 	_expect(controller.unit_views["player:H01:1"].get("animation_state") == "basic_attack", "basic attack must set the source presentation state")
@@ -123,3 +136,9 @@ func _expect(condition: bool, message: String) -> void:
 func _fail(message: String) -> void:
 	set_meta("failed", true)
 	push_error(message)
+
+func _texture_key(texture: Texture2D) -> String:
+	var atlas := texture as AtlasTexture
+	if atlas != null:
+		return "%s:%s" % [atlas.atlas.resource_path, atlas.region]
+	return texture.resource_path if texture != null else ""

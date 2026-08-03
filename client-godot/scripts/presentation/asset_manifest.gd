@@ -38,6 +38,11 @@ static func resolve_hero_texture(hero_id: String) -> Texture2D:
 	var sprite_key := String(profile.get("sprite", ""))
 	return resolve_asset_texture(sprite_key)
 
+static func resolve_hero_vfx_texture(hero_id: String) -> Texture2D:
+	var profiles: Dictionary = load_manifest().get("visual_profiles", {})
+	var profile: Dictionary = profiles.get("VP_%s" % hero_id, {})
+	return resolve_asset_texture(String(profile.get("vfx", "")))
+
 static func resolve_monster_texture(monster_id: String) -> Texture2D:
 	var monsters: Dictionary = load_manifest().get("monsters", {})
 	var monster: Dictionary = monsters.get(monster_id, {})
@@ -47,6 +52,11 @@ static func resolve_transformation_texture(unique_item_id: String) -> Texture2D:
 	var transformations: Dictionary = load_manifest().get("transformations", {})
 	var transformation: Dictionary = transformations.get("VT_%s" % unique_item_id, {})
 	return resolve_asset_texture(String(transformation.get("accessory", "")))
+
+static func resolve_transformation_vfx_texture(unique_item_id: String) -> Texture2D:
+	var transformations: Dictionary = load_manifest().get("transformations", {})
+	var transformation: Dictionary = transformations.get("VT_%s" % unique_item_id, {})
+	return resolve_asset_texture(String(transformation.get("vfx", "")))
 
 static func resolve_biome_texture(biome_id: String) -> Texture2D:
 	var biomes: Dictionary = load_manifest().get("biomes", {})

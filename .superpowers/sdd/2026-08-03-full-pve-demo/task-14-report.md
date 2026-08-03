@@ -134,3 +134,21 @@ The mobile 512 × 512 budget, Android performance verification, and real
 1080 × 1920 capture remain unverified/open. The monster inventory remains ten
 distinct generated cutouts plus six explicitly marked engine-layer variants;
 it is not represented as a passed sixteen-distinct-source gate.
+
+## 2026-08-04 review fix round 2
+
+- The combat HUD no longer resolves a fixed `I01` icon. It reads the current
+  authoritative `RunState.items`, prioritizes an equipped item, otherwise an
+  owned item, and removes the icon when the server view contains no items.
+  The controller test verifies I02 and equipped U02 resolve different manifest
+  regions and verifies the empty state is truthful.
+- `HeroRig2D` no longer supplies Lion Crown VFX to every hero action. It uses
+  the acting hero's declared `VP_Hxx.vfx` manifest key, or the equipped
+  `VT_Uxx.vfx` key when a Unique is equipped. The focused VFX test proves H01,
+  H02, and U02 select their own textures; unrelated actions do not receive
+  Lion Crown art.
+- Passed: all prior focused manifest/controller/UnitView/CombatVfx/main-scene
+  tests, new `hero_vfx_manifest_test.gd`, and the 100-test alpha-bundle suite.
+
+The documented 10-distinct/6-engine-marker monster art state and all
+capture/Android/512-budget gates remain open and are not claimed as complete.

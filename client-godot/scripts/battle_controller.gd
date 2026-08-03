@@ -539,18 +539,33 @@ func _show_biome_layer(biome_id: String) -> void:
 	layer.texture = texture
 
 func _ensure_manifest_hud_item_icon() -> void:
-	if get_node_or_null("ManifestHudItemIcon") != null:
+	var icon := get_node_or_null("ManifestHudItemIcon") as Sprite2D
+	var item_id := _authoritative_hud_item_id()
+	if item_id.is_empty():
+		if icon != null:
+			icon.queue_free()
 		return
-	var texture := AssetManifestScript.resolve_item_texture("I01")
+	var texture := AssetManifestScript.resolve_item_texture(item_id)
 	if texture == null:
 		return
-	var icon := Sprite2D.new()
-	icon.name = "ManifestHudItemIcon"
+	if icon == null:
+		icon = Sprite2D.new()
+		icon.name = "ManifestHudItemIcon"
+		icon.position = Vector2(74.0, 105.0)
+		icon.scale = Vector2(0.16, 0.16)
+		icon.z_index = 12
+		add_child(icon)
 	icon.texture = texture
-	icon.position = Vector2(74.0, 105.0)
-	icon.scale = Vector2(0.16, 0.16)
-	icon.z_index = 12
-	add_child(icon)
+
+func _authoritative_hud_item_id() -> String:
+	for item in run_state.items:
+		if not String(item.get("equippedHeroInstanceId", "")).is_empty():
+			return String(item.get("itemId", ""))
+	for item in run_state.items:
+		var item_id := String(item.get("itemId", ""))
+		if not item_id.is_empty():
+			return item_id
+	return ""
 
 func _unique_item_id_from_unit_id(unit_id: String) -> String:
 	var instance_id := unit_id.trim_prefix("player:")
