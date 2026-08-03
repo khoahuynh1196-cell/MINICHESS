@@ -2,6 +2,7 @@ class_name HeroRig2D
 extends Node2D
 
 const Catalog = preload("res://scripts/presentation/hero_visual_catalog.gd")
+const AssetManifestScript = preload("res://scripts/presentation/asset_manifest.gd")
 const CombatVfx = preload("res://scripts/presentation/combat_vfx_2d.gd")
 const WeaponSilhouette = preload("res://scripts/presentation/weapon_silhouette_2d.gd")
 const HeroSfx = preload("res://scripts/presentation/hero_sfx_bus.gd")
@@ -143,7 +144,7 @@ func _spawn_vfx(cue_id: String) -> void:
 	vfx.name = "Vfx_%s" % cue_id
 	vfx.z_index = 8
 	var palette: Dictionary = profile.palette
-	vfx.play(cue_id, Color.from_string(String(palette.accent), Color.WHITE), facing)
+	vfx.play(cue_id, Color.from_string(String(palette.accent), Color.WHITE), facing, AssetManifestScript.resolve_vfx_texture("transformations/lion_crown/vfx"))
 	add_child(vfx)
 
 func _apply_pose(t: float) -> void:

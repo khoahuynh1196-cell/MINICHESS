@@ -2,6 +2,7 @@ extends Node2D
 
 const UnitViewScript = preload("res://scripts/unit_view.gd")
 const MonsterViewScript = preload("res://scripts/presentation/monster_view.gd")
+const AssetManifestScript = preload("res://scripts/presentation/asset_manifest.gd")
 const ReplayLoaderScript = preload("res://scripts/replay_loader.gd")
 const ReplaySchedulerScript = preload("res://scripts/replay_scheduler.gd")
 const CombatEventScript = preload("res://scripts/combat_event.gd")
@@ -424,11 +425,13 @@ func _spawn_unit(event) -> void:
 	var unit
 	if side == "enemy":
 		unit = MonsterViewScript.new()
+		var monster_id := _monster_id_from_unit_id(unit_id)
 		unit.configure(
-			_monster_id_from_unit_id(unit_id),
+			monster_id,
 			int(event.payload.get("max_hp", 100000)),
 			int(event.payload.get("position", 0)),
 		)
+		_show_biome_layer(_biome_for_monster(monster_id))
 	else:
 		unit = UnitViewScript.new()
 		unit.configure(
@@ -441,6 +444,7 @@ func _spawn_unit(event) -> void:
 	unit.set_reduced_motion(bool(settings.get("reduced_motion", false)))
 	unit_views[unit_id] = unit
 	add_child(unit)
+	_ensure_manifest_hud_item_icon()
 
 func _move_unit(event) -> void:
 	var unit = _targeted_unit(event)
@@ -485,8 +489,24 @@ func _hero_id_from_unit_id(unit_id: String) -> String:
 	return parts[1] if parts.size() >= 2 else ""
 
 func _monster_id_from_unit_id(unit_id: String) -> String:
-	# The combat protocol remains unit-ID based; this maps its fixture enemies to
-	# manifest-backed biome silhouettes without changing board/replay geometry.
+	# Server combat snapshots identify enemies as enemy:PVE_XX:index. This is
+	# presentation-only routing; combat rules and board coordinates stay server-owned.
+	var parts := unit_id.split(":")
+	if parts.size() >= 3 and parts[0] == "enemy":
+		var encounter_id := String(parts[1])
+		var encounter_monsters := {
+			"PVE_01": "meadow",
+			"PVE_02": "meadow",
+			"PVE_03": "ruins_elite",
+			"PVE_04": "ruins_boss",
+			"PVE_05": "frost_keep",
+			"PVE_06": "frost_keep_elite",
+			"PVE_07": "ember_citadel_elite",
+			"PVE_08": "ember_citadel_boss"
+		}
+		if encounter_monsters.has(encounter_id):
+			return String(encounter_monsters[encounter_id])
+	# Retain the local replay-fixture mapping for old Hxx enemy records.
 	var hero_id := _hero_id_from_unit_id(unit_id)
 	var fixture_biomes := {
 		"H15": "meadow",
@@ -495,6 +515,42 @@ func _monster_id_from_unit_id(unit_id: String) -> String:
 		"H17": "ember_citadel"
 	}
 	return String(fixture_biomes.get(hero_id, "meadow"))
+
+func _biome_for_monster(monster_id: String) -> String:
+	if monster_id.begins_with("ruins"):
+		return "ruins"
+	if monster_id.begins_with("frost_keep"):
+		return "frost_keep"
+	if monster_id.begins_with("ember_citadel"):
+		return "ember_citadel"
+	return "meadow"
+
+func _show_biome_layer(biome_id: String) -> void:
+	var texture := AssetManifestScript.resolve_biome_texture(biome_id)
+	if texture == null:
+		return
+	var layer := get_node_or_null("BiomeLayer") as Sprite2D
+	if layer == null:
+		layer = Sprite2D.new()
+		layer.name = "BiomeLayer"
+		layer.position = Vector2(540.0, 540.0)
+		layer.z_index = -10
+		add_child(layer)
+	layer.texture = texture
+
+func _ensure_manifest_hud_item_icon() -> void:
+	if get_node_or_null("ManifestHudItemIcon") != null:
+		return
+	var texture := AssetManifestScript.resolve_item_texture("I01")
+	if texture == null:
+		return
+	var icon := Sprite2D.new()
+	icon.name = "ManifestHudItemIcon"
+	icon.texture = texture
+	icon.position = Vector2(74.0, 105.0)
+	icon.scale = Vector2(0.16, 0.16)
+	icon.z_index = 12
+	add_child(icon)
 
 func _unique_item_id_from_unit_id(unit_id: String) -> String:
 	var instance_id := unit_id.trim_prefix("player:")

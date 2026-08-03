@@ -109,3 +109,28 @@ monster HUD atlas was restored.
 - `pnpm --dir game-core test -- alpha-bundle.test.ts`: 6 files / 100 tests
   passed.
 - Godot `res://test/asset_manifest_test.gd`: passed.
+
+## 2026-08-04 review fix round 1
+
+- Enemy presentation routing now consumes the actual server snapshot identifier
+  form, `enemy:PVE_XX:index`: PVE_03 selects `ruins_elite` and PVE_08 selects
+  `ember_citadel_boss`. The mapping is presentation-only and does not alter
+  combat rules, event contents, or board coordinates.
+- `UnitView` no longer preloads transformation PNG paths. It resolves each
+  Unique accessory through `AssetManifest.resolve_transformation_texture`, and
+  the existing main-scene smoke test verifies the rendered atlas/region equals
+  the manifest resolution.
+- `BattleController` now consumes manifest biome and item-icon textures as
+  visible board/HUD layers. `HeroRig2D` passes a manifest VFX texture into
+  `CombatVfx2D`, which adds a named `ManifestVfxLayer` sprite alongside its
+  procedural motion. Focused tests cover all three live consumers and null
+  results for absent biome/item/VFX keys.
+- Verification passed: `asset_manifest_test.gd`, `battle_controller_test.gd`,
+  `unit_view_animation_test.gd`, `combat_vfx_manifest_test.gd`,
+  `main_scene_smoke_test.gd`, and `pnpm --dir game-core test --
+  alpha-bundle.test.ts` (100 tests).
+
+The mobile 512 × 512 budget, Android performance verification, and real
+1080 × 1920 capture remain unverified/open. The monster inventory remains ten
+distinct generated cutouts plus six explicitly marked engine-layer variants;
+it is not represented as a passed sixteen-distinct-source gate.

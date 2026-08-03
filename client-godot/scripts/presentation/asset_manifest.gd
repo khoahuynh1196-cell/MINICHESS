@@ -43,6 +43,25 @@ static func resolve_monster_texture(monster_id: String) -> Texture2D:
 	var monster: Dictionary = monsters.get(monster_id, {})
 	return resolve_asset_texture(String(monster.get("sprite", "")))
 
+static func resolve_transformation_texture(unique_item_id: String) -> Texture2D:
+	var transformations: Dictionary = load_manifest().get("transformations", {})
+	var transformation: Dictionary = transformations.get("VT_%s" % unique_item_id, {})
+	return resolve_asset_texture(String(transformation.get("accessory", "")))
+
+static func resolve_biome_texture(biome_id: String) -> Texture2D:
+	var biomes: Dictionary = load_manifest().get("biomes", {})
+	var biome: Dictionary = biomes.get(biome_id, {})
+	var layers: Array = biome.get("layers", [])
+	return resolve_asset_texture(String(layers.front())) if not layers.is_empty() else null
+
+static func resolve_item_texture(item_id: String) -> Texture2D:
+	var items: Dictionary = load_manifest().get("items", {})
+	var item: Dictionary = items.get(item_id, {})
+	return resolve_asset_texture(String(item.get("icon", "")))
+
+static func resolve_vfx_texture(asset_key: String) -> Texture2D:
+	return resolve_asset_texture(asset_key)
+
 static func resolve_asset_texture(asset_key: String) -> Texture2D:
 	var assets: Dictionary = load_manifest().get("assets", {})
 	var record: Dictionary = assets.get(asset_key, {})

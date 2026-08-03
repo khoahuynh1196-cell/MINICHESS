@@ -1,18 +1,26 @@
 class_name CombatVfx2D
 extends Node2D
 
+
 var cue_id := "attack_flash"
 var color := Color.WHITE
 var duration := 0.28
 var age := 0.0
 var direction := 1.0
 
-func play(next_cue_id: String, next_color: Color, next_direction: float = 1.0) -> void:
+func play(next_cue_id: String, next_color: Color, next_direction: float = 1.0, layer_texture: Texture2D = null) -> void:
 	cue_id = next_cue_id
 	color = next_color
 	direction = signf(next_direction) if not is_zero_approx(next_direction) else 1.0
 	duration = 0.48 if cue_id in ["barrier", "moon_barrier", "shell_bastion", "earth_decoy"] else 0.28
 	age = 0.0
+	if layer_texture != null:
+		var layer := Sprite2D.new()
+		layer.name = "ManifestVfxLayer"
+		layer.texture = layer_texture
+		layer.scale = Vector2(0.16, 0.16)
+		layer.modulate = Color(color.r, color.g, color.b, 0.72)
+		add_child(layer)
 	queue_redraw()
 
 func _process(delta: float) -> void:

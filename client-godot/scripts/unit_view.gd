@@ -27,15 +27,6 @@ const UNIQUE_VISUALS := {
 	"U06": { "color": Color("#ff6b35"), "anchor": Vector2(28.0, 12.0) },
 }
 
-const UNIQUE_ACCESSORIES := {
-	"U01": preload("res://assets/transformations/u01-lion-crown-v1.png"),
-	"U02": preload("res://assets/transformations/u02-white-wolf-claw-v1.png"),
-	"U03": preload("res://assets/transformations/u03-turtle-shell-v1.png"),
-	"U04": preload("res://assets/transformations/u04-unicorn-horn-v1.png"),
-	"U05": preload("res://assets/transformations/u05-fox-mask-v1.png"),
-	"U06": preload("res://assets/transformations/u06-phoenix-feather-v1.png"),
-}
-
 func configure(unit_side: String, position_index: int, unit_max_hp: int, hero_id: String = "", equipped_unique_item_id: String = "") -> void:
 	side = unit_side
 	grid_index = position_index
@@ -83,11 +74,14 @@ func _add_portrait(hero_id: String) -> void:
 	portrait.visible = false
 
 func _add_unique_accessory() -> void:
-	if not UNIQUE_ACCESSORIES.has(unique_item_id):
+	if not UNIQUE_VISUALS.has(unique_item_id):
+		return
+	var manifest_texture := AssetManifestScript.resolve_transformation_texture(unique_item_id)
+	if manifest_texture == null:
 		return
 	var accessory := Sprite2D.new()
 	accessory.name = "UniqueAccessory"
-	accessory.texture = UNIQUE_ACCESSORIES[unique_item_id]
+	accessory.texture = manifest_texture
 	accessory.position = UNIQUE_VISUALS[unique_item_id].anchor
 	accessory.scale = Vector2(0.14, 0.14)
 	accessory.z_index = 2

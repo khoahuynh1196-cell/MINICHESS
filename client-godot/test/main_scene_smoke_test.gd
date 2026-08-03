@@ -1,6 +1,7 @@
 extends SceneTree
 
 const RunApiClientScript = preload("res://scripts/run_api_client.gd")
+const AssetManifestScript = preload("res://scripts/presentation/asset_manifest.gd")
 
 var _failed := false
 
@@ -77,7 +78,9 @@ func _init() -> void:
 		_finish()
 		return
 	var unique_accessory = main_scene.unit_views["player:hero-bench"].get_node_or_null("UniqueAccessory")
-	if not _expect(unique_accessory != null and unique_accessory.texture.resource_path == "res://assets/transformations/u01-lion-crown-v1.png", "U01 must render its lion-crown transformation sprite at the configured anchor"):
+	var manifest_accessory := AssetManifestScript.resolve_transformation_texture("U01") as AtlasTexture
+	var rendered_accessory := unique_accessory.texture as AtlasTexture if unique_accessory != null else null
+	if not _expect(rendered_accessory != null and manifest_accessory != null and rendered_accessory.atlas.resource_path == manifest_accessory.atlas.resource_path and rendered_accessory.region == manifest_accessory.region, "U01 must render its manifest-backed transformation sprite at the configured anchor"):
 		main_scene.free()
 		_finish()
 		return

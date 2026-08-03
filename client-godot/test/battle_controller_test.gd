@@ -30,6 +30,16 @@ func _init() -> void:
 	_expect(monster.get("monster_id") == "meadow", "enemy spawn must map to a biome monster view")
 	var monster_cutout = monster.get_node_or_null("Cutout")
 	_expect(monster_cutout != null and monster_cutout.texture != null and monster_cutout.texture.resource_path == "res://assets/monsters/meadow-moss-goblin-scout-v1.png", "enemy spawn must use the individual meadow cutout")
+	controller.apply_event(_event("UNIT_SPAWNED", "enemy:PVE_03:0", "", { "side": "enemy", "position": 4, "max_hp": 120000 }))
+	var ruins_elite = controller.unit_views["enemy:PVE_03:0"]
+	_expect(ruins_elite.get("monster_id") == "ruins_elite", "production PVE_03 IDs must select the Ruins elite monster key")
+	_expect(ruins_elite.get_node_or_null("Cutout").texture.resource_path == "res://assets/monsters/ruins-bronze-wraith-elite-v1.png", "PVE_03 must resolve the Ruins elite texture")
+	var biome_layer = controller.get_node_or_null("BiomeLayer")
+	_expect(biome_layer != null and biome_layer.texture != null, "a production encounter must attach its manifest-backed biome layer")
+	controller.apply_event(_event("UNIT_SPAWNED", "enemy:PVE_08:0", "", { "side": "enemy", "position": 7, "max_hp": 300000 }))
+	var ember_boss = controller.unit_views["enemy:PVE_08:0"]
+	_expect(ember_boss.get("monster_id") == "ember_citadel_boss", "production PVE_08 IDs must select the Ember boss monster key")
+	_expect(ember_boss.get_node_or_null("Cutout").texture.resource_path == "res://assets/monsters/ember-imp-knight-v1.png", "PVE_08 must resolve the Ember boss texture")
 	var portrait = controller.unit_views["player:H01:1"].get_node_or_null("Portrait")
 	_expect(portrait != null and portrait.texture != null and portrait.texture.resource_path == "res://assets/sprites/h01-cotton-shield-cat-chibi-v2.png", "H01 spawn must render the chibi full-body character texture")
 	controller.apply_event(_event("UNIT_SPAWNED", "player:H02:1", "", { "side": "player", "position": 21, "max_hp": 100000 }))

@@ -21,6 +21,11 @@ func _init() -> void:
 	_expect(Dictionary(manifest.get("monsters", {})).size() == 16, "the manifest must register all sixteen biome monster variants")
 	for monster_id in monster_ids:
 		_expect(manifest_runtime.call("resolve_monster_texture", monster_id) is Texture2D, "%s monster must resolve a runtime cutout" % monster_id)
+	for biome_id in ["meadow", "ruins", "frost_keep", "ember_citadel"]:
+		_expect(AssetManifestScript.resolve_biome_texture(biome_id) is Texture2D, "%s biome layer must resolve for its live board consumer" % biome_id)
+	_expect(AssetManifestScript.resolve_item_texture("I01") is Texture2D, "declared item icon art must resolve for its HUD consumer")
+	_expect(AssetManifestScript.resolve_vfx_texture("transformations/lion_crown/vfx") is Texture2D, "declared VFX art must resolve for CombatVfx")
+	_expect(AssetManifestScript.resolve_biome_texture("void") == null and AssetManifestScript.resolve_item_texture("I99") == null and AssetManifestScript.resolve_vfx_texture("missing/vfx") == null, "missing presentation keys must not silently fall back")
 	_expect(not JSON.stringify(manifest).contains("hero-roster-atlas-v1.png"), "the rejected hero roster card atlas must not remain in the manifest")
 	_expect(not JSON.stringify(manifest).contains("monster-hud-vfx-atlas-v2.png"), "the rejected monster HUD card atlas must not remain in the manifest")
 	_expect(AssetManifestScript.resolve_hero_texture("H99") == null, "an unknown hero must not resolve a runtime texture")
