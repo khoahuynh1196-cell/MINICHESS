@@ -111,9 +111,17 @@ static func item_tooltip(item: Dictionary) -> String:
 		var value := int(modifier.get("value", 0))
 		var suffix := "%" if String(modifier.get("mode", "")) == "percent" else ""
 		details.append("%s: +%d%s" % [_humanize(String(modifier.get("stat", ""))), value, suffix])
-	if not Array(authored.get("triggers", [])).is_empty():
-		details.append("%d combat trigger%s" % [Array(authored.get("triggers", [])).size(), "s" if Array(authored.get("triggers", [])).size() != 1 else ""])
+	for trigger in Array(authored.get("triggers", [])):
+		details.append(_trigger_detail(trigger))
 	return "%s\n%s item • %s\n%s\nSelect it, then tap or drag to a hero to equip." % [String(authored.get("name", item_id)), kind, category, "; ".join(details) if not details.is_empty() else "No authored effects"]
 
 static func _humanize(value: String) -> String:
 	return value.capitalize().replace("_", " ")
+
+static func _trigger_detail(trigger: Dictionary) -> String:
+	var effect_names: Array[String] = []
+	for effect in Array(trigger.get("effects", [])):
+		effect_names.append(_humanize(String(effect.get("primitive", "effect"))))
+	if effect_names.is_empty() and not String(trigger.get("kind", "")).is_empty():
+		effect_names.append(_humanize(String(trigger.get("kind", "effect"))))
+	return "%s: %s" % [_humanize(String(trigger.get("when", trigger.get("trigger", "combat trigger")))), ", ".join(effect_names) if not effect_names.is_empty() else "effect"]

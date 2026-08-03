@@ -24,6 +24,11 @@ func _init() -> void:
 	_expect(ItemInventoryScript.item_tooltip({ "instanceId": "free", "itemId": "I01", "kind": "normal" }).contains("Iron Blade") and ItemInventoryScript.item_tooltip({ "instanceId": "free", "itemId": "I01", "kind": "normal" }).contains("Attack Damage"), "item tooltips must include authored names and effects")
 	var iron_blade_source := _authoritative_item("I01")
 	_expect(ItemInventoryScript.item_tooltip({ "instanceId": "free", "itemId": "I01", "kind": "normal" }).contains(String(iron_blade_source.get("category", ""))), "item tooltip category must be derived from the authoritative content bundle")
+	var dawn_crest_source := _authoritative_item("I10")
+	var dawn_trigger: Dictionary = Array(dawn_crest_source.get("triggers", [])).front()
+	var dawn_effect: Dictionary = Array(dawn_trigger.get("effects", [])).front()
+	var dawn_tooltip := ItemInventoryScript.item_tooltip({ "instanceId": "dawn", "itemId": "I10", "kind": "normal" }).to_lower()
+	_expect(dawn_tooltip.contains(String(dawn_trigger.get("when", "")).replace("_", " ")) and dawn_tooltip.contains(String(dawn_effect.get("primitive", "")).replace("_", " ")), "item tooltip must express the authoritative I10 combat trigger and effect, not only a trigger count")
 	for source_item in _authoritative_items():
 		var exported_item := ItemMetadataCatalogScript.item_metadata(String(source_item.get("id", "")))
 		_expect(String(exported_item.get("name", "")) == String(source_item.get("name", "")) and String(exported_item.get("kind", "")) == String(source_item.get("kind", "")) and String(exported_item.get("category", "unique")) == String(source_item.get("category", "unique")) and Array(exported_item.get("stat_modifiers", [])) == Array(source_item.get("stat_modifiers", [])), "client item metadata must stay generated from authoritative item content")
