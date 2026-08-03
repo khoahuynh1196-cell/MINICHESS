@@ -777,6 +777,9 @@
       "species_trait_id": "R_CAT",
       "class_trait_id": "C_GUARDIAN",
       "cost": 1,
+      "rarity": 1,
+      "tags": ["guardian", "cat"],
+      "is_unique_hero": false,
       "base_stats": {
         "max_hp": 90000,
         "attack_damage": 5000,
@@ -810,6 +813,9 @@
       "species_trait_id": "R_CAT",
       "class_trait_id": "C_FIGHTER",
       "cost": 2,
+      "rarity": 2,
+      "tags": ["fighter", "cat"],
+      "is_unique_hero": false,
       "base_stats": {
         "max_hp": 80000,
         "attack_damage": 6000,
@@ -843,6 +849,9 @@
       "species_trait_id": "R_CAT",
       "class_trait_id": "C_RANGER",
       "cost": 1,
+      "rarity": 1,
+      "tags": ["ranger", "cat"],
+      "is_unique_hero": false,
       "base_stats": {
         "max_hp": 65000,
         "attack_damage": 6500,
@@ -876,6 +885,9 @@
       "species_trait_id": "R_CAT",
       "class_trait_id": "C_MAGE",
       "cost": 3,
+      "rarity": 3,
+      "tags": ["mage", "cat"],
+      "is_unique_hero": false,
       "base_stats": {
         "max_hp": 70000,
         "attack_damage": 4500,
@@ -909,6 +921,9 @@
       "species_trait_id": "R_CAT",
       "class_trait_id": "C_SUPPORT",
       "cost": 2,
+      "rarity": 2,
+      "tags": ["support", "cat"],
+      "is_unique_hero": false,
       "base_stats": {
         "max_hp": 70000,
         "attack_damage": 4000,
@@ -942,6 +957,9 @@
       "species_trait_id": "R_DOG",
       "class_trait_id": "C_GUARDIAN",
       "cost": 1,
+      "rarity": 1,
+      "tags": ["guardian", "dog"],
+      "is_unique_hero": false,
       "base_stats": {
         "max_hp": 95000,
         "attack_damage": 4500,
@@ -975,6 +993,9 @@
       "species_trait_id": "R_DOG",
       "class_trait_id": "C_FIGHTER",
       "cost": 2,
+      "rarity": 2,
+      "tags": ["fighter", "dog"],
+      "is_unique_hero": false,
       "base_stats": {
         "max_hp": 85000,
         "attack_damage": 6000,
@@ -1008,6 +1029,9 @@
       "species_trait_id": "R_DOG",
       "class_trait_id": "C_RANGER",
       "cost": 2,
+      "rarity": 2,
+      "tags": ["ranger", "dog"],
+      "is_unique_hero": false,
       "base_stats": {
         "max_hp": 65000,
         "attack_damage": 7000,
@@ -1041,6 +1065,9 @@
       "species_trait_id": "R_DOG",
       "class_trait_id": "C_MAGE",
       "cost": 3,
+      "rarity": 3,
+      "tags": ["mage", "dog"],
+      "is_unique_hero": false,
       "base_stats": {
         "max_hp": 70000,
         "attack_damage": 4500,
@@ -1074,6 +1101,9 @@
       "species_trait_id": "R_DOG",
       "class_trait_id": "C_SUPPORT",
       "cost": 2,
+      "rarity": 2,
+      "tags": ["support", "dog"],
+      "is_unique_hero": false,
       "base_stats": {
         "max_hp": 75000,
         "attack_damage": 4000,
@@ -1107,6 +1137,9 @@
       "species_trait_id": "R_RABBIT",
       "class_trait_id": "C_FIGHTER",
       "cost": 1,
+      "rarity": 1,
+      "tags": ["fighter", "rabbit"],
+      "is_unique_hero": false,
       "base_stats": {
         "max_hp": 70000,
         "attack_damage": 6000,
@@ -1140,6 +1173,9 @@
       "species_trait_id": "R_RABBIT",
       "class_trait_id": "C_RANGER",
       "cost": 1,
+      "rarity": 1,
+      "tags": ["ranger", "rabbit"],
+      "is_unique_hero": false,
       "base_stats": {
         "max_hp": 60000,
         "attack_damage": 6500,
@@ -1173,6 +1209,9 @@
       "species_trait_id": "R_RABBIT",
       "class_trait_id": "C_MAGE",
       "cost": 3,
+      "rarity": 3,
+      "tags": ["mage", "rabbit"],
+      "is_unique_hero": false,
       "base_stats": {
         "max_hp": 65000,
         "attack_damage": 4500,
@@ -1206,6 +1245,9 @@
       "species_trait_id": "R_RABBIT",
       "class_trait_id": "C_SUPPORT",
       "cost": 2,
+      "rarity": 2,
+      "tags": ["support", "rabbit"],
+      "is_unique_hero": false,
       "base_stats": {
         "max_hp": 70000,
         "attack_damage": 4000,
@@ -1239,6 +1281,9 @@
       "species_trait_id": "R_COW",
       "class_trait_id": "C_GUARDIAN",
       "cost": 1,
+      "rarity": 1,
+      "tags": ["guardian", "cow"],
+      "is_unique_hero": false,
       "base_stats": {
         "max_hp": 100000,
         "attack_damage": 4500,
@@ -1272,6 +1317,9 @@
       "species_trait_id": "R_COW",
       "class_trait_id": "C_FIGHTER",
       "cost": 3,
+      "rarity": 3,
+      "tags": ["fighter", "cow"],
+      "is_unique_hero": false,
       "base_stats": {
         "max_hp": 100000,
         "attack_damage": 7500,
@@ -1305,6 +1353,9 @@
       "species_trait_id": "R_COW",
       "class_trait_id": "C_SUPPORT",
       "cost": 2,
+      "rarity": 2,
+      "tags": ["support", "cow"],
+      "is_unique_hero": false,
       "base_stats": {
         "max_hp": 80000,
         "attack_damage": 4000,
@@ -1338,6 +1389,9 @@
       "species_trait_id": "R_EXOTIC",
       "class_trait_id": "C_RANGER",
       "cost": 3,
+      "rarity": 3,
+      "tags": ["ranger", "exotic"],
+      "is_unique_hero": false,
       "base_stats": {
         "max_hp": 70000,
         "attack_damage": 7500,
@@ -1371,6 +1425,9 @@
       "species_trait_id": "R_EXOTIC",
       "class_trait_id": "C_MAGE",
       "cost": 3,
+      "rarity": 3,
+      "tags": ["mage", "exotic"],
+      "is_unique_hero": false,
       "base_stats": {
         "max_hp": 65000,
         "attack_damage": 4500,
@@ -1404,6 +1461,9 @@
       "species_trait_id": "R_EXOTIC",
       "class_trait_id": "C_GUARDIAN",
       "cost": 3,
+      "rarity": 3,
+      "tags": ["guardian", "exotic"],
+      "is_unique_hero": false,
       "base_stats": {
         "max_hp": 95000,
         "attack_damage": 4500,
@@ -1697,6 +1757,8 @@
   "visual_profiles": [
     {
       "id": "VP_H01",
+      "ability_icon_key": "heroes/h01/ability_icon",
+      "vfx_key": "heroes/h01/skill_vfx",
       "anchors": [
         "head",
         "chest",
@@ -1717,6 +1779,8 @@
     },
     {
       "id": "VP_H02",
+      "ability_icon_key": "heroes/h02/ability_icon",
+      "vfx_key": "heroes/h02/skill_vfx",
       "anchors": [
         "head",
         "chest",
@@ -1737,6 +1801,8 @@
     },
     {
       "id": "VP_H03",
+      "ability_icon_key": "heroes/h03/ability_icon",
+      "vfx_key": "heroes/h03/skill_vfx",
       "anchors": [
         "head",
         "chest",
@@ -1757,6 +1823,8 @@
     },
     {
       "id": "VP_H04",
+      "ability_icon_key": "heroes/h04/ability_icon",
+      "vfx_key": "heroes/h04/skill_vfx",
       "anchors": [
         "head",
         "chest",
@@ -1777,6 +1845,8 @@
     },
     {
       "id": "VP_H05",
+      "ability_icon_key": "heroes/h05/ability_icon",
+      "vfx_key": "heroes/h05/skill_vfx",
       "anchors": [
         "head",
         "chest",
@@ -1797,6 +1867,8 @@
     },
     {
       "id": "VP_H06",
+      "ability_icon_key": "heroes/h06/ability_icon",
+      "vfx_key": "heroes/h06/skill_vfx",
       "anchors": [
         "head",
         "chest",
@@ -1817,6 +1889,8 @@
     },
     {
       "id": "VP_H07",
+      "ability_icon_key": "heroes/h07/ability_icon",
+      "vfx_key": "heroes/h07/skill_vfx",
       "anchors": [
         "head",
         "chest",
@@ -1837,6 +1911,8 @@
     },
     {
       "id": "VP_H08",
+      "ability_icon_key": "heroes/h08/ability_icon",
+      "vfx_key": "heroes/h08/skill_vfx",
       "anchors": [
         "head",
         "chest",
@@ -1857,6 +1933,8 @@
     },
     {
       "id": "VP_H09",
+      "ability_icon_key": "heroes/h09/ability_icon",
+      "vfx_key": "heroes/h09/skill_vfx",
       "anchors": [
         "head",
         "chest",
@@ -1877,6 +1955,8 @@
     },
     {
       "id": "VP_H10",
+      "ability_icon_key": "heroes/h10/ability_icon",
+      "vfx_key": "heroes/h10/skill_vfx",
       "anchors": [
         "head",
         "chest",
@@ -1897,6 +1977,8 @@
     },
     {
       "id": "VP_H11",
+      "ability_icon_key": "heroes/h11/ability_icon",
+      "vfx_key": "heroes/h11/skill_vfx",
       "anchors": [
         "head",
         "chest",
@@ -1917,6 +1999,8 @@
     },
     {
       "id": "VP_H12",
+      "ability_icon_key": "heroes/h12/ability_icon",
+      "vfx_key": "heroes/h12/skill_vfx",
       "anchors": [
         "head",
         "chest",
@@ -1937,6 +2021,8 @@
     },
     {
       "id": "VP_H13",
+      "ability_icon_key": "heroes/h13/ability_icon",
+      "vfx_key": "heroes/h13/skill_vfx",
       "anchors": [
         "head",
         "chest",
@@ -1957,6 +2043,8 @@
     },
     {
       "id": "VP_H14",
+      "ability_icon_key": "heroes/h14/ability_icon",
+      "vfx_key": "heroes/h14/skill_vfx",
       "anchors": [
         "head",
         "chest",
@@ -1977,6 +2065,8 @@
     },
     {
       "id": "VP_H15",
+      "ability_icon_key": "heroes/h15/ability_icon",
+      "vfx_key": "heroes/h15/skill_vfx",
       "anchors": [
         "head",
         "chest",
@@ -1997,6 +2087,8 @@
     },
     {
       "id": "VP_H16",
+      "ability_icon_key": "heroes/h16/ability_icon",
+      "vfx_key": "heroes/h16/skill_vfx",
       "anchors": [
         "head",
         "chest",
@@ -2017,6 +2109,8 @@
     },
     {
       "id": "VP_H17",
+      "ability_icon_key": "heroes/h17/ability_icon",
+      "vfx_key": "heroes/h17/skill_vfx",
       "anchors": [
         "head",
         "chest",
@@ -2037,6 +2131,8 @@
     },
     {
       "id": "VP_H18",
+      "ability_icon_key": "heroes/h18/ability_icon",
+      "vfx_key": "heroes/h18/skill_vfx",
       "anchors": [
         "head",
         "chest",
@@ -2057,6 +2153,8 @@
     },
     {
       "id": "VP_H19",
+      "ability_icon_key": "heroes/h19/ability_icon",
+      "vfx_key": "heroes/h19/skill_vfx",
       "anchors": [
         "head",
         "chest",
@@ -2077,6 +2175,8 @@
     },
     {
       "id": "VP_H20",
+      "ability_icon_key": "heroes/h20/ability_icon",
+      "vfx_key": "heroes/h20/skill_vfx",
       "anchors": [
         "head",
         "chest",
@@ -2589,6 +2689,7 @@
     {
       "id": "PVE_01",
       "round": 1,
+      "biome": "meadow",
       "kind": "normal",
       "enemy_composition": [
         { "hero_id": "H01", "position": 3, "stat_multiplier": 550 },
@@ -2607,6 +2708,7 @@
     {
       "id": "PVE_02",
       "round": 2,
+      "biome": "meadow",
       "kind": "normal",
       "enemy_composition": [
         { "hero_id": "H06", "position": 0, "stat_multiplier": 700 },
@@ -2626,6 +2728,7 @@
     {
       "id": "PVE_03",
       "round": 3,
+      "biome": "ruins",
       "kind": "elite",
       "enemy_composition": [
         { "hero_id": "H07", "position": 0, "stat_multiplier": 900 },
@@ -2642,6 +2745,7 @@
     {
       "id": "PVE_04",
       "round": 4,
+      "biome": "ruins",
       "kind": "boss",
       "enemy_composition": [
         { "hero_id": "H16", "position": 0, "stat_multiplier": 1100 },
@@ -2662,6 +2766,7 @@
     {
       "id": "PVE_05",
       "round": 5,
+      "biome": "frost_keep",
       "kind": "affix",
       "enemy_composition": [
         { "hero_id": "H06", "position": 0, "stat_multiplier": 1200 },
@@ -2684,6 +2789,7 @@
     {
       "id": "PVE_06",
       "round": 6,
+      "biome": "frost_keep",
       "kind": "hard",
       "enemy_composition": [
         { "hero_id": "H01", "position": 0, "stat_multiplier": 1350 },
@@ -2705,6 +2811,7 @@
     {
       "id": "PVE_07",
       "round": 7,
+      "biome": "ember_citadel",
       "kind": "elite",
       "enemy_composition": [
         { "hero_id": "H07", "position": 0, "stat_multiplier": 1550 },
@@ -2723,6 +2830,7 @@
     {
       "id": "PVE_08",
       "round": 8,
+      "biome": "ember_citadel",
       "kind": "final_boss",
       "enemy_composition": [
         { "hero_id": "H01", "position": 0, "stat_multiplier": 1800 },

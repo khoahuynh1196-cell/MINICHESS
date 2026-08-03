@@ -26,6 +26,41 @@ describe("Alpha content bundle", () => {
     expect(countBy(raw.heroes, "class_trait_id")).toEqual({ C_GUARDIAN: 4, C_FIGHTER: 4, C_RANGER: 4, C_MAGE: 4, C_SUPPORT: 4 });
   });
 
+  it("ships H01 through H20 as shop-eligible heroes with complete PvE metadata", () => {
+    if (!existsSync(bundlePath)) throw new Error("Alpha bundle fixture is missing");
+
+    const raw = JSON.parse(readFileSync(bundlePath, "utf8")) as {
+      heroes: Array<{
+        id: string;
+        display_key?: string;
+        species_trait_id?: string;
+        class_trait_id?: string;
+        rarity?: number;
+        cost?: number;
+        tags?: string[];
+        is_unique_hero?: boolean;
+        base_stats?: Record<string, number>;
+        star_multipliers?: { two?: Record<string, number>; three?: Record<string, number> };
+        skill_id?: string;
+        visual_profile_id?: string;
+      }>;
+      traits: Array<{ id: string; kind?: string }>;
+      visual_profiles: Array<{ id: string; ability_icon_key?: string; vfx_key?: string }>;
+      encounters: Array<{ biome?: string; kind?: string }>;
+    };
+    const compiled = compileContentBundle(raw);
+
+    expect(compiled.manifest).toMatchObject({ heroCount: 20, shopHeroCount: 20, uniqueHeroCount: 0 });
+    expect(raw.heroes.map((hero) => hero.id).sort()).toEqual(heroIds);
+    expect(raw.heroes.every((hero) => hero.display_key?.startsWith("hero.") && hero.species_trait_id && hero.class_trait_id && hero.rarity !== undefined && hero.cost !== undefined && hero.tags?.length && hero.is_unique_hero === false && hero.base_stats && hero.star_multipliers?.two && hero.star_multipliers.three && hero.skill_id && hero.visual_profile_id)).toBe(true);
+    expect(raw.traits.filter((trait) => trait.kind === "species")).toHaveLength(5);
+    expect(raw.traits.filter((trait) => trait.kind === "class")).toHaveLength(5);
+    expect(raw.visual_profiles).toHaveLength(20);
+    expect(raw.visual_profiles.every((profile) => profile.ability_icon_key?.length && profile.vfx_key?.length)).toBe(true);
+    expect(raw.encounters).toHaveLength(8);
+    expect(raw.encounters.every((encounter) => encounter.biome?.length && encounter.kind?.length)).toBe(true);
+  });
+
   it("exposes the approved item inventory and round-four Unique reveal", () => {
     if (!existsSync(bundlePath)) throw new Error("Alpha bundle fixture is missing");
 

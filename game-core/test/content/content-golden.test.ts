@@ -13,9 +13,11 @@ describe("Alpha content manifest", () => {
     const second = compileContentBundle(raw);
 
     expect(second.contentHash).toBe(first.contentHash);
-    expect(first.contentHash).toMatch(/^[0-9a-f]{16}$/);
+    expect(first.contentHash).toBe("f011b4170b7177b7");
     expect(first.manifest).toEqual({
       heroCount: 20,
+      shopHeroCount: 20,
+      uniqueHeroCount: 0,
       skillCount: 20,
       traitCount: 10,
       normalItemCount: 12,
