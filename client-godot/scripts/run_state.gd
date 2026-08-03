@@ -6,6 +6,10 @@ var round := 0
 var revision := 0
 var gold := 0
 var health := 0
+var level := 0
+var experience := 0
+var experience_to_next := 0
+var board_cap := 0
 var shop: Array = []
 var bench: Array = []
 var board: Array = []
@@ -21,6 +25,10 @@ func apply_server_view(view: Dictionary) -> void:
 	revision = int(view.get("revision", 0))
 	gold = int(view.get("gold", 0))
 	health = int(view.get("health", 0))
+	level = int(view.get("level", 0))
+	experience = int(view.get("experience", 0))
+	experience_to_next = int(view.get("experienceToNext", 0))
+	board_cap = int(view.get("boardCap", 0))
 	shop = Array(view.get("shop", [])).duplicate(true)
 	bench = Array(view.get("bench", [])).duplicate(true)
 	board = Array(view.get("board", [])).duplicate(true)
@@ -31,6 +39,9 @@ func apply_server_view(view: Dictionary) -> void:
 
 func can_start_round() -> bool:
 	return state == "PREPARE" and board.any(func(slot): return slot != null)
+
+func can_buy_xp() -> bool:
+	return state == "PREPARE" and gold >= 4 and experience_to_next > 0
 
 func command_payload(command_id: String, command_type: String, fields: Dictionary = {}) -> Dictionary:
 	var payload := {

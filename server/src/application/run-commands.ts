@@ -15,6 +15,10 @@ export interface RunRecord {
   readonly round?: number;
   readonly revision: number;
   readonly gold: number;
+  /** Current player level. Missing values retain the legacy round-derived progression. */
+  readonly level?: number;
+  /** Experience earned toward the next player level. */
+  readonly experience?: number;
   readonly health?: number;
   /** Private server-only entropy; never include this in a public run view. */
   /** Optional only to permit loading pre-seed Alpha records during migration. */
@@ -83,7 +87,7 @@ export interface RunCommandInput {
   readonly runId: string;
   readonly commandId: string;
   readonly expectedRevision: number;
-  readonly type: "REFRESH_SHOP" | "ABANDON_RUN" | "BUY_SHOP_HERO" | "SELL_HERO" | "MOVE_HERO" | "EQUIP_ITEM" | "UNEQUIP_ITEM" | "START_ROUND" | "CLAIM_ROUND_REWARD" | "ACK_UNIQUE_REVEAL" | "CLAIM_REWARD_HERO";
+  readonly type: "REFRESH_SHOP" | "ABANDON_RUN" | "BUY_XP" | "BUY_SHOP_HERO" | "SELL_HERO" | "MOVE_HERO" | "EQUIP_ITEM" | "UNEQUIP_ITEM" | "START_ROUND" | "CLAIM_ROUND_REWARD" | "ACK_UNIQUE_REVEAL" | "CLAIM_REWARD_HERO";
   readonly shopSlotIndex?: number;
   readonly heroInstanceId?: string;
   readonly itemInstanceId?: string;
@@ -120,11 +124,42 @@ export interface CreateRunSetup {
   readonly uniqueItemIds?: readonly string[];
 }
 
-const PLAYER_BOARD_CAPS_BY_ROUND = [3, 4, 5, 6, 6, 6, 6, 6] as const;
 const ALPHA_RULESET_VERSION = "alpha-rules-0.3.0";
+const INITIAL_PLAYER_LEVEL = 3;
+const MAX_PLAYER_LEVEL = 10;
+const MAX_PLAYER_BOARD_CAP = 6;
+const XP_PER_PURCHASE = 4;
+const XP_TO_NEXT_BY_LEVEL = [0, 2, 6, 10, 20, 36, 56, 80, 100, 100, 0] as const;
 
-function playerBoardCap(round: number | undefined): number {
-  return PLAYER_BOARD_CAPS_BY_ROUND[Math.min(Math.max(round ?? 1, 1), PLAYER_BOARD_CAPS_BY_ROUND.length) - 1]!;
+export interface RunProgression {
+  readonly level: number;
+  readonly experience: number;
+  readonly experienceToNext: number;
+  readonly boardCap: number;
+}
+
+function legacyLevelForRound(round: number | undefined): number {
+  return Math.min(Math.max(round ?? 1, 1) + 2, MAX_PLAYER_BOARD_CAP);
+}
+
+export function progressionForRun(run: Pick<RunRecord, "level" | "experience" | "round">): RunProgression {
+  const level = run.level ?? legacyLevelForRound(run.round);
+  const experience = run.experience ?? 0;
+  const experienceToNext = XP_TO_NEXT_BY_LEVEL[level];
+  if (!Number.isInteger(level) || level < 1 || level > MAX_PLAYER_LEVEL || !Number.isInteger(experience) || experience < 0 || experienceToNext === undefined || (experienceToNext === 0 ? experience !== 0 : experience >= experienceToNext)) {
+    throw new Error("GAME_RULE_VIOLATION");
+  }
+  return Object.freeze({ level, experience, experienceToNext, boardCap: Math.min(level, MAX_PLAYER_BOARD_CAP) });
+}
+
+function buyExperience(progression: RunProgression): Pick<RunProgression, "level" | "experience"> {
+  let level = progression.level;
+  let experience = progression.experience + XP_PER_PURCHASE;
+  while (level < MAX_PLAYER_LEVEL && experience >= XP_TO_NEXT_BY_LEVEL[level]!) {
+    experience -= XP_TO_NEXT_BY_LEVEL[level]!;
+    level += 1;
+  }
+  return { level, experience: level === MAX_PLAYER_LEVEL ? 0 : experience };
 }
 
 function lockRoundSnapshot(run: RunRecord, board: readonly (HeroInstance | null)[], items: readonly ItemInstance[]): LockedRoundSnapshot {
@@ -246,7 +281,7 @@ export async function createRun(input: CreateRunInput, repository: RunRepository
   if (shopPool !== undefined && initialPoolRoll === undefined) throw new Error("GAME_RULE_VIOLATION");
   const shop = shopPool === undefined
     ? shopGenerator?.initialShop?.({ id: input.id, contentVersion: input.contentVersion })
-    : initialPoolRoll!(shopPool, { round: 1, refreshNumber: 0, level: 1 });
+    : initialPoolRoll!(shopPool, { round: 1, refreshNumber: 0, level: INITIAL_PLAYER_LEVEL });
   if (shop !== undefined) assertValidShop(shop, shopPool === undefined ? 4 : 5);
   const preselectedUniqueId = setup?.uniqueItemIds === undefined ? undefined : selectRunUniqueId(runSeed, setup.uniqueItemIds);
   const run: RunRecord = {
@@ -257,6 +292,8 @@ export async function createRun(input: CreateRunInput, repository: RunRepository
     round: 1,
     revision: 0,
     gold: 8,
+    level: INITIAL_PLAYER_LEVEL,
+    experience: 0,
     health: 30,
     runSeed,
     ...(preselectedUniqueId === undefined ? {} : { preselectedUniqueId, uniqueRevealed: false }),
@@ -307,8 +344,10 @@ export async function applyRunCommand(input: RunCommandInput, repository: RunRep
     return result;
   }
   if (run.state !== "PREPARE") throw new Error("COMMAND_NOT_ALLOWED");
+  const progression = progressionForRun(run);
   const usesFreeRefresh = input.type === "REFRESH_SHOP" && (run.freeRefreshes ?? 0) > 0;
   if (input.type === "REFRESH_SHOP" && !usesFreeRefresh && run.gold < 2) throw new Error("GAME_RULE_VIOLATION");
+  if (input.type === "BUY_XP" && (run.gold < 4 || progression.level === MAX_PLAYER_LEVEL)) throw new Error("GAME_RULE_VIOLATION");
   const purchasedSlot = input.type === "BUY_SHOP_HERO" ? run.shop?.[input.shopSlotIndex ?? -1] : undefined;
   if (input.type === "BUY_SHOP_HERO" && (purchasedSlot === undefined || purchasedSlot === null || run.gold < purchasedSlot.cost || (run.bench?.length ?? 0) >= 8)) throw new Error("GAME_RULE_VIOLATION");
   const currentBoard = run.board ?? Array(12).fill(null);
@@ -321,7 +360,7 @@ export async function applyRunCommand(input: RunCommandInput, repository: RunRep
     : undefined;
   if (input.type === "SELL_HERO" && soldHero === undefined) throw new Error("GAME_RULE_VIOLATION");
   const boardHeroCount = currentBoard.filter((hero) => hero !== null).length;
-  if (input.type === "START_ROUND" && (boardHeroCount === 0 || boardHeroCount > playerBoardCap(run.round))) throw new Error("GAME_RULE_VIOLATION");
+  if (input.type === "START_ROUND" && (boardHeroCount === 0 || boardHeroCount > progression.boardCap)) throw new Error("GAME_RULE_VIOLATION");
   const allHeroes = [...currentBench, ...currentBoard.filter((hero): hero is HeroInstance => hero !== null)];
   if (currentItems.filter((item) => item.kind === "unique").length > 1) throw new Error("GAME_RULE_VIOLATION");
   const equippedItem = input.type === "EQUIP_ITEM" || input.type === "UNEQUIP_ITEM" ? currentItems.find((item) => item.instanceId === input.itemInstanceId) : undefined;
@@ -335,7 +374,7 @@ export async function applyRunCommand(input: RunCommandInput, repository: RunRep
   if (input.type === "MOVE_HERO" && (!Number.isInteger(input.destination) || destinationIndex < 0 || destinationIndex >= 12 || (benchSourceIndex === -1 && boardSourceIndex === -1) || destinationIndex === boardSourceIndex)) throw new Error("GAME_RULE_VIOLATION");
   const movingHero = input.type === "MOVE_HERO" ? (benchSourceIndex !== -1 ? currentBench[benchSourceIndex] : currentBoard[boardSourceIndex]) : undefined;
   const displacedHero = input.type === "MOVE_HERO" ? currentBoard[destinationIndex] : undefined;
-  if (input.type === "MOVE_HERO" && benchSourceIndex !== -1 && displacedHero === null && currentBoard.filter((hero) => hero !== null).length >= playerBoardCap(run.round)) throw new Error("GAME_RULE_VIOLATION");
+  if (input.type === "MOVE_HERO" && benchSourceIndex !== -1 && displacedHero === null && currentBoard.filter((hero) => hero !== null).length >= progression.boardCap) throw new Error("GAME_RULE_VIOLATION");
   const result: RunCommandResult = { runRevision: run.revision + 1, status: "APPLIED" };
   const refreshNumber = (run.shopRefreshes ?? 0) + 1;
   const pooledRefresh = input.type === "REFRESH_SHOP" && run.shopPool !== undefined;
@@ -345,7 +384,7 @@ export async function applyRunCommand(input: RunCommandInput, repository: RunRep
   const refreshShop = input.type === "REFRESH_SHOP" && refreshedPool === undefined ? shopGenerator?.refreshShop : undefined;
   const refreshedShop = refreshedPool === undefined
     ? refreshShop?.({ id: run.id, contentVersion: run.contentVersion, refreshNumber })
-    : shopGenerator!.rollShop!(refreshedPool, { round: run.round ?? 1, refreshNumber, level: 1 });
+    : shopGenerator!.rollShop!(refreshedPool, { round: run.round ?? 1, refreshNumber, level: progression.level });
   if (refreshedShop !== undefined) assertValidShop(refreshedShop, refreshedPool === undefined ? 4 : 5);
   const shop = input.type === "BUY_SHOP_HERO" ? (run.shop ?? []).map((slot, index) => index === input.shopSlotIndex ? null : slot) : refreshedShop ?? run.shop;
   const movedBoard = input.type === "MOVE_HERO"
@@ -358,7 +397,8 @@ export async function applyRunCommand(input: RunCommandInput, repository: RunRep
     : input.type === "CLAIM_REWARD_HERO" ? [...currentBench, claimedRewardHero!]
     : input.type === "SELL_HERO" ? (run.bench ?? []).filter((hero) => hero.instanceId !== input.heroInstanceId)
       : input.type === "MOVE_HERO" ? (benchSourceIndex !== -1 ? [...currentBench.filter((hero) => hero.instanceId !== input.heroInstanceId), ...(displacedHero === null ? [] : [displacedHero])] : currentBench) : run.bench;
-  const gold = input.type === "REFRESH_SHOP" ? (usesFreeRefresh ? run.gold : run.gold - 2) : input.type === "BUY_SHOP_HERO" ? run.gold - purchasedSlot!.cost : input.type === "SELL_HERO" ? run.gold + soldHero!.cost : run.gold;
+  const gold = input.type === "REFRESH_SHOP" ? (usesFreeRefresh ? run.gold : run.gold - 2) : input.type === "BUY_XP" ? run.gold - 4 : input.type === "BUY_SHOP_HERO" ? run.gold - purchasedSlot!.cost : input.type === "SELL_HERO" ? run.gold + soldHero!.cost : run.gold;
+  const updatedProgression = input.type === "BUY_XP" ? buyExperience(progression) : progression;
   const freeRefreshes = input.type === "REFRESH_SHOP" && usesFreeRefresh ? (run.freeRefreshes ?? 0) - 1 : run.freeRefreshes;
   const shopPool = input.type === "SELL_HERO" && run.shopPool !== undefined ? cloneShopPool(run.shopPool) : refreshedPool ?? run.shopPool;
   if (input.type === "SELL_HERO" && shopPool !== undefined) {
@@ -383,6 +423,8 @@ export async function applyRunCommand(input: RunCommandInput, repository: RunRep
   const saved = Object.freeze({
     ...run,
     gold,
+    level: updatedProgression.level,
+    experience: updatedProgression.experience,
     ...(shop === undefined ? {} : { shop }),
     ...(shopPool === undefined ? {} : { shopPool }),
     ...(input.type === "REFRESH_SHOP" ? { shopRefreshes: refreshNumber } : run.shopRefreshes === undefined ? {} : { shopRefreshes: run.shopRefreshes }),

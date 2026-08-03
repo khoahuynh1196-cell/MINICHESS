@@ -12,18 +12,25 @@ func _init() -> void:
 		"revision": 7,
 		"gold": 11,
 		"health": 26,
+		"level": 4,
+		"experience": 2,
+		"experienceToNext": 10,
+		"boardCap": 4,
 		"shop": [{ "heroId": "H01", "cost": 1 }, null, { "heroId": "H04", "cost": 3 }, null],
 		"bench": [{ "instanceId": "hero-bench-1", "heroId": "H01", "cost": 1, "stars": 1 }],
 		"board": [{ "instanceId": "hero-board-1", "heroId": "H03", "cost": 1, "stars": 1 }, null, null, null, null, null, null, null, null, null, null, null],
 		"roundRewardPlan": { "round": 3, "offers": [{ "id": "reward:3:hero_choice:0", "kind": "hero_choice", "options": [{ "id": "H02", "kind": "hero", "cost": 2 }] }] },
 	})
 	_expect(state.run_id == "run-alpha" and state.round == 3 and state.gold == 11 and state.health == 26, "server view must be retained as authoritative client state")
+	_expect(state.level == 4 and state.experience == 2 and state.experience_to_next == 10 and state.board_cap == 4, "level progression fields must retain the authoritative server values")
+	_expect(state.can_buy_xp(), "a PREPARE run with four gold and an unfinished level must allow BUY_XP")
 	_expect(state.can_start_round(), "a PREPARE run with a board hero must allow START_ROUND")
 	_expect(state.command_payload("cmd-start", "START_ROUND") == { "command_id": "cmd-start", "expected_run_revision": 7, "type": "START_ROUND" }, "command payload must carry the authoritative revision")
 	_expect(state.round_reward_plan.get("round", 0) == 3 and state.round_reward_plan.get("offers", []).size() == 1, "round reward plan must retain the server object and its selectable offers")
 
-	state.apply_server_view({ "id": "run-alpha", "state": "COMBAT", "round": 3, "revision": 8, "gold": 11, "health": 26, "shop": [], "bench": [], "board": [] })
+	state.apply_server_view({ "id": "run-alpha", "state": "COMBAT", "round": 3, "revision": 8, "gold": 11, "health": 26, "level": 10, "experience": 0, "experienceToNext": 0, "boardCap": 6, "shop": [], "bench": [], "board": [] })
 	_expect(not state.can_start_round(), "COMBAT state must disable prepare commands")
+	_expect(not state.can_buy_xp(), "COMBAT and level-cap states must disable BUY_XP")
 	_finish()
 
 func _expect(condition: bool, message: String) -> void:

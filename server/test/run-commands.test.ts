@@ -6,6 +6,76 @@ import type { CombatSnapshot } from "@auto-battler/game-core";
 const modulePath = "../src/application/run-commands.js";
 
 describe("run commands", () => {
+  it("spends four gold for four experience without advancing before the threshold", async () => {
+    const module = await import(modulePath) as typeof import("../src/application/run-commands.js");
+    const repository = module.createInMemoryRunRepository();
+    await module.createRun({ id: "run-buy-xp", tenantId: "tenant-a", contentVersion: "alpha-0.3.0" }, repository);
+
+    await expect(module.applyRunCommand({ actorId: "actor-a", tenantId: "tenant-a", runId: "run-buy-xp", commandId: "cmd-buy-xp", expectedRevision: 0, type: "BUY_XP" as never }, repository))
+      .resolves.toEqual({ runRevision: 1, status: "APPLIED" });
+    await expect(repository.get("run-buy-xp", "tenant-a")).resolves.toMatchObject({
+      gold: 4,
+      level: 3,
+      experience: 4,
+      revision: 1,
+    });
+  });
+
+  it("advances a level and carries excess experience into the next threshold", async () => {
+    const module = await import(modulePath) as typeof import("../src/application/run-commands.js");
+    const repository = module.createInMemoryRunRepository();
+    await repository.save({
+      id: "run-xp-level-up", tenantId: "tenant-a", contentVersion: "alpha-0.3.0", state: "PREPARE", round: 1, revision: 0, gold: 8,
+      level: 3, experience: 8, commandResponses: {}, bench: [], board: Array(12).fill(null),
+    });
+
+    await module.applyRunCommand({ actorId: "actor-a", tenantId: "tenant-a", runId: "run-xp-level-up", commandId: "cmd-level-up", expectedRevision: 0, type: "BUY_XP" as never }, repository);
+
+    await expect(repository.get("run-xp-level-up", "tenant-a")).resolves.toMatchObject({ gold: 4, level: 4, experience: 2, revision: 1 });
+  });
+
+  it("rejects XP purchases at the level cap without mutating the run", async () => {
+    const module = await import(modulePath) as typeof import("../src/application/run-commands.js");
+    const repository = module.createInMemoryRunRepository();
+    const initialRun = {
+      id: "run-xp-cap", tenantId: "tenant-a", contentVersion: "alpha-0.3.0", state: "PREPARE" as const, round: 8, revision: 0, gold: 8,
+      level: 10, experience: 0, commandResponses: {}, bench: [], board: Array(12).fill(null),
+    };
+    await repository.save(initialRun);
+
+    await expect(module.applyRunCommand({ actorId: "actor-a", tenantId: "tenant-a", runId: "run-xp-cap", commandId: "cmd-xp-cap", expectedRevision: 0, type: "BUY_XP" as never }, repository))
+      .rejects.toThrow("GAME_RULE_VIOLATION");
+    await expect(repository.get("run-xp-cap", "tenant-a")).resolves.toEqual(initialRun);
+  });
+
+  it("replays an XP command once and rejects a different stale revision", async () => {
+    const module = await import(modulePath) as typeof import("../src/application/run-commands.js");
+    const repository = module.createInMemoryRunRepository();
+    await module.createRun({ id: "run-xp-idempotency", tenantId: "tenant-a", contentVersion: "alpha-0.3.0" }, repository);
+    const command = { actorId: "actor-a", tenantId: "tenant-a", runId: "run-xp-idempotency", commandId: "cmd-xp-replay", expectedRevision: 0, type: "BUY_XP" as never };
+
+    await expect(module.applyRunCommand(command, repository)).resolves.toEqual({ runRevision: 1, status: "APPLIED" });
+    await expect(module.applyRunCommand(command, repository)).resolves.toEqual({ runRevision: 1, status: "APPLIED" });
+    await expect(module.applyRunCommand({ ...command, commandId: "cmd-xp-stale" }, repository)).rejects.toThrow("RUN_REVISION_CONFLICT");
+    await expect(repository.get("run-xp-idempotency", "tenant-a")).resolves.toMatchObject({ gold: 4, experience: 4, revision: 1 });
+  });
+
+  it("enforces the level-derived board cap for placement and round start", async () => {
+    const module = await import(modulePath) as typeof import("../src/application/run-commands.js");
+    const repository = module.createInMemoryRunRepository();
+    const heroes = Array.from({ length: 5 }, (_, index) => ({ instanceId: `hero-cap-${index + 1}`, heroId: `H0${index + 1}`, cost: 1 }));
+    const initialRun = {
+      id: "run-level-board-cap", tenantId: "tenant-a", contentVersion: "alpha-0.3.0", state: "PREPARE" as const, round: 8, revision: 0, gold: 8,
+      level: 4, experience: 0, commandResponses: {}, bench: [heroes[4]!], board: [...heroes.slice(0, 4), ...Array(8).fill(null)],
+    };
+    await repository.save(initialRun);
+
+    await expect(module.applyRunCommand({ actorId: "actor-a", tenantId: "tenant-a", runId: "run-level-board-cap", commandId: "cmd-over-cap-move", expectedRevision: 0, type: "MOVE_HERO", heroInstanceId: heroes[4]!.instanceId, destination: 16 }, repository))
+      .rejects.toThrow("GAME_RULE_VIOLATION");
+    await expect(module.applyRunCommand({ actorId: "actor-a", tenantId: "tenant-a", runId: "run-level-board-cap", commandId: "cmd-over-cap-start", expectedRevision: 0, type: "START_ROUND" }, repository))
+      .resolves.toEqual({ runRevision: 1, status: "APPLIED" });
+  });
+
   it("persists a resolved combat record and moves a combat run to reward", async () => {
     const lifecycle = await import("../src/application/round-lifecycle.js").catch(() => undefined) as undefined | {
       recordResolvedCombat(run: unknown, result: unknown): { state: string; combatRecord: { winner: string; resultHash: string }; revision: number };

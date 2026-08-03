@@ -1,11 +1,11 @@
 import Fastify from "fastify";
 import { randomUUID } from "node:crypto";
 import type { CompiledContentBundle } from "@auto-battler/game-core";
-import { applyRunCommand, createInMemoryRunRepository, createRun, type RunRecord, type RunRepository, type ShopGenerator } from "../application/run-commands.js";
+import { applyRunCommand, createInMemoryRunRepository, createRun, progressionForRun, type RunRecord, type RunRepository, type ShopGenerator } from "../application/run-commands.js";
 import type { RewardSelection } from "../application/reward-selection.js";
 import { resolveRunCombat } from "../application/resolve-run-combat.js";
 
-type PublicRunView = Pick<RunRecord, "id" | "contentVersion" | "state" | "round" | "revision" | "gold" | "health" | "shop" | "bench" | "board" | "items" | "freeRefreshes" | "roundRewardPlan" | "rewardHeroes">;
+type PublicRunView = Pick<RunRecord, "id" | "contentVersion" | "state" | "round" | "revision" | "gold" | "health" | "shop" | "bench" | "board" | "items" | "freeRefreshes" | "roundRewardPlan" | "rewardHeroes"> & ReturnType<typeof progressionForRun>;
 
 export interface ContentManifestRepository {
   getByVersion(version: string): Promise<CompiledContentBundle | undefined>;
@@ -58,6 +58,7 @@ function parseRewardSelections(value: unknown): readonly RewardSelection[] | und
 }
 
 function toPublicRunView(run: RunRecord): PublicRunView {
+  const progression = progressionForRun(run);
   return {
     id: run.id,
     contentVersion: run.contentVersion,
@@ -65,6 +66,7 @@ function toPublicRunView(run: RunRecord): PublicRunView {
     ...(run.round === undefined ? {} : { round: run.round }),
     revision: run.revision,
     gold: run.gold,
+    ...progression,
     ...(run.health === undefined ? {} : { health: run.health }),
     ...(run.shop === undefined ? {} : { shop: run.shop }),
     ...(run.bench === undefined ? {} : { bench: run.bench }),
@@ -126,7 +128,7 @@ export function createHttpApp(context = { actorId: "anonymous", tenantId: "defau
     );
     return success(toPublicRunView(run));
   });
-  app.post<{ Params: { runId: string }; Body: { command_id: string; expected_run_revision: number; type: "REFRESH_SHOP" | "ABANDON_RUN" | "BUY_SHOP_HERO" | "SELL_HERO" | "MOVE_HERO" | "EQUIP_ITEM" | "UNEQUIP_ITEM" | "START_ROUND" | "CLAIM_ROUND_REWARD" | "ACK_UNIQUE_REVEAL" | "CLAIM_REWARD_HERO"; shop_slot_index?: number; hero_instance_id?: string; item_instance_id?: string; destination?: number; reveal_id?: string; reward_selections?: unknown } }>("/v1/runs/:runId/commands", async (request) => {
+  app.post<{ Params: { runId: string }; Body: { command_id: string; expected_run_revision: number; type: "REFRESH_SHOP" | "ABANDON_RUN" | "BUY_XP" | "BUY_SHOP_HERO" | "SELL_HERO" | "MOVE_HERO" | "EQUIP_ITEM" | "UNEQUIP_ITEM" | "START_ROUND" | "CLAIM_ROUND_REWARD" | "ACK_UNIQUE_REVEAL" | "CLAIM_REWARD_HERO"; shop_slot_index?: number; hero_instance_id?: string; item_instance_id?: string; destination?: number; reveal_id?: string; reward_selections?: unknown } }>("/v1/runs/:runId/commands", async (request) => {
     const rewardSelections = parseRewardSelections(request.body.reward_selections);
     return success(await applyRunCommand({ actorId: context.actorId, tenantId: context.tenantId, runId: request.params.runId, commandId: request.body.command_id, expectedRevision: request.body.expected_run_revision, type: request.body.type, ...(request.body.shop_slot_index === undefined ? {} : { shopSlotIndex: request.body.shop_slot_index }), ...(request.body.hero_instance_id === undefined ? {} : { heroInstanceId: request.body.hero_instance_id }), ...(request.body.item_instance_id === undefined ? {} : { itemInstanceId: request.body.item_instance_id }), ...(request.body.destination === undefined ? {} : { destination: request.body.destination }), ...(request.body.reveal_id === undefined ? {} : { revealId: request.body.reveal_id }), ...(rewardSelections === undefined ? {} : { rewardSelections }) }, repository, shopGenerator));
   });
