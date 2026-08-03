@@ -8,11 +8,11 @@ var _failed := false
 
 func _init() -> void:
 	var catalog := {
-		"H01": { "display_name": "Cotton Bulwark", "species": "cat", "role": "guardian", "source_sprite": "h01-cotton-shield-cat-chibi-v2.png" },
-		"H02": { "display_name": "Ember Duelist", "species": "cat", "role": "fighter", "source_sprite": "h02-ember-duelist-cat-chibi-v2.png" },
-		"H03": { "display_name": "Forest Ranger", "species": "cat", "role": "ranger", "source_sprite": "h03-forest-ranger-cat-chibi-v2.png" },
-		"H04": { "display_name": "Frost Mage", "species": "cat", "role": "mage", "source_sprite": "h04-frost-mage-cat-chibi-v2.png" },
-		"H20": { "display_name": "Capybara Guardian", "species": "exotic", "role": "guardian", "source_sprite": "h20-capybara-guardian-chibi-v3.png" },
+		"H01": { "display_name": "Cotton Bulwark", "species": "cat", "role": "guardian", "rarity": 1, "source_sprite": "h01-cotton-shield-cat-chibi-v2.png" },
+		"H02": { "display_name": "Ember Duelist", "species": "cat", "role": "fighter", "rarity": 2, "source_sprite": "h02-ember-duelist-cat-chibi-v2.png" },
+		"H03": { "display_name": "Forest Ranger", "species": "cat", "role": "ranger", "rarity": 1, "source_sprite": "h03-forest-ranger-cat-chibi-v2.png" },
+		"H04": { "display_name": "Frost Mage", "species": "cat", "role": "mage", "rarity": 3, "source_sprite": "h04-frost-mage-cat-chibi-v2.png" },
+		"H20": { "display_name": "Capybara Guardian", "species": "exotic", "role": "guardian", "rarity": 3, "source_sprite": "h20-capybara-guardian-chibi-v3.png" },
 		"U01": { "display_name": "Unique Test", "is_unique_hero": true },
 	}
 	var panel = ShopPanelScript.new()
@@ -20,10 +20,10 @@ func _init() -> void:
 	panel.set_purchase_context(12, 1, true, 0)
 	panel.bind_shop(_five_slots(), { "tier1": 45, "tier2": 35, "tier3": 18, "tier4": 2, "tier5": 0 }, false)
 	_expect(_hero_card_count(panel) == 5, "Shop must render exactly five offer cards")
-	var third = panel.find_child("BuySlot2", true, false)
-	_expect(third != null and third.cost_text == "3 Gold" and third.rarity_text == "Tier 3" and third.star_text == "★★★", "Hero cards must represent the authoritative cost, rarity, and star tier")
-	var hero_name: Label = third.find_child("HeroName", true, false) as Label
-	var faction_class: Label = third.find_child("FactionClass", true, false) as Label
+	var rarity_three_card = panel.find_child("BuySlot3", true, false)
+	_expect(rarity_three_card != null and rarity_three_card.cost_text == "3 Gold" and rarity_three_card.rarity_text == "Tier 3" and rarity_three_card.star_text == "★", "A rarity-three hero shop offer must show its catalogued tier but its actual one-star upgrade state")
+	var hero_name: Label = rarity_three_card.find_child("HeroName", true, false) as Label
+	var faction_class: Label = rarity_three_card.find_child("FactionClass", true, false) as Label
 	_expect(hero_name.autowrap_mode == TextServer.AUTOWRAP_WORD_SMART and not hero_name.clip_text and hero_name.position.y + hero_name.size.y <= faction_class.position.y, "Hero name and faction/class labels must reserve separate vertical space on compact cards")
 	var capybara = panel.find_child("BuySlot4", true, false)
 	var capybara_name: Label = capybara.find_child("HeroName", true, false) as Label
@@ -48,7 +48,7 @@ func _init() -> void:
 	_expect(locked_button != null and locked_button.text == "Unlock shop" and (panel.find_child("RefreshShop", true, false) as Button).disabled, "The authoritative locked state must relabel lock and prevent a refresh request")
 
 	panel.set_purchase_context(2, 1, true, 0)
-	_expect((panel.find_child("BuySlot2", true, false) as Button).disabled, "A hero must be disabled when authoritative gold is insufficient")
+	_expect((panel.find_child("BuySlot3", true, false) as Button).disabled, "A hero must be disabled when authoritative gold is insufficient")
 	panel.set_purchase_context(12, 8, true, 0)
 	_expect((panel.find_child("BuySlot0", true, false) as Button).disabled, "A hero must be disabled when the authoritative bench is full")
 	panel.set_purchase_context(12, 1, true, 0)
@@ -67,11 +67,11 @@ func _init() -> void:
 
 func _five_slots() -> Array:
 	return [
-		{ "heroId": "H01", "cost": 1, "rarity": 1 },
-		{ "heroId": "H02", "cost": 2, "rarity": 2 },
-		{ "heroId": "H03", "cost": 3, "rarity": 3 },
-		{ "heroId": "H04", "cost": 4, "rarity": 4 },
-		{ "heroId": "H20", "cost": 5, "rarity": 5 },
+		{ "heroId": "H01", "cost": 1 },
+		{ "heroId": "H02", "cost": 2 },
+		{ "heroId": "H03", "cost": 1 },
+		{ "heroId": "H04", "cost": 3 },
+		{ "heroId": "H20", "cost": 3 },
 	]
 
 func _hero_card_count(root: Node) -> int:

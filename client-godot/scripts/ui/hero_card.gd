@@ -45,13 +45,14 @@ func configure(hero: Dictionary, catalog: Dictionary) -> void:
 		set_purchase_enabled(false, "Unique heroes are never shop offers.")
 		return
 	var cost := int(hero.get("cost", 0))
-	var rarity := int(hero.get("rarity", cost))
+	var rarity := int(hero.get("rarity", profile.get("rarity", 1)))
+	var stars := int(hero.get("stars", 1))
 	cost_text = "%d Gold" % cost
 	rarity_text = "Tier %d" % rarity
-	star_text = "★".repeat(maxi(rarity, 0))
+	star_text = "★".repeat(clampi(stars, 1, 3))
 	name_label.text = String(profile.get("display_name", hero_id))
 	faction_label.text = "%s  /  %s" % [String(profile.get("species", "Unknown")), String(profile.get("role", "Unknown"))]
-	_identity_text = "%s — %s / %s — %s, %s" % [name_label.text, String(profile.get("species", "Unknown")), String(profile.get("role", "Unknown")), cost_text, rarity_text]
+	_identity_text = "%s — %s / %s — %s, %s, %d star%s" % [name_label.text, String(profile.get("species", "Unknown")), String(profile.get("role", "Unknown")), cost_text, rarity_text, clampi(stars, 1, 3), "" if clampi(stars, 1, 3) == 1 else "s"]
 	_label("Cost").text = cost_text
 	_label("Rarity").text = rarity_text
 	_label("Stars").text = star_text

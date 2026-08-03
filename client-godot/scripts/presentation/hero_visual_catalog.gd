@@ -4,6 +4,13 @@ extends RefCounted
 const RIG_SCHEMA_VERSION := "1.0.0"
 
 # The catalog is presentation-only: simulation remains authoritative in game-core.
+static var SHOP_RARITIES: Dictionary = {
+	"H01": 1, "H02": 2, "H03": 1, "H04": 3, "H05": 2,
+	"H06": 1, "H07": 2, "H08": 2, "H09": 3, "H10": 2,
+	"H11": 1, "H12": 1, "H13": 3, "H14": 2, "H15": 1,
+	"H16": 3, "H17": 2, "H18": 3, "H19": 3, "H20": 3,
+}
+
 static var PROFILES: Dictionary = {
 	"H01": _profile("H01", "Cotton Bulwark", "cat", "guardian", "Cotton Bulwark", "shield", "guard", "barrier", "guard", "#9ed8c3", "h01-cotton-shield-cat-chibi-v2.png"),
 	"H02": _profile("H02", "Ember Duelist", "cat", "fighter", "Prowler's Leap", "sword", "slash", "dash", "slash", "#f26a4f", "h02-ember-duelist-cat-chibi-v2.png"),
@@ -46,6 +53,7 @@ static func _profile(id: String, display_name: String, species: String, role: St
 	return {
 		"id": id,
 		"display_name": display_name,
+		"rarity": int(SHOP_RARITIES.get(id, 1)),
 		"species": species,
 		"role": role,
 		"skill_name": skill_name,
