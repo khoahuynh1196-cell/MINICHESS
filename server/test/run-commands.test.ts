@@ -214,6 +214,32 @@ describe("run commands", () => {
     });
   });
 
+  it("migrates a legacy reward hero to a zero-reservation merge and sale", async () => {
+    const module = await import(modulePath) as typeof import("../src/application/run-commands.js");
+    const shopPool = await import("../src/application/shop-pool.js") as typeof import("../src/application/shop-pool.js");
+    const repository = module.createInMemoryRunRepository();
+    const pool = shopPool.createShopPool({ heroesById: new Map([["H01", { id: "H01", cost: 1, rarity: 1 as const, is_unique_hero: false }]]) } as never, "000102030405060708090a0b0c0d0e0f");
+    pool.heroes.H01!.remainingCopies = 27;
+    const legacyReward = { instanceId: "reward:legacy-run:4:reward:4:hero_choice:0:H01", heroId: "H01", cost: 1, stars: 1 as const };
+    await repository.save({
+      id: "legacy-run", tenantId: "tenant-a", contentVersion: "alpha-0.3.0", state: "PREPARE", round: 4, revision: 0, gold: 10, commandResponses: {}, shopPool: pool,
+      bench: [
+        { instanceId: "hero-legacy-shop-a", heroId: "H01", cost: 1, stars: 1 as const, poolCopies: 1 },
+        { instanceId: "hero-legacy-shop-b", heroId: "H01", cost: 1, stars: 1 as const, poolCopies: 1 },
+      ],
+      rewardHeroes: [legacyReward],
+    });
+
+    await module.applyRunCommand({ actorId: "actor-a", tenantId: "tenant-a", runId: "legacy-run", commandId: "cmd-claim-legacy-reward", expectedRevision: 0, type: "CLAIM_REWARD_HERO", heroInstanceId: legacyReward.instanceId }, repository);
+    const claimed = await repository.get("legacy-run", "tenant-a");
+    const mergedHero = claimed?.bench?.[0];
+    expect(mergedHero).toMatchObject({ heroId: "H01", stars: 2, poolCopies: 2 });
+    if (mergedHero === undefined) throw new Error("expected merged legacy reward hero");
+
+    await expect(module.applyRunCommand({ actorId: "actor-a", tenantId: "tenant-a", runId: "legacy-run", commandId: "cmd-sell-legacy-reward", expectedRevision: 1, type: "SELL_HERO", heroInstanceId: mergedHero.instanceId }, repository)).resolves.toEqual({ runRevision: 2, status: "APPLIED" });
+    await expect(repository.get("legacy-run", "tenant-a")).resolves.toMatchObject({ bench: [], shopPool: { heroes: { H01: { remainingCopies: 29 } } } });
+  });
+
   it("acknowledges a revealed Unique without changing reward or inventory", async () => {
     const module = await import(modulePath) as typeof import("../src/application/run-commands.js");
     const repository = module.createInMemoryRunRepository();

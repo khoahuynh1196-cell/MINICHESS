@@ -163,6 +163,10 @@ function heroStars(hero: HeroInstance): 1 | 2 | 3 {
 
 function reservedPoolCopies(hero: HeroInstance): number {
   const representedCopies = 3 ** (heroStars(hero) - 1);
+  // Pre-pool reward records used the durable reward:<run>:... instance format
+  // but did not reserve supply. Treat that missing metadata as zero so a
+  // migration-era claim, merge, or sale cannot mint or overflow the pool.
+  if (hero.poolCopies === undefined && hero.instanceId.startsWith("reward:")) return 0;
   const copies = hero.poolCopies ?? representedCopies;
   if (!Number.isSafeInteger(copies) || copies < 0 || copies > representedCopies) throw new Error("GAME_RULE_VIOLATION");
   return copies;
