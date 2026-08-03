@@ -377,9 +377,9 @@ function validateAlphaV03Cardinality(input: {
   const uniqueRevealCount = input.encounters.flatMap((encounter) => encounter.rewards).filter((reward) => reward.kind === "unique_reveal").length;
   const validRounds = input.encounters.length === 8 && input.encounters.every((encounter) => encounter.round >= 1 && encounter.round <= 8);
   if (
-    input.heroes.length !== 24 || shopHeroes !== 21 || uniqueHeroes !== 3 || speciesTraits !== 6 || classTraits !== 6 || input.normalItems.length !== 12 ||
+    input.heroes.length !== 20 || shopHeroes !== 20 || uniqueHeroes !== 0 || speciesTraits !== 5 || classTraits !== 5 || input.normalItems.length !== 12 ||
     input.uniqueItems.length !== 6 || input.transformations.length !== 6 || !validRounds || uniqueRevealCount !== 1
-  ) throw new Error("Alpha v0.3 content requires 24 heroes (21 shop and 3 Unique), 6 species traits, 6 class traits, 12 normal items, 6 Unique items, 6 transformations, 8 encounters, and one unique_reveal");
+  ) throw new Error("Alpha v0.3 content requires 20 shop heroes and 0 Unique heroes, 5 species traits, 5 class traits, 12 normal items, 6 Unique items, 6 transformations, 8 encounters, and one unique_reveal");
 }
 
 export function compileContentBundle(raw: unknown): CompiledContentBundle {

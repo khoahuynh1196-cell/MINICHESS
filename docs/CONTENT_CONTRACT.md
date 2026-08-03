@@ -2,16 +2,15 @@
 
 ## Full PvE demo content additions
 
-The full PvE demo has 24 heroes: exactly 21 shop heroes and three reward-only
-Unique heroes. `ContentManifest.shopHeroCount` counts records where
-`is_unique_hero` is `false`; `ContentManifest.uniqueHeroCount` counts the
-remaining Unique records.
+The initial PvE demo has exactly 20 shop heroes, H01 through H20, and no
+reward-only Unique heroes. `ContentManifest.shopHeroCount` counts records
+where `is_unique_hero` is `false`; `ContentManifest.uniqueHeroCount` is zero
+for the current bundle.
 
-A shop hero has `is_unique_hero: false` and a positive shop `cost`; a
-reward-only Unique hero has `is_unique_hero: true` and `cost: 0`. `rarity` is
-an integer from 1 through 5, and `tags` is an array of non-empty identifiers.
-The full canonical records are defined in the Hero and Reward-only Unique hero
-sections below.
+A shop hero has `is_unique_hero: false` and a positive shop `cost`. The schema
+also supports a future reward-only Unique hero with `is_unique_hero: true` and
+`cost: 0`, but no such record belongs in this release. `rarity` is an integer
+from 1 through 5, and `tags` is an array of non-empty identifiers.
 
 Every visual profile must reference its sprite, portrait, ability icon, and
 cast VFX keys:
@@ -37,7 +36,7 @@ Each encounter declares a non-empty `kind` and one legal biome:
   "round": 4,
   "kind": "miniboss",
   "biome": "frost_keep",
-  "rewards": [{ "kind": "unique_reveal", "source": "run_preselected_unique" }]
+  "rewards": [{ "kind": "unique_reveal", "source": "run_preselected_unique_item" }]
 }
 ```
 
@@ -62,7 +61,7 @@ bộ bundle, validate, sắp theo ID và tạo digest trước khi publish.
 
 ## Quy ước chung
 
-- Public ID là string in hoa: hero `H01`–`H24`, Unique `U01`–`U03`, item thường
+- Public ID là string in hoa: hero `H01`–`H20`, Unique item `U01`–`U06`, item thường
   `I01`–`I12`, trait `R_*` hoặc `C_*`, effect `E_*`.
 - Không đổi, tái dùng hoặc suy luận public ID từ tên hiển thị. Localization là
   field riêng.
@@ -112,40 +111,12 @@ bộ bundle, validate, sắp theo ID và tạo digest trước khi publish.
 `cost: 0`; `rarity` thuộc `[1,5]`. Star multiplier không áp dụng
 cho stat không được liệt kê; compiler tạo stat cuối cùng bằng integer math.
 
-## Reward-only Unique hero
+## Deferred reward-only Unique heroes
 
-```json
-{
-  "id": "H22",
-  "display_key": "hero.h22.name",
-  "species_trait_id": "R_AETHER",
-  "class_trait_id": "C_ARCANIST",
-  "cost": 0,
-  "rarity": 5,
-  "tags": ["aether", "arcanist", "unique"],
-  "is_unique_hero": true,
-  "base_stats": {
-    "max_hp": 100000,
-    "attack_damage": 6000,
-    "attack_speed": 1000,
-    "armor": 20000,
-    "magic_resist": 20000,
-    "attack_range": 3,
-    "move_speed": 1000,
-    "starting_mana": 0,
-    "max_mana": 100000,
-    "crit_chance": 0,
-    "crit_multiplier": 1500,
-    "skill_power": 0
-  },
-  "star_multipliers": {
-    "two": { "max_hp": 1600, "attack_damage": 1500 },
-    "three": { "max_hp": 2500, "attack_damage": 2300 }
-  },
-  "skill_id": "S_H22",
-  "visual_profile_id": "VP_H22"
-}
-```
+The compiler retains generic support for reward-only Unique heroes so a later
+release can add them safely. H21–H24, their traits, skills, visual profiles,
+reward selection, and assets are explicitly out of scope for this initial
+20-hero demo. Do not add a Unique-hero record to `alpha-0.3.0`.
 
 ## Skill và effect chain
 
@@ -301,9 +272,9 @@ transformation tham chiếu anchor không có; runtime không fallback anchor kh
 
 ## Validation bắt buộc trước publish
 
-1. Đủ đúng 24 hero: 21 hero shop và 3 hero Unique reward-only; 6 faction/species
-   trait, 6 class trait, 12 item thường, 3 Unique item và 3 transformation.
-2. Hero distribution và mỗi class có đúng 4 hero theo kế hoạch v0.3.
+1. Đủ đúng 20 hero shop H01–H20 và 0 hero Unique reward-only; 5 faction/species
+   trait, 5 class trait, 12 item thường, 6 Unique item và 6 transformation.
+2. Hero distribution và mỗi class có đúng 4 hero theo roster hiện tại.
 3. Mọi effect primitive, target, trigger, stat, duration và reference hợp lệ.
 4. Không hero/item/trait ID trùng; public ID đã xóa không được tái sử dụng.
 5. Mọi hero có visual profile, mọi profile đủ anchor/animation và mọi Unique có transformation.

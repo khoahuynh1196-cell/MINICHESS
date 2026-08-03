@@ -32,10 +32,10 @@
 - [ ] Add compiler tests that reject a hero with an invalid rarity, a Unique hero marked as purchasable, an encounter without a legal biome, and a visual profile without icon/VFX keys.
 - [ ] Run `pnpm --filter @auto-battler/game-core test -- compiler.test.ts` and confirm the new cases fail against the current contract.
 - [ ] Add the typed fields and validation: rarities are `1..5`, `biome` is `meadow|ruins|frost_keep|ember_citadel`, and every visual profile references sprite, portrait, ability icon, and cast VFX keys.
-- [ ] Update `docs/CONTENT_CONTRACT.md` with the canonical JSON examples and the 21 shop / 3 Unique hero rule.
+- [ ] Update `docs/CONTENT_CONTRACT.md` with the canonical JSON examples, the 20 shop / 0 Unique hero baseline, and the deferred future Unique-hero capability.
 - [ ] Re-run the compiler test and commit `feat: extend content contract for full PvE demo`.
 
-### Task 2: Populate the original 24-hero roster and six traits
+### Task 2: Complete metadata for the initial 20-hero roster and five traits
 
 **Files:**
 - Modify: `content/alpha-0.3.0/bundle.json`
@@ -43,28 +43,28 @@
 
 **Interfaces:**
 - Consumes the Task 1 content schema.
-- Produces H01–H24, six faction traits, six class traits, 21 standard pool entries, and three Unique hero reward entries.
+- Produces metadata for H01–H20, five faction traits, five class traits, 20 standard pool entries, and no Unique hero records.
 
-- [ ] Write assertions that the bundle contains exactly 24 heroes, 21 shop-eligible heroes, three `is_unique_hero` records, six factions, six classes, and rarity distribution `8/6/4/2/1` across shop heroes.
-- [ ] Run the alpha-bundle test and confirm it fails on the existing 20-hero bundle.
-- [ ] Add original names, display keys, faction/class IDs, rarity, cost, tags, base stats, star multipliers, skills, and visual-profile links for H01–H24; mark only H22–H24 as Unique rewards.
-- [ ] Add each trait breakpoint at 2/4/6 with content-defined effects legal under `GAME_RULES.md`.
+- [ ] Write assertions that the bundle contains exactly 20 shop-eligible heroes H01–H20, no `is_unique_hero` records, five factions, and five classes.
+- [ ] Run the alpha-bundle test and confirm it fails until the existing 20 records include the required metadata.
+- [ ] Add display keys, faction/class IDs, rarity, cost, tags, base stats, star multipliers, skills, visual-profile links, ability-icon/VFX keys, and encounter biome/kind fields to the existing H01–H20 data; keep every hero shop eligible.
+- [ ] Preserve the checked-in trait breakpoints and use only content-defined effects legal under `GAME_RULES.md`.
 - [ ] Refresh the golden digest intentionally and run `pnpm --filter @auto-battler/game-core test -- alpha-bundle.test.ts content-golden.test.ts`.
 - [ ] Commit `feat: add full PvE hero roster and traits`.
 
-### Task 3: Add hero skills, 12 basic items, and three Unique rewards
+### Task 3: Complete skills, 12 basic items, and six Unique items
 
 **Files:**
 - Modify: `content/alpha-0.3.0/bundle.json`
 - Modify: `game-core/test/effects/definitions.test.ts`, `game-core/test/simulation/kernel.test.ts`, `game-core/test/content/alpha-bundle.test.ts`
 
 **Interfaces:**
-- Consumes content `S_H01` through `S_H24`, `I01` through `I12`, and `U01` through `U03`.
+- Consumes content `S_H01` through `S_H20`, `I01` through `I12`, and `U01` through `U06`.
 - Produces skill/effect coverage for damage, heal, shield, stun, slow, buff, debuff, summon, cleanse, dash, and knockback.
 
 - [ ] Add focused kernel tests for one content-driven skill of each primitive and an item/Unique trigger that activates exactly once when required.
 - [ ] Run the focused tests and confirm each new effect case fails before content is added.
-- [ ] Define 24 readable skills, 12 basic items (four offensive, four defensive, four utility), and U01–U03 with legal effects and visual transformations; remove U04–U06 from this demo bundle.
+- [ ] Define 20 readable skills, 12 basic items (four offensive, four defensive, four utility), and preserve U01–U06 with legal effects and visual transformations.
 - [ ] Add content validation assertions that no item references an unknown effect, visual profile, or transformation.
 - [ ] Run `pnpm --filter @auto-battler/game-core test` and commit `feat: add PvE skills items and unique rewards`.
 
@@ -110,10 +110,10 @@
 **Interfaces:**
 - Produces eight ordered encounters with biomes, R4 Unique reveal, R4 miniboss, R8 boss, and deterministic reward plans.
 
-- [ ] Add tests for exact enemy counts `2,3,3,4,4,5,5,6`, R4 unique reveal, R5 affix, R8 final chest, and legal enemy positions.
+- [ ] Add tests for exact enemy counts `2,3,3,4,4,5,5,6`, R4 Unique-item reveal, R5 affix, R8 final chest, and legal enemy positions.
 - [ ] Run the tests and confirm the bundle lacks the visual encounter metadata and final reward rules.
 - [ ] Populate encounter `kind`, `biome`, enemy roster, multiplier, affix, and reward plan for rounds one to eight.
-- [ ] Update reward selection to choose a reward-only hero from H22–H24 without adding it to a shop pool.
+- [ ] Keep reward selection free of Unique heroes; defer H21–H24 reward candidates to a later release while retaining the existing Unique-item reward flow.
 - [ ] Run game-core/server suites and commit `feat: complete eight-round PvE encounter content`.
 
 ### Task 7: Make local run persistence/resume demo-safe
@@ -245,7 +245,7 @@
 **Interfaces:**
 - `AssetCatalog.hero_profile(hero_id)` returns portrait/sprite/icon/VFX data; `UnitView.configure` consumes a profile rather than a colour-only hero ID.
 
-- [ ] Test H01–H24 profile resolution, fallback rejection in release mode, visual state mapping for idle/move/basic/cast/hit/death, and existing hero-ID label preservation for debug builds.
+- [ ] Test H01–H20 profile resolution, fallback rejection in release mode, visual state mapping for idle/move/basic/cast/hit/death, and existing hero-ID label preservation for debug builds.
 - [ ] Implement atlas-backed Sprite2D/AnimatedSprite2D nodes, class-timing animations, hp/mana/status indicators, side outlines, and four biome board layers.
 - [ ] Run unit animation, catalog, and scene smoke tests; capture a full combat screenshot; commit `feat: render data-driven hero sprites and biomes`.
 
@@ -264,7 +264,7 @@
 - [ ] Implement combat transition, camera emphasis on casts/boss, floating combat text, pooled VFX, two speed buttons, pause, reduced-motion mode, and recap screen.
 - [ ] Run Godot tests and capture combat/victory/defeat screenshots; commit `feat: add combat HUD VFX and run recap`.
 
-### Task 17: Implement reward, Unique reveal, and collection screens
+### Task 17: Implement reward, Unique-item reveal, and collection screens
 
 **Files:**
 - Create: `client-godot/scripts/ui/reward_screen.gd`, `client-godot/scripts/ui/collection_screen.gd`
@@ -272,10 +272,10 @@
 - Modify: `client-godot/scripts/battle_controller.gd`, `client-godot/scripts/ui/screen_router.gd`
 
 **Interfaces:**
-- Reward screen renders only server-offered choices and emits `select_reward(offer_id, option_id)` and `ack_unique(reveal_id)`.
-- Collection screen loads all 24 profiles, filters faction/class, and shows locked/reward-only Unique state.
+- Reward screen renders only server-offered choices and emits `select_reward(offer_id, option_id)` and `ack_unique(reveal_id)` for existing Unique items; Unique heroes remain deferred.
+- Collection screen loads all 20 current profiles, filters faction/class, and shows the existing Unique-item codex; future Unique heroes remain deferred.
 
-- [ ] Test three-option selection, mandatory selection before claim, round-four Unique reveal, no client-generated option, filters, and 24-card collection count.
+- [ ] Test three-option selection, mandatory selection before claim, round-four Unique-item reveal, no client-generated option, filters, and 20-card collection count.
 - [ ] Implement reward cards, reveal animation/reduced-motion fallback, item/hero claim path, Collection grid, detail modal, and filters.
 - [ ] Run Godot/server reward tests, capture reward and collection screenshots, and commit `feat: add reward unique and collection screens`.
 

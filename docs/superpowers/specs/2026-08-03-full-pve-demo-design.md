@@ -23,10 +23,11 @@ portrait Android viewport.
   and settings screens.
 - One eight-round run with deterministic bot/monster encounters, a miniboss in
   round four, and a boss in round eight.
-- Twenty-one purchasable heroes in a shared shop pool and three reward-only
-  Unique heroes.
-- Six factions, six classes, tiered traits, five normal rarity tiers, star
-  upgrades, twelve basic items, and three Unique rewards.
+- Twenty purchasable heroes, H01–H20, in a shared shop pool; this release has
+  no reward-only Unique heroes.
+- Five faction/species traits and five class traits matching the checked-in
+  roster, five normal rarity tiers, star upgrades, twelve basic items, and six
+  existing Unique items.
 - Gold, level, XP, shop refresh, lock, buy, sell, bench, board placement,
   item equip, and local run save/resume.
 - Original sprites, portraits, board tiles, UI iconography, visual effects,
@@ -38,6 +39,10 @@ portrait Android viewport.
 
 - PvP matchmaking, ranked ladders, social/friends, real-money commerce,
   battle pass, skins, cloud account sync, and live-ops backend.
+- Future reward-only Unique heroes H21–H24, including their traits, skills,
+  visual profiles, assets, reward candidates, and collection cards. The
+  compiler may retain generic eligibility support, but the initial bundle has
+  none of these records.
 
 ## Player Loop
 
@@ -63,9 +68,9 @@ show text/icon feedback rather than relying on colour alone.
 | Encounter map | Select or preview the next PvE encounter | Eight nodes, biome art, enemy preview, reward and boss marker |
 | Prepare | Make all strategic choices before combat | Header, 3 x 8 board, eight-slot bench, traits, inventory, five-slot shop, action rail |
 | Combat | Read the deterministic battle without debug controls | Full board, team health, unit health/mana, trait chips, speed/pause, compact event feedback |
-| Reward | Resolve a completed encounter | Gold, item/orb, one-of-three reward selection where configured, Unique reveal at round four |
+| Reward | Resolve a completed encounter | Gold, item/orb, one-of-three reward selection where configured, Unique-item reveal at round four |
 | Run recap | Make the end state understandable and replayable | Win/loss, round reached, hero MVP, traits, combat statistics, retry/home |
-| Collection | Browse available content without entering a run | Twenty-four hero cards, faction/class filters, trait and item codex, Unique status |
+| Collection | Browse available content without entering a run | Twenty hero cards, faction/class filters, trait and item codex, Unique-item status |
 | Settings | Player comfort controls | Sound, music, haptic, reduced motion, text scale, reset local run |
 
 The Prepare screen uses a compact header; the centre board; then a bottom
@@ -93,22 +98,21 @@ primary action to disappear outside the viewport.
 
 ### Hero content matrix
 
-Twenty-one shop heroes use rarity distribution `8 / 6 / 4 / 2 / 1` across
-tiers one through five. Three Unique heroes are outside the shared pool and
-enter through rewards after the round-four reveal.
+The initial roster contains twenty shop heroes, H01–H20. Their rarity, tags,
+and visual metadata are content-defined; no reward-only Unique hero is present
+in this release.
 
 | Faction | Class coverage | Visual identity |
 | --- | --- | --- |
-| Verdant Covenant | Vanguard, Mystic, Ranger, Duelist | moss, amber, living wood |
-| Ironclad Hold | Vanguard, Ranger, Saboteur, Arcanist | steel, blue enamel, gearwork |
-| Duskveil Court | Duelist, Mystic, Saboteur, Arcanist | violet, midnight, masks |
-| Ember Kin | Vanguard, Duelist, Arcanist, Ranger | ember orange, charcoal, horns |
-| Tidebound | Mystic, Ranger, Vanguard, Saboteur | teal, shell, coral |
-| Aether Nomads | Arcanist, Duelist, Ranger, Mystic | ivory, indigo, starlight |
+| Catfolk | Guardian, Fighter, Ranger, Mage, Support | warm gold, moonstone, soft fur |
+| Dogfolk | Guardian, Fighter, Ranger, Mage, Support | blue enamel, travel leather, banners |
+| Rabbitfolk | Fighter, Ranger, Mage, Support | spring green, linen, quick silhouettes |
+| Highland cattle | Guardian, Fighter, Support | russet wool, brass, sturdy shields |
+| Exotic companions | Guardian, Ranger, Mage | jewel tones, feathers, starlight |
 
-Each faction supplies four hero concepts: three normal-pool designs plus one
-Unique reward design. Each hero has one faction and one class. Trait breakpoints
-are 2, 4, and 6 units; no trait requires more than six board units.
+Each hero has one faction/species trait and one class trait. Trait breakpoints
+remain defined by the checked-in roster content; future H21–H24 factions,
+classes, and traits are deferred.
 
 ### Items and rewards
 
@@ -125,7 +129,7 @@ items, including at most one Unique item.
 | 1 | Meadow | 2 | Positioning tutorial | Gold + basic component |
 | 2 | Meadow | 3 | Buy and bench decision | Gold + shop refresh |
 | 3 | Ruins | 3 | First trait check | Gold + component |
-| 4 | Ruins miniboss | 4 | Survivability and Unique reveal | Reward choice |
+| 4 | Ruins miniboss | 4 | Survivability and Unique-item reveal | Reward choice |
 | 5 | Frost Keep | 4 | Enemy affix introduction | Gold + item |
 | 6 | Frost Keep | 5 | Build and item check | Reward choice |
 | 7 | Ember Citadel | 5 | Full-board formation check | Gold + component |
@@ -170,7 +174,7 @@ used in a run.
 
 The demo is done when a fresh Android install can start a local run, use every
 shop and preparation control, complete or lose all eight encounters, receive
-rewards and the Unique reveal, resume an interrupted run, view the collection,
+rewards and the Unique-item reveal, resume an interrupted run, view the collection,
 and return to the lobby without a debug-only control. All automated tests pass,
 the required screenshots are captured, and the art/audio used in the build is
 original to this project.

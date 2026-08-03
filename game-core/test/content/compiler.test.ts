@@ -65,19 +65,19 @@ async function loadCompiler(): Promise<Compiler | undefined> {
   return import(compilerModulePath).catch(() => undefined) as Promise<Compiler | undefined>;
 }
 
-function createFullDemoAlphaBundle() {
-  const heroes = Array.from({ length: 24 }, (_, index) => ({
+function createInitialDemoAlphaBundle() {
+  const heroes = Array.from({ length: 20 }, (_, index) => ({
     ...baseBundle.heroes[0]!,
     id: `H${String(index + 1).padStart(2, "0")}`,
-    species_trait_id: index % 6 === 0 ? "R_CAT" : `R_${index % 6}`,
-    class_trait_id: index % 6 === 0 ? "C_GUARDIAN" : `C_${index % 6}`,
-    cost: index < 21 ? 1 : 0,
-    is_unique_hero: index >= 21,
+    species_trait_id: index % 5 === 0 ? "R_CAT" : `R_${index % 5}`,
+    class_trait_id: index % 5 === 0 ? "C_GUARDIAN" : `C_${index % 5}`,
+    cost: 1,
+    is_unique_hero: false,
   }));
   const traits = [
     ...baseBundle.traits,
-    ...Array.from({ length: 5 }, (_, index) => ({ id: `R_${index + 1}`, kind: "species", breakpoints: [{ count: 1, effects: [] }] })),
-    ...Array.from({ length: 5 }, (_, index) => ({ id: `C_${index + 1}`, kind: "class", breakpoints: [{ count: 1, effects: [] }] })),
+    ...Array.from({ length: 4 }, (_, index) => ({ id: `R_${index + 1}`, kind: "species", breakpoints: [{ count: 1, effects: [] }] })),
+    ...Array.from({ length: 4 }, (_, index) => ({ id: `C_${index + 1}`, kind: "class", breakpoints: [{ count: 1, effects: [] }] })),
   ];
   const transformations = Array.from({ length: 6 }, (_, index) => ({ id: `VT_${index + 1}` }));
 
@@ -102,14 +102,14 @@ function createFullDemoAlphaBundle() {
 }
 
 describe("content compiler", () => {
-  it("accepts the Alpha full-demo roster with six faction and six class traits", async () => {
+  it("accepts the initial Alpha roster with twenty shop heroes and no Unique heroes", async () => {
     const compiler = await loadCompiler();
     expect(compiler).toBeDefined();
     if (compiler === undefined) return;
 
-    const compiled = compiler.compileContentBundle(createFullDemoAlphaBundle());
+    const compiled = compiler.compileContentBundle(createInitialDemoAlphaBundle());
 
-    expect(compiled.manifest).toMatchObject({ heroCount: 24, shopHeroCount: 21, uniqueHeroCount: 3, traitCount: 12 });
+    expect(compiled.manifest).toMatchObject({ heroCount: 20, shopHeroCount: 20, uniqueHeroCount: 0, traitCount: 10 });
   });
 
   it("rejects a hero with a rarity outside the five shop tiers", async () => {
@@ -165,7 +165,7 @@ describe("content compiler", () => {
     expect(compiler).toBeDefined();
     if (compiler === undefined) return;
 
-    expect(() => compiler.compileContentBundle({ ...baseBundle, version: "alpha-0.3.0" })).toThrow(/Alpha.*24 heroes.*21 shop.*3 Unique.*8 encounters/i);
+    expect(() => compiler.compileContentBundle({ ...baseBundle, version: "alpha-0.3.0" })).toThrow(/Alpha.*20 shop heroes.*0 Unique.*8 encounters/i);
   });
 
   it("normalizes legacy item trigger spelling into the canonical combat-start trigger", async () => {
