@@ -571,6 +571,12 @@ func _create_mobile_ui() -> void:
 	add_child(screen_router)
 	show_mobile_screen("lobby")
 
+func set_reduced_motion(enabled: bool) -> void:
+	settings["reduced_motion"] = enabled
+	for unit in unit_views.values():
+		unit.set_reduced_motion(enabled)
+	settings_store.save_settings(settings)
+
 func show_mobile_screen(screen_id: String) -> void:
 	if screen_router == null or not screen_router.show_screen(screen_id):
 		return
@@ -606,14 +612,14 @@ func _build_mobile_screen(screen_id: String) -> void:
 	var title := Label.new()
 	title.position = Vector2(40.0, 38.0)
 	title.size = Vector2(1000.0, 58.0)
-	title.add_theme_font_size_override("font_size", 38)
+	title.add_theme_font_size_override("font_size", ThemeTokensScript.font_size("title"))
 	title.add_theme_color_override("font_color", ThemeTokensScript.PARCHMENT)
 	title.text = _screen_title(screen_id)
 	root.add_child(title)
 	var status := Label.new()
 	status.position = Vector2(40.0, 98.0)
 	status.size = Vector2(1000.0, 38.0)
-	status.add_theme_font_size_override("font_size", 20)
+	status.add_theme_font_size_override("font_size", ThemeTokensScript.font_size("meta"))
 	status.add_theme_color_override("font_color", ThemeTokensScript.MUTED)
 	status.text = status_text
 	root.add_child(status)
@@ -633,8 +639,9 @@ func _screen_title(screen_id: String) -> String:
 
 func _screen_panel(root: Control, rect: Rect2, heading: String) -> VBoxContainer:
 	var panel := PanelContainer.new()
-	panel.position = rect.position
-	panel.size = rect.size
+	var safe_rect := ThemeTokensScript.clamp_to_content_bounds(rect)
+	panel.position = safe_rect.position
+	panel.size = safe_rect.size
 	panel.add_theme_stylebox_override("panel", ThemeTokensScript.panel_style())
 	root.add_child(panel)
 	var content := VBoxContainer.new()
@@ -642,7 +649,7 @@ func _screen_panel(root: Control, rect: Rect2, heading: String) -> VBoxContainer
 	panel.add_child(content)
 	var label := Label.new()
 	label.text = heading
-	label.add_theme_font_size_override("font_size", 26)
+	label.add_theme_font_size_override("font_size", ThemeTokensScript.font_size("section"))
 	label.add_theme_color_override("font_color", ThemeTokensScript.PARCHMENT)
 	content.add_child(label)
 	return content
@@ -900,8 +907,11 @@ func _build_settings_screen(root: Control) -> void:
 		toggle.add_theme_font_size_override("font_size", 24)
 		toggle.add_theme_color_override("font_color", ThemeTokensScript.PARCHMENT)
 		toggle.toggled.connect(func(value: bool) -> void:
-			settings[option] = value
-			settings_store.save_settings(settings)
+			if option == "reduced_motion":
+				set_reduced_motion(value)
+			else:
+				settings[option] = value
+				settings_store.save_settings(settings)
 			audio_feedback.configure(settings)
 		)
 		panel.add_child(toggle)

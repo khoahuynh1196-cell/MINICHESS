@@ -7,13 +7,17 @@ var current_screen_id := ""
 var _screens: Dictionary = {}
 
 func _init() -> void:
+	layer = 10
 	for screen_id in SCREEN_IDS:
 		var screen := Control.new()
 		screen.name = "%s_screen" % screen_id
 		screen.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		screen.clip_contents = true
+		screen.mouse_filter = Control.MOUSE_FILTER_STOP
 		screen.visible = false
 		add_child(screen)
 		_screens[screen_id] = screen
+	show_screen("lobby")
 
 func show_screen(screen_id: String) -> bool:
 	if not _screens.has(screen_id):

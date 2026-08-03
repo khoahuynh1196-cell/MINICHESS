@@ -2,6 +2,12 @@ class_name ThemeTokens
 extends RefCounted
 
 # Semantic tokens keep the mobile UI independent from one-off presentation colors.
+const PORTRAIT_WIDTH := 1080.0
+const PORTRAIT_HEIGHT := 1920.0
+const SCREEN_MARGIN := 40.0
+const SAFE_TOP := 150.0
+const SAFE_BOTTOM := 80.0
+const CONTENT_BOUNDS := Rect2(SCREEN_MARGIN, SAFE_TOP, PORTRAIT_WIDTH - SCREEN_MARGIN * 2.0, PORTRAIT_HEIGHT - SAFE_TOP - SAFE_BOTTOM)
 const NAVY := Color("#111a2d")
 const STONE := Color("#263247")
 const STONE_RAISED := Color("#34445c")
@@ -16,6 +22,23 @@ const MUTED := Color("#a8b1c0")
 const PANEL_RADIUS := 18
 const TOUCH_TARGET := 44
 const TOUCH_GAP := 8
+const TYPE_TITLE := 38
+const TYPE_SECTION := 26
+const TYPE_BODY := 24
+const TYPE_META := 20
+
+static func font_size(role: String) -> int:
+	match role:
+		"title": return TYPE_TITLE
+		"section": return TYPE_SECTION
+		"body": return TYPE_BODY
+		_: return TYPE_META
+
+static func motion_duration(seconds: float, reduced_motion: bool) -> float:
+	return 0.0 if reduced_motion else seconds
+
+static func clamp_to_content_bounds(rect: Rect2) -> Rect2:
+	return rect.intersection(CONTENT_BOUNDS)
 
 static func panel_style(color: Color = STONE) -> StyleBoxFlat:
 	var style := StyleBoxFlat.new()
