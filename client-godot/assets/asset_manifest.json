@@ -78,13 +78,14 @@
       ]
     },
     "heroes/h01/skill_vfx": {
-      "path": "res://assets/sprites/h01-cotton-shield-cat-chibi-v2.png",
+      "path": "res://assets/vfx/vfx-atlas-v1.png",
+      "render_mode": "procedural",
       "frames": [
         {
           "x": 0,
-          "y": 0,
-          "width": 1254,
-          "height": 1254
+          "y": 768,
+          "width": 256,
+          "height": 256
         }
       ]
     },
@@ -133,13 +134,14 @@
       ]
     },
     "heroes/h02/skill_vfx": {
-      "path": "res://assets/sprites/h02-ember-duelist-cat-chibi-v2.png",
+      "path": "res://assets/vfx/vfx-atlas-v1.png",
+      "render_mode": "procedural",
       "frames": [
         {
-          "x": 0,
-          "y": 0,
-          "width": 1254,
-          "height": 1254
+          "x": 256,
+          "y": 768,
+          "width": 256,
+          "height": 256
         }
       ]
     },
@@ -188,13 +190,14 @@
       ]
     },
     "heroes/h03/skill_vfx": {
-      "path": "res://assets/sprites/h03-forest-ranger-cat-chibi-v2.png",
+      "path": "res://assets/vfx/vfx-atlas-v1.png",
+      "render_mode": "procedural",
       "frames": [
         {
-          "x": 0,
-          "y": 0,
-          "width": 1254,
-          "height": 1254
+          "x": 512,
+          "y": 768,
+          "width": 256,
+          "height": 256
         }
       ]
     },
@@ -243,13 +246,14 @@
       ]
     },
     "heroes/h04/skill_vfx": {
-      "path": "res://assets/sprites/h04-frost-mage-cat-chibi-v2.png",
+      "path": "res://assets/vfx/vfx-atlas-v1.png",
+      "render_mode": "procedural",
       "frames": [
         {
-          "x": 0,
-          "y": 0,
-          "width": 1254,
-          "height": 1254
+          "x": 768,
+          "y": 768,
+          "width": 256,
+          "height": 256
         }
       ]
     },
@@ -298,13 +302,14 @@
       ]
     },
     "heroes/h05/skill_vfx": {
-      "path": "res://assets/sprites/h05-lantern-healer-cat-chibi-v2.png",
+      "path": "res://assets/vfx/vfx-atlas-v1.png",
+      "render_mode": "procedural",
       "frames": [
         {
-          "x": 0,
-          "y": 0,
-          "width": 1254,
-          "height": 1254
+          "x": 1024,
+          "y": 768,
+          "width": 256,
+          "height": 256
         }
       ]
     },
@@ -353,13 +358,14 @@
       ]
     },
     "heroes/h06/skill_vfx": {
-      "path": "res://assets/sprites/h06-moonshield-dog-chibi-v2.png",
+      "path": "res://assets/vfx/vfx-atlas-v1.png",
+      "render_mode": "procedural",
       "frames": [
         {
-          "x": 0,
-          "y": 0,
-          "width": 1254,
-          "height": 1254
+          "x": 1280,
+          "y": 768,
+          "width": 256,
+          "height": 256
         }
       ]
     },
@@ -408,13 +414,14 @@
       ]
     },
     "heroes/h07/skill_vfx": {
-      "path": "res://assets/sprites/h07-scarf-brawler-dog-chibi-v2.png",
+      "path": "res://assets/vfx/vfx-atlas-v1.png",
+      "render_mode": "procedural",
       "frames": [
         {
           "x": 0,
-          "y": 0,
-          "width": 1254,
-          "height": 1254
+          "y": 768,
+          "width": 256,
+          "height": 256
         }
       ]
     },
@@ -463,13 +470,14 @@
       ]
     },
     "heroes/h08/skill_vfx": {
-      "path": "res://assets/sprites/h08-hooded-ranger-dog-chibi-v2.png",
+      "path": "res://assets/vfx/vfx-atlas-v1.png",
+      "render_mode": "procedural",
       "frames": [
         {
-          "x": 0,
-          "y": 0,
-          "width": 1254,
-          "height": 1254
+          "x": 256,
+          "y": 768,
+          "width": 256,
+          "height": 256
         }
       ]
     },
@@ -518,13 +526,14 @@
       ]
     },
     "heroes/h09/skill_vfx": {
-      "path": "res://assets/sprites/h09-star-mage-dog-chibi-v2.png",
+      "path": "res://assets/vfx/vfx-atlas-v1.png",
+      "render_mode": "procedural",
       "frames": [
         {
-          "x": 0,
-          "y": 0,
-          "width": 1254,
-          "height": 1254
+          "x": 512,
+          "y": 768,
+          "width": 256,
+          "height": 256
         }
       ]
     },
@@ -573,13 +582,14 @@
       ]
     },
     "heroes/h10/skill_vfx": {
-      "path": "res://assets/sprites/h10-medic-dog-chibi-v2.png",
+      "path": "res://assets/vfx/vfx-atlas-v1.png",
+      "render_mode": "procedural",
       "frames": [
         {
-          "x": 0,
-          "y": 0,
-          "width": 1254,
-          "height": 1254
+          "x": 768,
+          "y": 768,
+          "width": 256,
+          "height": 256
         }
       ]
     },
@@ -628,13 +638,14 @@
       ]
     },
     "heroes/h11/skill_vfx": {
-      "path": "res://assets/sprites/h11-dashing-rabbit-fighter-chibi-v2.png",
+      "path": "res://assets/vfx/vfx-atlas-v1.png",
+      "render_mode": "procedural",
       "frames": [
         {
-          "x": 0,
-          "y": 0,
-          "width": 1254,
-          "height": 1254
+          "x": 1024,
+          "y": 768,
+          "width": 256,
+          "height": 256
         }
       ]
     },
@@ -683,13 +694,14 @@
       ]
     },
     "heroes/h12/skill_vfx": {
-      "path": "res://assets/sprites/h12-hooded-rabbit-ranger-chibi-v2.png",
+      "path": "res://assets/vfx/vfx-atlas-v1.png",
+      "render_mode": "procedural",
       "frames": [
         {
-          "x": 0,
-          "y": 0,
-          "width": 1254,
-          "height": 1254
+          "x": 1280,
+          "y": 768,
+          "width": 256,
+          "height": 256
         }
       ]
     },
@@ -738,13 +750,14 @@
       ]
     },
     "heroes/h13/skill_vfx": {
-      "path": "res://assets/sprites/h13-potion-rabbit-mage-chibi-v2.png",
+      "path": "res://assets/vfx/vfx-atlas-v1.png",
+      "render_mode": "procedural",
       "frames": [
         {
           "x": 0,
-          "y": 0,
-          "width": 1254,
-          "height": 1254
+          "y": 768,
+          "width": 256,
+          "height": 256
         }
       ]
     },
@@ -793,13 +806,14 @@
       ]
     },
     "heroes/h14/skill_vfx": {
-      "path": "res://assets/sprites/h14-rabbit-healer-chibi-v2.png",
+      "path": "res://assets/vfx/vfx-atlas-v1.png",
+      "render_mode": "procedural",
       "frames": [
         {
-          "x": 0,
-          "y": 0,
-          "width": 1254,
-          "height": 1254
+          "x": 256,
+          "y": 768,
+          "width": 256,
+          "height": 256
         }
       ]
     },
@@ -848,13 +862,14 @@
       ]
     },
     "heroes/h15/skill_vfx": {
-      "path": "res://assets/sprites/h15-bulwark-cow-chibi-v2.png",
+      "path": "res://assets/vfx/vfx-atlas-v1.png",
+      "render_mode": "procedural",
       "frames": [
         {
-          "x": 0,
-          "y": 0,
-          "width": 1254,
-          "height": 1254
+          "x": 512,
+          "y": 768,
+          "width": 256,
+          "height": 256
         }
       ]
     },
@@ -903,13 +918,14 @@
       ]
     },
     "heroes/h16/skill_vfx": {
-      "path": "res://assets/sprites/h16-hammer-cow-fighter-chibi-v2.png",
+      "path": "res://assets/vfx/vfx-atlas-v1.png",
+      "render_mode": "procedural",
       "frames": [
         {
-          "x": 0,
-          "y": 0,
-          "width": 1254,
-          "height": 1254
+          "x": 768,
+          "y": 768,
+          "width": 256,
+          "height": 256
         }
       ]
     },
@@ -958,13 +974,14 @@
       ]
     },
     "heroes/h17/skill_vfx": {
-      "path": "res://assets/sprites/h17-lantern-cow-support-chibi-v2.png",
+      "path": "res://assets/vfx/vfx-atlas-v1.png",
+      "render_mode": "procedural",
       "frames": [
         {
-          "x": 0,
-          "y": 0,
-          "width": 1254,
-          "height": 1254
+          "x": 1024,
+          "y": 768,
+          "width": 256,
+          "height": 256
         }
       ]
     },
@@ -1013,13 +1030,14 @@
       ]
     },
     "heroes/h18/skill_vfx": {
-      "path": "res://assets/sprites/h18-red-panda-ranger-chibi-v2.png",
+      "path": "res://assets/vfx/vfx-atlas-v1.png",
+      "render_mode": "procedural",
       "frames": [
         {
-          "x": 0,
-          "y": 0,
-          "width": 1254,
-          "height": 1254
+          "x": 1280,
+          "y": 768,
+          "width": 256,
+          "height": 256
         }
       ]
     },
@@ -1068,13 +1086,14 @@
       ]
     },
     "heroes/h19/skill_vfx": {
-      "path": "res://assets/sprites/h19-owl-mage-chibi-v2.png",
+      "path": "res://assets/vfx/vfx-atlas-v1.png",
+      "render_mode": "procedural",
       "frames": [
         {
           "x": 0,
-          "y": 0,
-          "width": 1254,
-          "height": 1254
+          "y": 768,
+          "width": 256,
+          "height": 256
         }
       ]
     },
@@ -1123,13 +1142,14 @@
       ]
     },
     "heroes/h20/skill_vfx": {
-      "path": "res://assets/sprites/h20-capybara-guardian-chibi-v3.png",
+      "path": "res://assets/vfx/vfx-atlas-v1.png",
+      "render_mode": "procedural",
       "frames": [
         {
-          "x": 0,
-          "y": 0,
-          "width": 1254,
-          "height": 1254
+          "x": 256,
+          "y": 768,
+          "width": 256,
+          "height": 256
         }
       ]
     },

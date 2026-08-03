@@ -152,3 +152,22 @@ it is not represented as a passed sixteen-distinct-source gate.
 
 The documented 10-distinct/6-engine-marker monster art state and all
 capture/Android/512-budget gates remain open and are not claimed as complete.
+
+## 2026-08-04 review fix round 3
+
+Hero skill VFX records no longer point to their 1254 px hero cutout source.
+All twenty `heroes/hXX/skill_vfx` records are now VFX-category entries marked
+`render_mode: procedural`. `resolve_hero_vfx_texture` returns `null` for that
+truthful fallback, so `CombatVfx2D` runs only its code-drawn effect instead of
+adding a translucent duplicate hero sprite. Equipped Unique transformations
+continue to resolve their own manifest VFX texture when applicable.
+
+`hero_vfx_manifest_test.gd` now checks every hero VFX record has a VFX path,
+is not the hero sprite path, is marked procedural, supplies no manifest sprite
+layer at runtime, and that U02 retains its own allowed transformation VFX
+layer. The focused Godot suite and `pnpm --dir game-core test --
+alpha-bundle.test.ts` (100 tests) passed after this repair.
+
+This is a procedural fallback, not a claim that twenty distinct alpha VFX
+sprites have been delivered. The existing monster-source, capture, Android,
+and 512-budget gaps remain open.

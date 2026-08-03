@@ -39,9 +39,17 @@ static func resolve_hero_texture(hero_id: String) -> Texture2D:
 	return resolve_asset_texture(sprite_key)
 
 static func resolve_hero_vfx_texture(hero_id: String) -> Texture2D:
-	var profiles: Dictionary = load_manifest().get("visual_profiles", {})
+	var manifest := load_manifest()
+	var profiles: Dictionary = manifest.get("visual_profiles", {})
 	var profile: Dictionary = profiles.get("VP_%s" % hero_id, {})
-	return resolve_asset_texture(String(profile.get("vfx", "")))
+	var vfx_key := String(profile.get("vfx", ""))
+	var asset: Dictionary = manifest.get("assets", {}).get(vfx_key, {})
+	# The current hero skills use CombatVfx2D's code-drawn effects. Marking the
+	# manifest entry procedural prevents a hero cutout or placeholder atlas tile
+	# from becoming a translucent runtime sprite layer.
+	if String(asset.get("render_mode", "")) == "procedural":
+		return null
+	return resolve_asset_texture(vfx_key)
 
 static func resolve_monster_texture(monster_id: String) -> Texture2D:
 	var monsters: Dictionary = load_manifest().get("monsters", {})
