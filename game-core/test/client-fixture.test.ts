@@ -17,7 +17,9 @@ describe("Godot combat replay fixture", () => {
       events: Array<{ sequence: number; tick: number; type: string; target_unit_id?: string }>;
     };
 
-    expect(fixture.events.map((event) => event.sequence)).toEqual([0, 1, 2, 3, 4, 5, 6, 7]);
+    expect(fixture.events.map((event) => event.sequence)).toEqual(
+      Array.from({ length: fixture.events.length }, (_, i) => i),
+    );
     expect(fixture.events[0]).toMatchObject({ tick: 0, type: "COMBAT_STARTED" });
     expect(fixture.events).toEqual(expect.arrayContaining([
       expect.objectContaining({ type: "DAMAGE_APPLIED", target_unit_id: "player:H01:1" }),

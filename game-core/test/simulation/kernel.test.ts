@@ -412,6 +412,64 @@ describe("deterministic combat kernel", () => {
 
     expect(result.units.find((unit) => unit.isSummon)).toMatchObject({ currentHp: 25_000 });
   });
+  it("heals the lowest-HP ally with a scaled max-HP first-skill-cast Unique passive", () => {
+    const result = runHeadlessCombat({
+      ...snapshot,
+      maxTicks: 4,
+      units: [
+        {
+          ...snapshot.units[0]!, position: 1, attackSpeed: 20_000, attackDamage: 20_000,
+        },
+        {
+          ...snapshot.units[1]!, id: "player:H02:1", position: 16, attackSpeed: 0, maxHp: 100_000,
+          skill: { id: "S_CAST", castTimeTicks: 1, effects: [] },
+          startingMana: 100_000, maxMana: 100_000,
+          passives: [{
+            ownerId: "U04", triggerId: "U04:trigger:0", trigger: "on_cast_resolve", oncePerCombat: true,
+            effects: [{ id: "E_U04", primitive: "heal", target: "lowest_hp_ally", baseValue: 120, scalesWithMaxHp: true }],
+          }],
+        },
+        {
+          ...snapshot.units[1]!, id: "player:H03:1", position: 13, attackSpeed: 0, maxHp: 100_000,
+          startingMana: 0, maxMana: 1,
+        },
+      ],
+    });
+
+    const healEvent = result.events.find((event) => event.type === "HEAL_APPLIED");
+    expect(healEvent).toBeDefined();
+    expect(healEvent!.payload.amount).toBe(12_000);
+    expect(healEvent!.targetUnitId).toBe("player:H03:1");
+  });
+
+  it("cleanses and shields the holder when HP drops below a Unique threshold", () => {
+    const result = runHeadlessCombat({
+      ...snapshot,
+      maxTicks: 2,
+      units: [
+        {
+          ...snapshot.units[0]!, position: 1, attackDamage: 71_000, attackSpeed: 20_000,
+        },
+        {
+          ...snapshot.units[1]!, position: 4, attackSpeed: 0, maxHp: 100_000, armor: 0,
+          passives: [{
+            ownerId: "U06", triggerId: "U06:trigger:0", trigger: "on_hp_below", thresholdPercent: 300, oncePerCombat: true,
+            effects: [
+              { id: "E_U06A", primitive: "cleanse", target: "self" },
+              { id: "E_U06B", primitive: "shield", target: "self", baseValue: 150, durationTicks: 80, scalesWithMaxHp: true },
+            ],
+          }],
+        },
+      ],
+    });
+
+    const cleanseEvent = result.events.find((event) => event.type === "CLEANSE_APPLIED");
+    expect(cleanseEvent).toBeDefined();
+    const shieldEvent = result.events.find((event) => event.type === "SHIELD_APPLIED" && event.targetUnitId === "player:H01:1");
+    expect(shieldEvent).toBeDefined();
+    expect(shieldEvent!.payload.amount).toBe(15_000);
+  });
+
 
   it("uses a deterministic seeded RNG", () => {
     const first = createSeededRng("same-seed");
