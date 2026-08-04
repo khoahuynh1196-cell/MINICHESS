@@ -116,6 +116,9 @@ func _init() -> void:
 	var exotic_guardian_portrait = controller.unit_views["player:H20:1"].get_node_or_null("Portrait")
 	_expect(exotic_guardian_portrait != null and exotic_guardian_portrait.texture != null and exotic_guardian_portrait.texture.resource_path == "res://assets/sprites/h20-capybara-guardian-chibi-v3.png", "H20 spawn must render the capybara guardian texture")
 	_expect(controller.unit_views["player:H01:1"].hp == 75000, "damage must update rendered HP")
+	controller.audio_feedback.haptic_requests.clear()
+	controller.apply_event(_event("UNIT_DIED", "", "player:H01:1", {}))
+	_expect(Array(controller.audio_feedback.haptic_requests) == ["defeat"], "a defeat event must request the approved defeat haptic and no navigation haptic")
 	var normal_combine = controller_script.new()
 	normal_combine._create_mobile_ui()
 	normal_combine.settings["reduced_motion"] = false

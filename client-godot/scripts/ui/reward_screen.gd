@@ -3,6 +3,7 @@ extends Control
 
 const ThemeTokensScript = preload("res://scripts/ui/theme_tokens.gd")
 const ItemMetadataCatalogScript = preload("res://scripts/ui/item_metadata_catalog.gd")
+const HeroVisualCatalogScript = preload("res://scripts/presentation/hero_visual_catalog.gd")
 
 signal select_reward(offer_id: String, option_id: String)
 signal ack_unique(reveal_id: String)
@@ -144,7 +145,8 @@ func _rebuild() -> void:
 func _option_label(option: Dictionary) -> String:
 	var option_id := String(option.get("id", ""))
 	if String(option.get("kind", "")) == "hero":
-		return "%s (hero)" % option_id
+		var profile := HeroVisualCatalogScript.profile(option_id)
+		return "%s (hero)" % String(profile.get("display_name", "Unknown hero"))
 	var metadata := ItemMetadataCatalogScript.item_metadata(option_id)
 	return String(metadata.get("name", option_id))
 

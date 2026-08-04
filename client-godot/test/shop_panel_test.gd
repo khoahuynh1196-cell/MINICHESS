@@ -58,6 +58,10 @@ func _init() -> void:
 	var unique_card = panel.find_child("BuySlot4", true, false)
 	_expect(unique_card != null and unique_card.is_unique_offer and unique_card.disabled, "Unique heroes must be absent from purchasable shop offers")
 	_expect(_label(panel, "TierOdds") == "T1 30%  T2 35%  T3 25%  T4 9%  T5 1%", "Tier odds must update when the authoritative level view changes")
+	var unknown_card = HeroCardScript.new()
+	unknown_card.configure({ "heroId": "H99", "cost": 1 }, {})
+	_expect((unknown_card.find_child("HeroName", true, false) as Label).text == "Unknown hero" and not unknown_card.tooltip_text.contains("H99"), "hero cards must never expose an unresolved display key to players")
+	unknown_card.free()
 	panel.free()
 	if _failed:
 		quit(1)

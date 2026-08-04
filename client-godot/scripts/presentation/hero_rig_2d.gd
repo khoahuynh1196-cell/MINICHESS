@@ -24,6 +24,7 @@ var weapon_mesh: WeaponSilhouette2D
 var anchors: Dictionary = {}
 var layered_parts: Dictionary = {}
 var reduced_motion := false
+var sound_enabled := true
 
 func configure(next_hero_id: String, base_texture: Texture2D = null, faces_right: bool = true, next_unique_item_id: String = "") -> void:
 	hero_id = next_hero_id
@@ -42,6 +43,9 @@ func set_reduced_motion(enabled: bool) -> void:
 	reduced_motion = enabled
 	if reduced_motion:
 		reset_pose()
+
+func set_sound_enabled(enabled: bool) -> void:
+	sound_enabled = enabled
 
 func set_layer_texture(layer_id: String, texture: Texture2D, anchor_name: String = "Chest") -> void:
 	if texture == null:
@@ -65,7 +69,7 @@ func play_action(next_action: String) -> void:
 	action_duration = _duration_for(next_action)
 	if not reduced_motion:
 		_spawn_vfx(String(profile.vfx.get(next_action, "attack_flash")))
-	if next_action != "idle":
+	if sound_enabled and next_action != "idle":
 		HeroSfx.play_cue(self, String(profile.sfx.get(next_action, "magic")))
 
 func trigger_from_combat_event(event_type: String) -> void:

@@ -50,7 +50,7 @@ func configure(hero: Dictionary, catalog: Dictionary) -> void:
 	cost_text = "%d Gold" % cost
 	rarity_text = "Tier %d" % rarity
 	star_text = "★".repeat(clampi(stars, 1, 3))
-	name_label.text = String(profile.get("display_name", hero_id))
+	name_label.text = String(profile.get("display_name", "Unknown hero"))
 	faction_label.text = "%s  /  %s" % [String(profile.get("species", "Unknown")), String(profile.get("role", "Unknown"))]
 	_identity_text = "%s — %s / %s — %s, %s, %d star%s" % [name_label.text, String(profile.get("species", "Unknown")), String(profile.get("role", "Unknown")), cost_text, rarity_text, clampi(stars, 1, 3), "" if clampi(stars, 1, 3) == 1 else "s"]
 	_label("Cost").text = cost_text

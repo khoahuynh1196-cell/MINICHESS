@@ -19,6 +19,13 @@ func _init() -> void:
 		rig.play_action("skill_cast")
 		_expect(rig.animation_state == "skill_cast", "%s must enter the skill pose" % hero_id)
 		rig.free()
+	var muted_rig := HeroRig.new()
+	root.add_child(muted_rig)
+	muted_rig.configure("H01")
+	muted_rig.set_sound_enabled(false)
+	muted_rig.play_action("basic_attack")
+	_expect(muted_rig.find_child("@AudioStreamPlayer@*", true, false) == null, "combat sound must respect the disabled sound setting")
+	muted_rig.free()
 	if bool(get_meta("failed", false)):
 		quit(1)
 		return

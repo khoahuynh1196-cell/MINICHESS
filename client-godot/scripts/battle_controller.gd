@@ -19,6 +19,7 @@ const ItemInventoryScript = preload("res://scripts/ui/item_inventory.gd")
 const HeroVisualCatalogScript = preload("res://scripts/presentation/hero_visual_catalog.gd")
 const LocalizationCatalogScript = preload("res://scripts/localization_catalog.gd")
 const AudioFeedbackScript = preload("res://scripts/audio_feedback.gd")
+const FeedbackOverlayScript = preload("res://scripts/ui/feedback_overlay.gd")
 const CombatHudScript = preload("res://scripts/ui/combat_hud.gd")
 const CombatVfxPoolScript = preload("res://scripts/combat_vfx_pool.gd")
 const RunRecapScreenScript = preload("res://scripts/ui/run_recap_screen.gd")
@@ -70,6 +71,8 @@ var _acknowledged_reveals: Dictionary = {}
 var formation_controller = FormationControllerScript.new()
 var localization = LocalizationCatalogScript.new()
 var audio_feedback = AudioFeedbackScript.new()
+var feedback_overlay
+var _retry_request: Callable
 var _selected_item_instance_id := ""
 var _item_feedback := ""
 var _star_upgrade: Dictionary = {}
@@ -172,6 +175,7 @@ func apply_run_view(view: Dictionary) -> void:
 	run_state.apply_public_view(view)
 	_public_run_view = view.duplicate(true)
 	_request_in_flight = false
+	_clear_request_feedback()
 	if run_state.state != "PREPARE" or (formation_controller.has_selection() and not _has_hero_instance(formation_controller.selected_hero_instance_id)):
 		formation_controller.clear_selection()
 	if not _selected_item_instance_id.is_empty() and not run_state.items.any(func(item): return String(item.get("instanceId", "")) == _selected_item_instance_id and not item.has("equippedHeroInstanceId")):
@@ -209,6 +213,7 @@ func request_new_run(requested_run_id: String = "") -> void:
 	var run_id := requested_run_id if not requested_run_id.is_empty() else "run-%s" % Time.get_ticks_msec()
 	_request_in_flight = true
 	_set_status("Creating expedition...")
+	_show_request_loading("Creating expedition...", request_new_run.bind(run_id))
 	run_api_client.create_run(run_id, CONTENT_VERSION)
 
 func request_resume_run(requested_run_id: String = "") -> void:
@@ -224,6 +229,7 @@ func request_resume_run(requested_run_id: String = "") -> void:
 		return
 	_request_in_flight = true
 	_set_status("Resuming expedition...")
+	_show_request_loading("Resuming expedition...", request_resume_run.bind(run_id))
 	run_api_client.resume_run(run_id)
 
 func _resume_local_run() -> void:
@@ -449,11 +455,14 @@ func _submit_run_command(payload: Dictionary) -> void:
 		return
 	_request_in_flight = true
 	_set_status("Applying authoritative command...")
+	_show_request_loading("Applying authoritative command...", _submit_run_command.bind(payload))
 	run_api_client.submit_command(run_state.run_id, payload)
 
 func _handle_run_request_failed(message: String) -> void:
 	_request_in_flight = false
 	_set_status("%s. Try again." % message)
+	if feedback_overlay != null:
+		feedback_overlay.show_error(message, _retry_request)
 	_refresh_mobile_screen()
 
 func load_authoritative_events(raw_events: Array) -> void:
@@ -497,6 +506,8 @@ func _spawn_unit(event) -> void:
 			_unique_item_id_from_unit_id(unit_id),
 		)
 	unit.set_reduced_motion(bool(settings.get("reduced_motion", false)))
+	if unit.has_method("set_sound_enabled"):
+		unit.set_sound_enabled(bool(settings.get("sound", true)))
 	unit_views[unit_id] = unit
 	add_child(unit)
 	if side == "enemy" and _is_boss_unit(unit):
@@ -541,6 +552,8 @@ func _mark_unit_defeated(event) -> void:
 	var unit = _targeted_unit(event)
 	if unit != null:
 		unit.set_hp(0)
+		audio_feedback.play_cue(self, "defeat")
+		audio_feedback.request_haptic("defeat")
 
 func _targeted_unit(event):
 	var unit_id: String = String(event.target_unit_id if not event.target_unit_id.is_empty() else event.source_unit_id)
@@ -711,6 +724,8 @@ func _create_mobile_ui() -> void:
 	audio_feedback.configure(settings)
 	screen_router = ScreenRouterScript.new()
 	add_child(screen_router)
+	feedback_overlay = FeedbackOverlayScript.new()
+	screen_router.add_child(feedback_overlay)
 	screen_router.lobby_screen.start_pve_requested.connect(func() -> void: show_mobile_screen("map"))
 	screen_router.lobby_screen.continue_requested.connect(func() -> void:
 		var cached_view := local_run_store.load_run()
@@ -765,6 +780,8 @@ func _apply_screen_settings(updated_settings: Dictionary) -> void:
 	settings = updated_settings.duplicate(true)
 	for unit in unit_views.values():
 		unit.set_reduced_motion(bool(settings.get("reduced_motion", false)))
+		if unit.has_method("set_sound_enabled"):
+			unit.set_sound_enabled(bool(settings.get("sound", true)))
 	_ensure_combat_presentation()
 	combat_vfx_pool.set_reduced_motion(bool(settings.get("reduced_motion", false)))
 	audio_feedback.configure(settings)
@@ -794,6 +811,18 @@ func _refresh_mobile_screen() -> void:
 	elif run_state.state == "COMPLETE":
 		next_screen = "recap"
 	show_mobile_screen(next_screen)
+
+func _show_request_loading(message: String, retry_request: Callable) -> void:
+	_retry_request = retry_request
+	if feedback_overlay == null:
+		_create_mobile_ui()
+	if feedback_overlay != null:
+		feedback_overlay.show_loading(message)
+
+func _clear_request_feedback() -> void:
+	_retry_request = Callable()
+	if feedback_overlay != null:
+		feedback_overlay.clear_feedback()
 
 func _build_mobile_screen(screen_id: String) -> void:
 	var root: Control = screen_router.screen_root(screen_id)

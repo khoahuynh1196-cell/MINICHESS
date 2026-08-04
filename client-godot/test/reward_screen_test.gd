@@ -36,6 +36,7 @@ func _run() -> void:
 	_expect(screen.get_selectable_option_count() == 3, "reward screen must not generate a fourth local option")
 	var offered_card: Button = screen.find_child("RewardOption_H02", true, false) as Button
 	_expect(offered_card != null and offered_card.get_theme_color("font_color").is_equal_approx(ThemeTokensScript.PARCHMENT), "dark reward cards must use high-contrast parchment text")
+	_expect(offered_card != null and offered_card.text.contains("Ember Duelist") and not offered_card.text.contains("H02"), "reward hero cards must display the player-facing hero name rather than a raw hero key")
 	var animated_reveal: Control = screen.find_child("UniqueRevealPanel", true, false) as Control
 	var animated_tweens: Array = screen.get("_reveal_tweens")
 	_expect(animated_reveal != null and animated_reveal.modulate.a < 1.0 and animated_tweens.size() == 1, "normal R4 Unique reveal must start as a visible tweened transition, not only expose a duration value")

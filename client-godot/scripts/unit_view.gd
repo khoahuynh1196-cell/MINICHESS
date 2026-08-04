@@ -21,6 +21,7 @@ var max_mana := 100000
 var status := ""
 var _animation_elapsed := 0.0
 var reduced_motion := false
+var sound_enabled := true
 
 const UNIQUE_VISUALS := {
 	"U01": { "color": Color("#f9c74f"), "anchor": Vector2(0.0, -66.0) },
@@ -49,6 +50,11 @@ func set_reduced_motion(enabled: bool) -> void:
 	if hero_rig != null:
 		hero_rig.set_reduced_motion(enabled)
 
+func set_sound_enabled(enabled: bool) -> void:
+	sound_enabled = enabled
+	if hero_rig != null:
+		hero_rig.set_sound_enabled(enabled)
+
 func _process(delta: float) -> void:
 	_animation_elapsed += delta
 	if animation_state != "death" and animation_state != "idle" and _animation_elapsed >= 0.18:
@@ -74,6 +80,7 @@ func _add_portrait() -> void:
 	hero_rig.z_index = 2
 	hero_rig.configure(self.hero_id, manifest_texture, side == "player", unique_item_id)
 	hero_rig.set_reduced_motion(reduced_motion)
+	hero_rig.set_sound_enabled(sound_enabled)
 	add_child(hero_rig)
 	# Retain the named texture node for fixture compatibility; the rig is visible.
 	portrait.visible = false

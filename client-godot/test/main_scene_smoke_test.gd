@@ -49,6 +49,12 @@ func _init() -> void:
 		main_scene.free()
 		_finish()
 		return
+	var failure_banner: Control = main_scene.find_child("ErrorBanner", true, false) as Control
+	var retry_button: Button = main_scene.find_child("RetryButton", true, false) as Button
+	if not _expect(failure_banner != null and failure_banner.visible and retry_button != null and retry_button.focus_mode == Control.FOCUS_ALL, "a failed run request must reach the real accessible retry banner"):
+		main_scene.free()
+		_finish()
+		return
 	lifecycle_errors.clear()
 	main_scene.request_resume_run("run-ui-resume")
 	if not _expect(lifecycle_errors == ["API client is not ready"], "resume action must delegate to the API client with the requested run ID"):

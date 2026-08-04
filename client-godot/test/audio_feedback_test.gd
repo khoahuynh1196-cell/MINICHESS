@@ -11,8 +11,11 @@ func _init() -> void:
 	_expect(not feedback.request_haptic("reward"), "disabled haptics must suppress vibration")
 	feedback.configure({ "sound": true, "haptics": true })
 	_expect(not feedback.play_cue(null, ""), "missing cues must be rejected")
+	_expect(not feedback.play_cue(null, "not-a-real-cue"), "unknown cues must be rejected with diagnostics")
 	_expect(not feedback.request_haptic("unknown"), "unknown haptic types must be rejected")
-	_expect(feedback.diagnostics.size() == 2, "invalid feedback requests must retain diagnostics")
+	_expect(feedback.request_haptic("defeat"), "the approved defeat haptic must be available")
+	_expect(Array(feedback.haptic_requests) == ["defeat"], "approved haptic requests must be observable for presentation tests")
+	_expect(feedback.diagnostics.size() == 3, "invalid feedback requests must retain diagnostics")
 	if _failed:
 		quit(1)
 		return
