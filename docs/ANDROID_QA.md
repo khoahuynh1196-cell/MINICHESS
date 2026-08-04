@@ -2,19 +2,20 @@
 
 ## Build configuration
 
-- Godot 4.7 mobile renderer, portrait-locked `1080 x 1920` logical viewport.
+- Godot 4.7 Compatibility (OpenGL ES 3) renderer, portrait-locked `1080 x 1920` logical viewport.
 - Debug export preset: `Android Debug`, ARM64, package `com.autobattler.alpha`.
 - UI regression: `res://test/mobile_ui_accessibility_test.gd` verifies portrait bounds, 44-pixel touch targets, visible disabled encounter nodes, and text labels for all controls.
-- A local debug APK was exported, aligned, signed, and verified on 2026-08-04 at `tmp/auto-battler-debug.apk`.
-- Current APK SHA-256: `C9C2E2FD412ED82C195B0A09274B35F58B5647500E89723BF3CA214BF66EF30B`.
+- A local debug APK was exported, aligned, signed, and verified on 2026-08-04 at `tmp/auto-battler-debug-gl.apk`.
+- Current APK SHA-256: `556F18ECC9A865A0A5F80F54654225AF6E4856BB95125927D7AF931E937A2286`.
 - `apksigner verify --verbose` passed with APK Signature Scheme v2 and v3.
 
 ## 2026-08-04 automated Android evidence
 
-- The Godot Android Debug export from the current workspace completed successfully, including alignment, debug signing, and verification.
-- `adb devices -l` reported no connected physical device.
-- The installed `medium_phone` x86_64 AVD could not boot because the Android Emulator Hypervisor Driver is not installed. The emulator reports: `x86_64 emulation currently requires hardware acceleration`.
-- Consequently, no Android install, input, portrait capture, frame-time, or texture-memory measurement is claimed in this workspace. These remain physical-device/repaired-emulator gates, not passing results.
+- The Godot Android Debug export completed successfully, including alignment, debug signing, and v2/v3 signature verification.
+- The Android Emulator Hypervisor Driver was installed and its `aehd` service was verified running. The `medium_phone` x86_64 AVD booted and accepted `adb install -r` of the APK.
+- The app process launches successfully as `com.autobattler.alpha`; the native portrait Lobby was captured at `tmp/android-lobby-gl.png` on the `1080 x 2400` AVD. The `1080 x 1920` game viewport is intentionally letterboxed vertically on that 20:9 display.
+- Initial Vulkan/Mobile export attempts failed only at the emulator presentation queue (`VkResult error 5`), producing a black SurfaceView. The project now uses the 2D-appropriate Compatibility renderer. The installed APK reports `OpenGL ES 3.1` and renders the Lobby without the Vulkan present failure.
+- ADB-injected taps reached Android's focused app window but did not progress the Godot Lobby on this AVD. This is not recorded as a passing input result; a real-device touch pass remains required. No FPS, frame-time, or texture-memory claim is made from this emulator.
 
 ## Release-device checklist
 

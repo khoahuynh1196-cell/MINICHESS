@@ -22,8 +22,10 @@ orientation=1
 
 [rendering]
 
-renderer/rendering_method="mobile"
-renderer/rendering_method.mobile="mobile"
+; This is a 2D game. Use the Compatibility renderer so the Android build has a
+; stable OpenGL path on devices/emulators where Vulkan presentation is absent.
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"
 
 [rendering/textures/vram_compression]
 

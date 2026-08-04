@@ -12,12 +12,13 @@ Last audited: 2026-08-04
 - [x] Collection provides 20 roster entries and species/role filtering.
 - [x] English and Vietnamese UI catalog infrastructure, sound/haptic settings, and reduced-motion settings are covered by tests.
 - [x] Android Debug APK export, alignment, debug signing, and verification complete locally.
+- [x] The signed debug APK installs and renders the portrait Lobby on an Android x86_64 AVD using the Compatibility renderer.
 - [x] CI runs the TypeScript gate, whitespace gate, and all Godot headless tests.
 
 ## Required before calling this a production release
 
 - [ ] Replace full-body preview art with reviewed cutout layers, 20 portrait crops, ability icons, item icons, biome layers, and recorded audio. The checked-in rig documents the required contract; its current procedural weapon/VFX/audio remain a temporary presentation path.
-- [ ] Capture and review real portrait screenshots for every primary game state on a physical Android device.
+- [ ] Complete real-device touch QA and capture/review portrait screenshots for every primary game state. The AVD launch screenshot is evidence of install/render only; its injected touch path did not pass.
 - [ ] Install the exported APK on the agreed reference device and record 60 FPS frame-time and texture-memory results in `ANDROID_QA.md`.
 - [ ] Decide whether server authentication, Supabase persistence, and RLS are required for this offline-first Alpha. Adding them needs a provisioned Supabase project and environment secrets; they are not safely inferable from source code alone.
 - [x] Shop locking and displayed tier odds are part of the Alpha rule contract: `LOCK_SHOP` persists on the server and the client renders only the returned state.
