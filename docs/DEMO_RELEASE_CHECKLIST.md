@@ -5,7 +5,7 @@ Last audited: 2026-08-04
 ## Verified in this workspace
 
 - [x] TypeScript typecheck and test suites pass: 100 `game-core` tests and 142 `server` tests.
-- [x] Godot replay, run, UI, asset-manifest, feedback, and accessibility suite passes: 27 headless tests.
+- [x] Godot replay, run, UI, asset-manifest, feedback, and accessibility suite passes: 32 headless tests.
 - [x] Portrait mobile flow reaches Lobby, Map, Prepare, Combat, Reward, Recap, Collection, and Settings.
 - [x] Prepare supports tap-select formation moves, board swaps, board-to-bench moves, item selection/equip feedback, sell, XP, five-card shop, tier odds, authoritative shop lock, and start-round intents.
 - [x] Combat presentation uses the hero rig when a source texture is supplied; reduced-motion reaches that rig.
