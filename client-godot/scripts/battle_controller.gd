@@ -80,6 +80,8 @@ var _collection_species_filter := "all"
 var _collection_role_filter := "all"
 var _collection_detail_hero_id := ""
 var _request_in_flight := false
+var _pending_reward_review := false
+var _mobile_pointer_sequence := 0
 var combat_hud
 var combat_vfx_pool
 var combat_camera: Camera2D
@@ -98,6 +100,57 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	if not _paused:
 		advance_replay(delta)
+
+func _input(event: InputEvent) -> void:
+	# Some Android SurfaceView/emulator combinations deliver touches to the game
+	# but fail to route them through Control. Keep the normal Button UI, then
+	# provide a rect-based touch path for the visible mobile screen.
+	if not OS.has_feature("mobile"):
+		return
+	if event is InputEventScreenTouch and event.pressed:
+		_mobile_pointer_sequence += 1
+		if route_mobile_touch(event.position):
+			get_viewport().set_input_as_handled()
+	elif event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		# adb and a few Android SurfaceView implementations expose a tap as a
+		# mouse click. Defer it one input turn so a paired ScreenTouch wins and
+		# the same physical tap cannot activate a button twice.
+		var sequence := _mobile_pointer_sequence
+		call_deferred("_route_mobile_mouse_fallback", event.position, sequence)
+
+func _route_mobile_mouse_fallback(position: Vector2, sequence: int) -> void:
+	if sequence != _mobile_pointer_sequence:
+		return
+	if route_mobile_touch(position):
+		get_viewport().set_input_as_handled()
+
+func route_mobile_touch(position: Vector2) -> bool:
+	if screen_router == null:
+		return false
+	var roots: Array[Control] = []
+	if feedback_overlay != null and feedback_overlay.visible:
+		roots.append(feedback_overlay)
+	var screen: Control = screen_router.screen_root(screen_router.current_screen_id)
+	if screen != null and screen.visible:
+		roots.append(screen)
+	for root in roots:
+		var controls: Array[Node] = root.find_children("*", "Button", true, false)
+		for index in range(controls.size() - 1, -1, -1):
+			var button := controls[index] as Button
+			if button != null and _is_visible_mobile_control(button, root) and not button.disabled and button.get_global_rect().has_point(position):
+				button.pressed.emit()
+				return true
+	return false
+
+func _is_visible_mobile_control(button: Button, root: Control) -> bool:
+	var candidate: CanvasItem = button
+	while candidate != null:
+		if not candidate.visible:
+			return false
+		if candidate == root:
+			return true
+		candidate = candidate.get_parent() as CanvasItem
+	return false
 
 func load_replay(path: String) -> void:
 	_replay_path = path
@@ -171,6 +224,12 @@ func apply_event(event) -> void:
 				print("Ignoring presentation-unsupported event: %s" % event.type)
 
 func apply_run_view(view: Dictionary) -> void:
+	var previous_state: String = run_state.state
+	var next_state := String(view.get("state", ""))
+	# Resolve-combat returns the authoritative REWARD view in one request. Keep
+	# that result intact while presenting its event stream first, otherwise the
+	# player never sees the actual battle on a fast local/network response.
+	_pending_reward_review = next_state == "REWARD" and previous_state in ["PREPARE", "COMBAT"]
 	_star_upgrade = _detect_star_upgrade(view)
 	run_state.apply_public_view(view)
 	_public_run_view = view.duplicate(true)
@@ -325,6 +384,17 @@ func request_claim_reward_hero(hero_instance_id: String) -> void:
 	if not run_state.reward_heroes.any(func(hero): return String(hero.get("instanceId", "")) == hero_instance_id):
 		return
 	command_requested.emit(build_command_payload("client-claim-reward-%s-%s" % [run_state.revision, hero_instance_id], "CLAIM_REWARD_HERO", { "hero_instance_id": hero_instance_id }))
+
+func request_claim_empty_round_reward() -> void:
+	if run_state.state != "REWARD" or not Array(run_state.round_reward_plan.get("offers", [])).is_empty():
+		return
+	command_requested.emit(build_command_payload("client-reward-%s" % run_state.revision, "CLAIM_ROUND_REWARD", { "reward_selections": [] }))
+
+func review_pending_round_reward() -> void:
+	if not _pending_reward_review:
+		return
+	_pending_reward_review = false
+	_refresh_mobile_screen()
 
 func request_ack_unique_reveal(reveal_id: String) -> void:
 	if run_state.state != "REWARD" or _acknowledged_reveals.has(reveal_id):
@@ -739,6 +809,7 @@ func _create_mobile_ui() -> void:
 	screen_router.settings_screen.clear_saved_run_requested.connect(_clear_saved_run_from_settings)
 	screen_router.settings_screen.back_requested.connect(func() -> void: show_mobile_screen("lobby"))
 	screen_router.reward_screen.select_reward.connect(request_select_reward)
+	screen_router.reward_screen.claim_empty_reward.connect(request_claim_empty_round_reward)
 	screen_router.reward_screen.ack_unique.connect(request_ack_unique_reveal)
 	screen_router.collection_screen.back_requested.connect(func() -> void: show_mobile_screen("lobby"))
 	show_mobile_screen("lobby")
@@ -806,7 +877,7 @@ func _refresh_mobile_screen() -> void:
 	elif run_state.state == "COMBAT":
 		next_screen = "combat"
 	elif run_state.state == "REWARD":
-		next_screen = "reward"
+		next_screen = "combat" if _pending_reward_review else "reward"
 	elif run_state.state == "COMPLETE":
 		next_screen = "recap"
 	show_mobile_screen(next_screen)
@@ -992,6 +1063,11 @@ func _build_combat_screen(root: Control) -> void:
 	combat_hud.speed_requested.connect(set_playback_speed)
 	panel.add_child(combat_hud)
 	_bind_combat_hud()
+	if _pending_reward_review:
+		var reward_button := _mobile_button("Review round rewards", review_pending_round_reward, ThemeTokensScript.GOLD)
+		reward_button.name = "ReviewRoundRewards"
+		reward_button.tooltip_text = "Open the authoritative rewards after watching this combat replay."
+		panel.add_child(reward_button)
 	var notice := _screen_panel(root, Rect2(layout.message), "Battle board")
 	notice.get_parent().name = "CombatBoardMessage"
 	var label := Label.new()

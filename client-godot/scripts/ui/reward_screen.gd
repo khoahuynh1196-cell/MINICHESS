@@ -7,6 +7,7 @@ const HeroVisualCatalogScript = preload("res://scripts/presentation/hero_visual_
 
 signal select_reward(offer_id: String, option_id: String)
 signal ack_unique(reveal_id: String)
+signal claim_empty_reward
 
 var _plan: Dictionary = {}
 var _revealed_items: Array = []
@@ -119,7 +120,21 @@ func _rebuild() -> void:
 		reveal_panel.add_child(reveal)
 		panel.add_child(reveal_panel)
 		_animate_reveal(reveal_panel)
-	for offer in Array(_plan.get("offers", [])):
+	var offers: Array = Array(_plan.get("offers", []))
+	if offers.is_empty():
+		instruction.text = "This round has an automatic server reward. Collect it to continue your expedition."
+		var bonus := Label.new()
+		bonus.text = _empty_reward_summary()
+		bonus.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		bonus.add_theme_font_size_override("font_size", ThemeTokensScript.TYPE_BODY)
+		bonus.add_theme_color_override("font_color", ThemeTokensScript.PARCHMENT)
+		panel.add_child(bonus)
+		var continue_button := _button(_empty_reward_button_label(), ThemeTokensScript.GOLD)
+		continue_button.name = "ClaimEmptyReward"
+		continue_button.tooltip_text = "Collect this server-owned round reward and continue the expedition."
+		continue_button.pressed.connect(func() -> void: claim_empty_reward.emit())
+		panel.add_child(continue_button)
+	for offer in offers:
 		var offer_data := Dictionary(offer)
 		var offer_id := String(offer_data.get("id", ""))
 		var label := Label.new()
@@ -149,6 +164,20 @@ func _option_label(option: Dictionary) -> String:
 		return "%s (hero)" % String(profile.get("display_name", "Unknown hero"))
 	var metadata := ItemMetadataCatalogScript.item_metadata(option_id)
 	return String(metadata.get("name", "Unknown reward"))
+
+func _empty_reward_summary() -> String:
+	var parts: Array[String] = []
+	var gold := int(_plan.get("supplementalGold", 0))
+	var refreshes := int(_plan.get("freeRefreshes", 0))
+	if gold > 0:
+		parts.append("%d bonus Gold" % gold)
+	if refreshes > 0:
+		parts.append("%d free shop refresh%s" % [refreshes, "" if refreshes == 1 else "es"])
+	return "Server reward ready: %s." % (", ".join(parts) if not parts.is_empty() else "continue your expedition")
+
+func _empty_reward_button_label() -> String:
+	var gold := int(_plan.get("supplementalGold", 0))
+	return "Collect %d Gold & continue" % gold if gold > 0 else "Collect reward & continue"
 
 func _animate_reveal(reveal_panel: Control) -> void:
 	if _reduced_motion or not is_inside_tree():

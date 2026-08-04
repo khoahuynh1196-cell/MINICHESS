@@ -19,8 +19,10 @@ func _run() -> void:
 	root.add_child(screen)
 	var selected: Array = []
 	var acknowledged: Array = []
+	var empty_claims: Array = []
 	screen.select_reward.connect(func(offer_id: String, option_id: String) -> void: selected.append([offer_id, option_id]))
 	screen.ack_unique.connect(func(reveal_id: String) -> void: acknowledged.append(reveal_id))
+	screen.claim_empty_reward.connect(func() -> void: empty_claims.append(true))
 	screen.bind_reward({
 		"round": 4,
 		"offers": [{
@@ -61,6 +63,12 @@ func _run() -> void:
 	_expect(static_reveal != null and static_reveal.modulate.a == 1.0 and static_tweens.is_empty(), "reduced motion must render the Unique result immediately readable with no tween or animation")
 	if static_reveal != null:
 		_expect(static_reveal.modulate.a == 1.0, "reduced motion must not leave a Unique reveal tween or animation running")
+	screen.bind_reward({ "round": 1, "supplementalGold": 2, "freeRefreshes": 1, "offers": [] }, [], true)
+	var empty_continue: Button = screen.find_child("ClaimEmptyReward", true, false) as Button
+	_expect(empty_continue != null and empty_continue.text.contains("Collect") and empty_continue.text.contains("2 Gold"), "a reward round without choice offers must provide a visible continuation action")
+	if empty_continue != null:
+		empty_continue.pressed.emit()
+	_expect(empty_claims.size() == 1, "the empty reward continuation must emit one authoritative claim action")
 	screen.bind_reward({ "round": 1, "offers": [{ "id": "reward:unknown", "kind": "hero_choice", "options": [{ "id": "H99", "kind": "hero" }] }] }, [], true)
 	var unknown_hero_card: Button = screen.find_child("RewardOption_H99", true, false) as Button
 	_expect(unknown_hero_card != null and unknown_hero_card.text.contains("Unknown hero") and not unknown_hero_card.text.contains("H99") and not unknown_hero_card.tooltip_text.contains("H99"), "an unresolved reward hero must use a friendly fallback without exposing its raw ID")

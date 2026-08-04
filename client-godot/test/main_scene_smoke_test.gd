@@ -29,10 +29,24 @@ func _init() -> void:
 		main_scene.free()
 		_finish()
 		return
-	if not _expect(main_scene.has_method("request_new_run") and main_scene.has_method("request_resume_run") and main_scene.has_method("request_select_reward") and main_scene.has_method("request_ack_unique_reveal"), "main scene must expose server-backed run and reward actions"):
+	if not _expect(main_scene.has_method("request_new_run") and main_scene.has_method("request_resume_run") and main_scene.has_method("request_select_reward") and main_scene.has_method("request_claim_empty_round_reward") and main_scene.has_method("request_ack_unique_reveal"), "main scene must expose server-backed run and reward actions"):
 		main_scene.free()
 		_finish()
 		return
+	if not _expect(main_scene.has_method("route_mobile_touch"), "main scene must provide a mobile touch fallback for routed controls"):
+		main_scene.free()
+		_finish()
+		return
+	main_scene.call("_create_mobile_ui")
+	var start_pve_button: Button = main_scene.screen_router.lobby_screen.find_child("StartPve", true, false) as Button
+	if start_pve_button != null:
+		# The detached headless control tree does not receive a container layout pass.
+		start_pve_button.size = Vector2(1000.0, 44.0)
+	if not _expect(start_pve_button != null and main_scene.route_mobile_touch(start_pve_button.get_global_rect().get_center()) and main_scene.screen_router.current_screen_id == "map", "mobile touch fallback must activate the visible Start PvE control"):
+		main_scene.free()
+		_finish()
+		return
+	main_scene.show_mobile_screen("lobby")
 	var api = RunApiClientScript.new()
 	main_scene.attach_run_api(api)
 	api.combat_events_received.emit([{ "sequence": 0, "tick": 0, "type": "UNIT_SPAWNED", "source_unit_id": "player:H20:stream", "payload": { "side": "player", "position": 22, "max_hp": 95000 } }])
@@ -119,6 +133,16 @@ func _init() -> void:
 			{ "id": "reward:1:hero_choice:1", "kind": "hero_choice", "options": [{ "id": "H02", "kind": "hero", "cost": 2 }, { "id": "H03", "kind": "hero", "cost": 1 }] },
 		] },
 	})
+	var review_rewards_button: Button = main_scene.find_child("ReviewRoundRewards", true, false) as Button
+	if not _expect(main_scene.screen_router.current_screen_id == "combat" and review_rewards_button != null, "a resolved round must keep the combat replay visible before opening rewards"):
+		main_scene.free()
+		_finish()
+		return
+	review_rewards_button.pressed.emit()
+	if not _expect(main_scene.screen_router.current_screen_id == "reward", "reviewing combat results must explicitly open the server reward screen"):
+		main_scene.free()
+		_finish()
+		return
 	main_scene.request_select_reward("reward:1:normal_item_choice:0", "I01")
 	_expect(emitted_commands.is_empty(), "reward must wait for a selection from every offer")
 	main_scene.request_select_reward("reward:1:hero_choice:1", "H02")
@@ -127,6 +151,21 @@ func _init() -> void:
 		_finish()
 		return
 	emitted_commands.clear()
+	api.run_view_received.emit({ "id": "run-ui", "state": "REWARD", "round": 1, "revision": 3, "gold": 8, "health": 30, "shop": [], "bench": [], "board": [], "roundRewardPlan": { "round": 1, "supplementalGold": 2, "freeRefreshes": 1, "offers": [] } })
+	main_scene.request_claim_empty_round_reward()
+	if not _expect(emitted_commands == [{ "command_id": "client-reward-3", "expected_run_revision": 3, "type": "CLAIM_ROUND_REWARD", "reward_selections": [] }], "an automatic reward must submit exactly one empty authoritative claim"):
+		main_scene.free()
+		_finish()
+		return
+	emitted_commands.clear()
+	api.run_view_received.emit({
+		"id": "run-ui", "state": "REWARD", "round": 1, "revision": 2, "gold": 8, "health": 30, "shop": [], "bench": [], "board": [],
+		"items": [{ "instanceId": "unique:run-ui:U01", "itemId": "U01", "kind": "unique" }],
+		"roundRewardPlan": { "round": 1, "offers": [
+			{ "id": "reward:1:normal_item_choice:0", "kind": "normal_item_choice", "options": [{ "id": "I01", "kind": "normal_item" }, { "id": "I02", "kind": "normal_item" }] },
+			{ "id": "reward:1:hero_choice:1", "kind": "hero_choice", "options": [{ "id": "H02", "kind": "hero", "cost": 2 }, { "id": "H03", "kind": "hero", "cost": 1 }] },
+		] },
+	})
 	main_scene.request_ack_unique_reveal("unique:run-ui:U01")
 	if not _expect(emitted_commands == [{ "command_id": "client-unique-reveal-2-unique:run-ui:U01", "expected_run_revision": 2, "type": "ACK_UNIQUE_REVEAL", "reveal_id": "unique:run-ui:U01" }], "Unique reveal acknowledgement must be sent with its immutable reveal ID"):
 		main_scene.free()
