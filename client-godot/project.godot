@@ -15,6 +15,9 @@ window/size/viewport_height=1920
 window/size/window_width_override=540
 window/size/window_height_override=960
 window/stretch/mode="canvas_items"
+; Keep the 1080 x 1920 design canvas, but use the full height of taller phones
+; instead of adding non-interactive letterbox bars.
+window/stretch/aspect="expand"
 
 [display/window/handheld]
 
