@@ -2,6 +2,7 @@ extends SceneTree
 
 const LocalRunStoreScript = preload("res://scripts/local_run_store.gd")
 const BattleControllerScript = preload("res://scripts/battle_controller.gd")
+const RunApiClientScript = preload("res://scripts/run_api_client.gd")
 const SAVE_PATH := "user://local_pve_run.json"
 
 var _failed := false
@@ -46,8 +47,17 @@ func _init() -> void:
 
 	store.save_run(view)
 	var resume_controller = BattleControllerScript.new()
+	resume_controller._create_mobile_ui()
+	var resume_api = RunApiClientScript.new()
+	var resume_failures: Array[String] = []
+	resume_api.request_failed.connect(func(message: String) -> void: resume_failures.append(message))
+	resume_controller.attach_run_api(resume_api)
 	resume_controller._resume_local_run()
-	_expect(resume_controller.run_state.run_id.is_empty() and resume_controller.status_text == "Resuming cached run run-local-alpha", "a cached view must request server resume without becoming locally actionable")
+	var cached_retry: Button = resume_controller.find_child("RetryButton", true, false) as Button
+	_expect(resume_controller.run_state.run_id.is_empty() and cached_retry != null and cached_retry.visible and not cached_retry.disabled, "a failed cached resume must expose an enabled retry action without becoming locally actionable")
+	if cached_retry != null:
+		cached_retry.pressed.emit()
+	_expect(resume_failures.size() == 2, "cached-resume Retry must route through a second real resume request")
 	resume_controller.free()
 	store.clear_run()
 

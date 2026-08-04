@@ -16,12 +16,17 @@ func _init() -> void:
 	_expect(screen.visible_hero_ids().all(func(id: String) -> bool: return id.begins_with("H")), "collection must not create future Unique heroes")
 	var first_card: Button = screen.find_child("HeroCard_H01", true, false) as Button
 	_expect(first_card != null and first_card.get_theme_color("font_color").is_equal_approx(ThemeTokensScript.PARCHMENT), "dark collection cards must use high-contrast parchment text")
+	_expect(first_card != null and first_card.text.contains("Cotton Bulwark") and not first_card.text.contains("H01"), "collection cards may retain IDs internally but must not render raw hero IDs to players")
+	var codex: Label = screen.find_child("UniqueItemCodex", true, false) as Label
+	_expect(codex != null and codex.text.contains("Lion Crown") and not codex.text.contains("U01"), "collection codex must show item names rather than raw item IDs")
 	screen.set_filters("cat", "mage")
 	_expect(screen.visible_hero_ids() == ["H04"], "collection filters must intersect species and class")
 	screen.set_filters("unknown", "unknown")
 	_expect(screen.visible_hero_ids().size() == 20, "invalid filters must safely reset to all profiles")
 	screen.open_hero_detail("H04")
 	_expect(screen.detail_hero_id() == "H04" and screen.find_child("HeroDetailModal", true, false) != null, "a profile card must open a detail modal")
+	var detail_title: Label = screen.find_child("HeroDetailTitle", true, false) as Label
+	_expect(detail_title != null and detail_title.text.contains("Frost Mage") and not detail_title.text.contains("H04"), "collection detail text must show the friendly name without rendering the raw hero ID")
 	_expect(screen.unique_item_ids() == ["U01", "U02", "U03", "U04", "U05", "U06"], "the collection must include the six existing Unique-item codex entries")
 	_expect(screen.find_child("UniqueHero", true, false) == null, "the collection must defer future Unique heroes")
 	screen.free()

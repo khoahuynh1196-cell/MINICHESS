@@ -28,6 +28,18 @@ func _init() -> void:
 	_expect(ThemeTokensScript.motion_duration(0.2, true) == 0.0, "reduced motion must suppress transition duration")
 	var controller = BattleControllerScript.new()
 	controller._create_mobile_ui()
+	controller.settings["language"] = "en"
+	controller.localization.set_locale("en")
+	controller.show_mobile_screen("settings")
+	var settings_screen = controller.screen_router.settings_screen
+	var settings_title: Label = settings_screen.find_child("SettingsTitle", true, false) as Label
+	_expect(settings_title != null and settings_title.text == "Settings", "routed settings must start with English catalog text")
+	controller._toggle_language()
+	settings_title = settings_screen.find_child("SettingsTitle", true, false) as Label
+	var sound_toggle: CheckButton = settings_screen.find_child("Toggle_sound", true, false) as CheckButton
+	var language_button: Button = settings_screen.find_child("Language", true, false) as Button
+	_expect(settings_title != null and sound_toggle != null and language_button != null and settings_title.text == "Cai dat" and sound_toggle.text == "Am thanh" and language_button.text.contains("Tieng Viet"), "routed language selection must visibly replace settings text with Vietnamese catalog text")
+	controller._toggle_language()
 	controller.apply_run_view({
 		"id": "run-router-reward", "state": "REWARD", "round": 4, "revision": 7,
 		"gold": 8, "health": 30, "shop": [], "bench": [], "board": [],

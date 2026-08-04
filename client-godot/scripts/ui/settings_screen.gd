@@ -3,6 +3,7 @@ extends Control
 
 const ThemeTokensScript = preload("res://scripts/ui/theme_tokens.gd")
 const SettingsStoreScript = preload("res://scripts/ui/settings_store.gd")
+const LocalizationCatalogScript = preload("res://scripts/localization_catalog.gd")
 
 signal settings_changed(settings: Dictionary)
 signal language_requested
@@ -12,6 +13,7 @@ signal back_requested
 
 var _store = SettingsStoreScript.new()
 var _settings: Dictionary = SettingsStoreScript.DEFAULTS.duplicate(true)
+var _localization = LocalizationCatalogScript.new()
 
 func _init() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -23,6 +25,11 @@ func set_settings(settings: Dictionary) -> void:
 	for option in SettingsStoreScript.DEFAULTS:
 		if settings.has(option) and typeof(settings[option]) == typeof(SettingsStoreScript.DEFAULTS[option]):
 			_settings[option] = settings[option]
+	_localization.set_locale(String(_settings.get("language", "en")))
+	_rebuild()
+
+func set_locale(locale: String) -> void:
+	_localization.set_locale(locale)
 	_rebuild()
 
 func set_toggle(option: String, enabled: bool) -> void:
@@ -44,7 +51,8 @@ func _rebuild() -> void:
 	background.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(background)
 	var title := Label.new()
-	title.text = "SETTINGS"
+	title.name = "SettingsTitle"
+	title.text = _text("settings.title")
 	title.position = Vector2(ThemeTokensScript.SCREEN_MARGIN, 82.0)
 	title.add_theme_font_size_override("font_size", ThemeTokensScript.TYPE_TITLE)
 	title.add_theme_color_override("font_color", ThemeTokensScript.GOLD)
@@ -59,14 +67,15 @@ func _rebuild() -> void:
 	content.add_theme_constant_override("separation", ThemeTokensScript.TOUCH_GAP)
 	panel.add_child(content)
 	var heading := Label.new()
-	heading.text = "Comfort controls"
+	heading.name = "SettingsHeading"
+	heading.text = _text("settings.comfort_controls")
 	heading.add_theme_font_size_override("font_size", ThemeTokensScript.TYPE_SECTION)
 	heading.add_theme_color_override("font_color", ThemeTokensScript.GOLD)
 	content.add_child(heading)
 	for option in ["sound", "music", "haptics", "reduced_motion"]:
 		var toggle := CheckButton.new()
 		toggle.name = "Toggle_%s" % option
-		toggle.text = option.capitalize().replace("_", " ")
+		toggle.text = _text("settings.%s" % option)
 		toggle.button_pressed = bool(_settings.get(option, false))
 		toggle.custom_minimum_size.y = ThemeTokensScript.TOUCH_TARGET
 		toggle.focus_mode = Control.FOCUS_ALL
@@ -74,10 +83,13 @@ func _rebuild() -> void:
 		toggle.add_theme_color_override("font_color", ThemeTokensScript.PARCHMENT)
 		toggle.toggled.connect(func(value: bool) -> void: set_toggle(option, value))
 		content.add_child(toggle)
-	content.add_child(_button("Language: %s" % String(_settings.get("language", "en")).to_upper(), func() -> void: language_requested.emit(), ThemeTokensScript.PLAYER, "Language"))
-	content.add_child(_button("Text scale: %d%%" % int(float(_settings.get("text_scale", 1.0)) * 100.0), func() -> void: text_scale_requested.emit(), ThemeTokensScript.PLAYER, "TextScale"))
-	content.add_child(_button("Clear saved run", func() -> void: clear_saved_run_requested.emit(), ThemeTokensScript.DANGER, "ClearRun"))
-	content.add_child(_button("Back", func() -> void: back_requested.emit(), ThemeTokensScript.GOLD, "Back"))
+	content.add_child(_button(_text("settings.language", { "language": _text("language.%s" % String(_settings.get("language", "en"))) }), func() -> void: language_requested.emit(), ThemeTokensScript.PLAYER, "Language"))
+	content.add_child(_button(_text("settings.text_scale", { "percent": int(float(_settings.get("text_scale", 1.0)) * 100.0) }), func() -> void: text_scale_requested.emit(), ThemeTokensScript.PLAYER, "TextScale"))
+	content.add_child(_button(_text("settings.clear_saved_run"), func() -> void: clear_saved_run_requested.emit(), ThemeTokensScript.DANGER, "ClearRun"))
+	content.add_child(_button(_text("settings.back"), func() -> void: back_requested.emit(), ThemeTokensScript.GOLD, "Back"))
+
+func _text(key: String, variables: Dictionary = {}) -> String:
+	return _localization.text(key, variables)
 
 func _button(label: String, action: Callable, accent: Color, node_name: String) -> Button:
 	var button := Button.new()

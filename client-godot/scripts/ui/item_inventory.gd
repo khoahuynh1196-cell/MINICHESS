@@ -4,6 +4,7 @@ extends Control
 const ThemeTokensScript = preload("res://scripts/ui/theme_tokens.gd")
 const ItemMetadataCatalogScript = preload("res://scripts/ui/item_metadata_catalog.gd")
 const ItemDragButtonScript = preload("res://scripts/ui/item_drag_button.gd")
+const HeroVisualCatalogScript = preload("res://scripts/presentation/hero_visual_catalog.gd")
 const MAX_ITEMS_PER_HERO := 2
 
 signal item_selected(item_instance_id: String)
@@ -60,7 +61,7 @@ func _add_hero_targets(heroes: Array, item_instance_id: String, enabled: bool) -
 	chooser.position = Vector2(24.0, 96.0)
 	chooser.size = Vector2(170.0, ThemeTokensScript.TOUCH_TARGET)
 	chooser.focus_mode = Control.FOCUS_ALL
-	chooser.tooltip_text = "Accessible alternate: equip the selected item to %s" % String(targets.front().get("heroId", "hero"))
+	chooser.tooltip_text = "Accessible alternate: equip the selected item to %s" % _hero_display_name(Dictionary(targets.front()))
 	chooser.disabled = not enabled
 	ThemeTokensScript.apply_button_style(chooser, ThemeTokensScript.PLAYER)
 	chooser.pressed.connect(func() -> void: equip_requested.emit(item_instance_id, String(targets.front().get("instanceId", ""))))
@@ -99,11 +100,13 @@ static func equip_result(items: Array, item_instance_id: String, hero_instance_i
 
 static func item_label(item: Dictionary) -> String:
 	var item_id := String(item.get("itemId", "?"))
-	return String(ItemMetadataCatalogScript.item_metadata(item_id).get("name", item_id))
+	return String(ItemMetadataCatalogScript.item_metadata(item_id).get("name", "Unknown item"))
 
 static func item_tooltip(item: Dictionary) -> String:
 	var item_id := String(item.get("itemId", "?"))
 	var authored := ItemMetadataCatalogScript.item_metadata(item_id)
+	if not authored.has("name"):
+		authored["name"] = "Unknown item"
 	var kind := String(authored.get("kind", item.get("kind", "normal"))).capitalize()
 	var category := String(authored.get("category", ""))
 	var details: Array[String] = []
@@ -114,6 +117,9 @@ static func item_tooltip(item: Dictionary) -> String:
 	for trigger in Array(authored.get("triggers", [])):
 		details.append(_trigger_detail(trigger))
 	return "%s\n%s item • %s\n%s\nSelect it, then tap or drag to a hero to equip." % [String(authored.get("name", item_id)), kind, category, "; ".join(details) if not details.is_empty() else "No authored effects"]
+
+static func _hero_display_name(hero: Dictionary) -> String:
+	return String(HeroVisualCatalogScript.profile(String(hero.get("heroId", ""))).get("display_name", "Unknown hero"))
 
 static func _humanize(value: String) -> String:
 	return value.capitalize().replace("_", " ")

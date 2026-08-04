@@ -37,6 +37,7 @@ func _run() -> void:
 	var offered_card: Button = screen.find_child("RewardOption_H02", true, false) as Button
 	_expect(offered_card != null and offered_card.get_theme_color("font_color").is_equal_approx(ThemeTokensScript.PARCHMENT), "dark reward cards must use high-contrast parchment text")
 	_expect(offered_card != null and offered_card.text.contains("Ember Duelist") and not offered_card.text.contains("H02"), "reward hero cards must display the player-facing hero name rather than a raw hero key")
+	_expect(offered_card != null and not offered_card.tooltip_text.contains("H02") and not offered_card.tooltip_text.contains("reward:"), "reward tooltips must describe the player-facing choice rather than raw offer or hero IDs")
 	var animated_reveal: Control = screen.find_child("UniqueRevealPanel", true, false) as Control
 	var animated_tweens: Array = screen.get("_reveal_tweens")
 	_expect(animated_reveal != null and animated_reveal.modulate.a < 1.0 and animated_tweens.size() == 1, "normal R4 Unique reveal must start as a visible tweened transition, not only expose a duration value")
@@ -60,6 +61,9 @@ func _run() -> void:
 	_expect(static_reveal != null and static_reveal.modulate.a == 1.0 and static_tweens.is_empty(), "reduced motion must render the Unique result immediately readable with no tween or animation")
 	if static_reveal != null:
 		_expect(static_reveal.modulate.a == 1.0, "reduced motion must not leave a Unique reveal tween or animation running")
+	screen.bind_reward({ "round": 1, "offers": [{ "id": "reward:unknown", "kind": "hero_choice", "options": [{ "id": "H99", "kind": "hero" }] }] }, [], true)
+	var unknown_hero_card: Button = screen.find_child("RewardOption_H99", true, false) as Button
+	_expect(unknown_hero_card != null and unknown_hero_card.text.contains("Unknown hero") and not unknown_hero_card.text.contains("H99") and not unknown_hero_card.tooltip_text.contains("H99"), "an unresolved reward hero must use a friendly fallback without exposing its raw ID")
 	screen.free()
 	_finish()
 

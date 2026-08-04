@@ -41,6 +41,9 @@ func _init() -> void:
 	if alternate_target != null:
 		alternate_target.pressed.emit()
 	_expect(equip_intents == [["free", "hero-b"]], "inventory must expose an accessible command-only equip intent")
+	inventory.bind_inventory([{ "instanceId": "free", "itemId": "I01", "kind": "normal" }], [{ "instanceId": "hero-unknown", "heroId": "H99" }], "free", true)
+	var unknown_target: Button = inventory.find_child("InventoryHeroTarget", true, false) as Button
+	_expect(unknown_target != null and unknown_target.tooltip_text.contains("Unknown hero") and not unknown_target.tooltip_text.contains("H99"), "inventory hero target text must use a friendly fallback instead of an unresolved hero ID")
 	inventory.free()
 	if _failed:
 		quit(1)

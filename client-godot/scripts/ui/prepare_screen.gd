@@ -239,7 +239,7 @@ func _hero_name(hero: Dictionary) -> String:
 	var hero_id := String(hero.get("heroId", "?"))
 	if HeroVisualCatalogScript.hero_ids().has(hero_id):
 		return String(HeroVisualCatalogScript.profile(hero_id).get("display_name", hero_id))
-	return hero_id
+	return "Unknown hero"
 
 func _hero_catalog() -> Dictionary:
 	var catalog := {}

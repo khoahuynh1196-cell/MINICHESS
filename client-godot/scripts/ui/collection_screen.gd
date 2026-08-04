@@ -83,14 +83,18 @@ func _rebuild() -> void:
 	cards.add_theme_constant_override("v_separation", ThemeTokensScript.TOUCH_GAP)
 	for hero_id in visible_hero_ids():
 		var profile: Dictionary = HeroVisualCatalogScript.profile(hero_id)
-		var card := _button("%s — %s\n%s / %s" % [hero_id, String(profile.get("display_name", hero_id)), String(profile.get("species", "")), String(profile.get("role", ""))], ThemeTokensScript.STONE_RAISED)
+		var card := _button("%s\n%s / %s" % [String(profile.get("display_name", "Unknown hero")), String(profile.get("species", "")), String(profile.get("role", ""))], ThemeTokensScript.STONE_RAISED)
 		card.name = "HeroCard_%s" % hero_id
-		card.tooltip_text = "%s details" % String(profile.get("display_name", hero_id))
+		card.tooltip_text = "%s details" % String(profile.get("display_name", "Unknown hero"))
 		card.pressed.connect(open_hero_detail.bind(hero_id))
 		cards.add_child(card)
 	panel.add_child(cards)
 	var codex := Label.new()
-	codex.text = "Unique item codex: %s" % ", ".join(unique_item_ids())
+	codex.name = "UniqueItemCodex"
+	var unique_names: Array[String] = []
+	for item_id in unique_item_ids():
+		unique_names.append(String(ItemMetadataCatalogScript.item_metadata(item_id).get("name", "Unknown unique item")))
+	codex.text = "Unique item codex: %s" % ", ".join(unique_names)
 	codex.add_theme_font_size_override("font_size", ThemeTokensScript.TYPE_BODY)
 	codex.add_theme_color_override("font_color", ThemeTokensScript.PARCHMENT)
 	panel.add_child(codex)
@@ -112,7 +116,8 @@ func _add_detail_modal() -> void:
 	content.add_theme_constant_override("separation", ThemeTokensScript.TOUCH_GAP)
 	modal.add_child(content)
 	var title := Label.new()
-	title.text = "%s — %s" % [_detail_id, String(profile.get("display_name", _detail_id))]
+	title.name = "HeroDetailTitle"
+	title.text = String(profile.get("display_name", "Unknown hero"))
 	title.add_theme_font_size_override("font_size", ThemeTokensScript.TYPE_SECTION)
 	title.add_theme_color_override("font_color", ThemeTokensScript.GOLD)
 	content.add_child(title)

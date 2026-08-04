@@ -111,7 +111,7 @@ func _rebuild() -> void:
 		var reveal_panel := PanelContainer.new()
 		reveal_panel.name = "UniqueRevealPanel"
 		reveal_panel.add_theme_stylebox_override("panel", ThemeTokensScript.panel_style(ThemeTokensScript.GOLD))
-		var reveal := _button("Unique revealed: %s%s" % [String(metadata.get("name", item_data.get("itemId", "Unique item"))), " (acknowledged)" if _acknowledged_reveals.has(reveal_id) else ""], ThemeTokensScript.GOLD)
+		var reveal := _button("Unique revealed: %s%s" % [String(metadata.get("name", "Unknown unique item")), " (acknowledged)" if _acknowledged_reveals.has(reveal_id) else ""], ThemeTokensScript.GOLD)
 		reveal.name = "UniqueReveal_%s" % reveal_id
 		reveal.disabled = _acknowledged_reveals.has(reveal_id)
 		reveal.tooltip_text = "Acknowledge the server-owned Unique item reveal"
@@ -133,7 +133,7 @@ func _rebuild() -> void:
 			var selected := String(_selected_by_offer.get(offer_id, "")) == option_id
 			var option_button := _button("%s%s" % [_option_label(option_data), "  ✓ selected" if selected else ""], ThemeTokensScript.PLAYER if selected else ThemeTokensScript.STONE_RAISED)
 			option_button.name = "RewardOption_%s" % option_id
-			option_button.tooltip_text = "Server offer %s, option %s" % [offer_id, option_id]
+			option_button.tooltip_text = "%s. Choose this reward." % _option_label(option_data)
 			option_button.pressed.connect(choose_server_option.bind(offer_id, option_id))
 			panel.add_child(option_button)
 	var completion := Label.new()
@@ -148,7 +148,7 @@ func _option_label(option: Dictionary) -> String:
 		var profile := HeroVisualCatalogScript.profile(option_id)
 		return "%s (hero)" % String(profile.get("display_name", "Unknown hero"))
 	var metadata := ItemMetadataCatalogScript.item_metadata(option_id)
-	return String(metadata.get("name", option_id))
+	return String(metadata.get("name", "Unknown reward"))
 
 func _animate_reveal(reveal_panel: Control) -> void:
 	if _reduced_motion or not is_inside_tree():

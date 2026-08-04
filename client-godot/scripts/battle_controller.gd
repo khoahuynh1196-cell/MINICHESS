@@ -237,11 +237,9 @@ func _resume_local_run() -> void:
 	if cached_view.is_empty():
 		return
 	var cached_run_id := String(cached_view.get("id", ""))
-	_set_status("Resuming cached run %s" % cached_run_id)
 	if resume_run_input != null:
 		resume_run_input.text = cached_run_id
-	if run_api_client != null:
-		run_api_client.resume_run(cached_run_id)
+	request_resume_run(cached_run_id)
 
 func request_buy_shop_slot(shop_slot_index: int) -> void:
 	if run_state.state != "PREPARE" or shop_slot_index < 0 or shop_slot_index >= run_state.shop.size():
@@ -762,6 +760,7 @@ func show_mobile_screen(screen_id: String) -> void:
 		"map":
 			screen_router.encounter_map_screen.set_encounters([], run_state.round if not run_state.run_id.is_empty() else 1)
 		"settings":
+			screen_router.settings_screen.set_locale(localization.locale)
 			screen_router.settings_screen.set_settings(settings)
 		"reward":
 			screen_router.reward_screen.bind_reward(run_state.round_reward_plan, run_state.items, bool(settings.get("reduced_motion", false)))
