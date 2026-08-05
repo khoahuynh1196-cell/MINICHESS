@@ -1,23 +1,36 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
+import { createHttpApp as createProductionHttpApp, type ContentManifestRepository } from "../src/http/app.js";
+import { createInMemoryRunRepository, type RunRepository, type ShopGenerator } from "../src/application/run-commands.js";
+import { productionRules, rulesAwareRepository } from "./support/production-rules.js";
+
+
+function createTestHttpApp(
+  context = { actorId: "anonymous", tenantId: "default" },
+  repository: RunRepository = createInMemoryRunRepository(),
+  shopGenerator?: ShopGenerator,
+  contentRepository?: ContentManifestRepository,
+) {
+  return createProductionHttpApp(context, rulesAwareRepository(repository), shopGenerator, contentRepository, productionRules);
+}
 
 describe("HTTP adapter", () => {
   it("serves the public health endpoint", async () => {
     const module = await import("../src/http/app.js").catch(() => undefined) as undefined | { createHttpApp: () => { inject(input: unknown): Promise<{ statusCode: number; json(): unknown }> } };
     expect(module).toBeDefined();
     if (!module) return;
-    const response = await module.createHttpApp().inject({ method: "GET", url: "/health" });
+    const response = await createTestHttpApp().inject({ method: "GET", url: "/health" });
     expect(response.statusCode).toBe(200);
     expect(response.json()).toEqual({ status: "ok" });
   });
 
   it("creates a public run view without accepting or exposing tenant identity", async () => {
     const { createHttpApp } = await import("../src/http/app.js");
-    const app = createHttpApp({ actorId: "actor-a", tenantId: "tenant-a" });
-    const response = await app.inject({ method: "POST", url: "/v1/runs", payload: { id: "run-http", content_version: "alpha-0.3.0", tenant_id: "tenant-b" } });
+    const app = createTestHttpApp({ actorId: "actor-a", tenantId: "tenant-a" });
+    const response = await app.inject({ method: "POST", url: "/v1/runs", payload: { id: "run-http", content_version: "alpha-0.3.0", ruleset_version: productionRules.version, tenant_id: "tenant-b" } });
     expect(response.statusCode).toBe(201);
-    expect(response.json()).toMatchObject({ data: { id: "run-http", contentVersion: "alpha-0.3.0", state: "PREPARE", revision: 0, gold: 8, round: 1, level: 3, experience: 0, experienceToNext: 10, boardCap: 3, shopOdds: { tier1: 55, tier2: 35, tier3: 10, tier4: 0, tier5: 0 }, shopLocked: false, bench: [], board: Array(12).fill(null) } });
+    expect(response.json()).toMatchObject({ data: { id: "run-http", contentVersion: "alpha-0.3.0", state: "PREPARE", revision: 0, gold: 8, round: 1, level: 3, experience: 0, experienceToNext: 10, boardCap: 3, shopOdds: { tier1: 55, tier2: 35, tier3: 10, tier4: 0, tier5: 0 }, shopLocked: false, bench: [], board: Array(16).fill(null) } });
     expect(response.json()).toMatchObject({
       request_id: expect.stringMatching(/^[0-9a-f-]{36}$/),
       server_time: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T/),
@@ -27,23 +40,23 @@ describe("HTTP adapter", () => {
   it("creates a run with the initial shop supplied by the content adapter", async () => {
     const { createHttpApp } = await import("../src/http/app.js");
     const { createInMemoryRunRepository } = await import("../src/application/run-commands.js");
-    const app = createHttpApp(
+    const app = createTestHttpApp(
       { actorId: "actor-a", tenantId: "tenant-a" },
       createInMemoryRunRepository(),
-      { initialShop: () => [{ heroId: "H01", cost: 1 }, { heroId: "H02", cost: 2 }, { heroId: "H03", cost: 1 }, { heroId: "H04", cost: 3 }] },
+      { initialShop: () => [{ heroId: "H01", cost: 1 }, { heroId: "H02", cost: 2 }, { heroId: "H03", cost: 1 }, { heroId: "H04", cost: 3 }, { heroId: "H05", cost: 1 }] },
     );
 
-    const response = await app.inject({ method: "POST", url: "/v1/runs", payload: { id: "run-content-shop", content_version: "alpha-0.3.0" } });
+    const response = await app.inject({ method: "POST", url: "/v1/runs", payload: { id: "run-content-shop", content_version: "alpha-0.3.0", ruleset_version: productionRules.version } });
 
     expect(response.statusCode).toBe(201);
-    expect(response.json()).toMatchObject({ data: { shop: [{ heroId: "H01", cost: 1 }, { heroId: "H02", cost: 2 }, { heroId: "H03", cost: 1 }, { heroId: "H04", cost: 3 }] } });
+    expect(response.json()).toMatchObject({ data: { shop: [{ heroId: "H01", cost: 1 }, { heroId: "H02", cost: 2 }, { heroId: "H03", cost: 1 }, { heroId: "H04", cost: 3 }, { heroId: "H05", cost: 1 }] } });
   });
 
   it("reports a conflict when the tenant already has an active run", async () => {
     const { createHttpApp } = await import("../src/http/app.js");
-    const app = createHttpApp({ actorId: "actor-a", tenantId: "tenant-a" });
-    await app.inject({ method: "POST", url: "/v1/runs", payload: { id: "run-first", content_version: "alpha-0.3.0" } });
-    const response = await app.inject({ method: "POST", url: "/v1/runs", payload: { id: "run-second", content_version: "alpha-0.3.0" } });
+    const app = createTestHttpApp({ actorId: "actor-a", tenantId: "tenant-a" });
+    await app.inject({ method: "POST", url: "/v1/runs", payload: { id: "run-first", content_version: "alpha-0.3.0", ruleset_version: productionRules.version } });
+    const response = await app.inject({ method: "POST", url: "/v1/runs", payload: { id: "run-second", content_version: "alpha-0.3.0", ruleset_version: productionRules.version } });
     expect(response.statusCode).toBe(409);
     expect(response.json()).toMatchObject({ error: { code: "ACTIVE_RUN_EXISTS", retryable: false } });
   });
@@ -64,10 +77,10 @@ describe("HTTP adapter", () => {
       commandRequests: { "cmd-internal": "internal-idempotency-fingerprint" },
       shop: [{ heroId: "H01", cost: 1 }],
       bench: [{ instanceId: "hero-bench", heroId: "H02", cost: 2 }],
-      board: [{ instanceId: "hero-board", heroId: "H03", cost: 3 }, ...Array(11).fill(null)],
+      board: [{ instanceId: "hero-board", heroId: "H03", cost: 3 }, ...Array(15).fill(null)],
       items: [{ instanceId: "item-read", itemId: "I01", kind: "normal" }],
     });
-    const app = createHttpApp({ actorId: "actor-a", tenantId: "tenant-a" }, repository);
+    const app = createTestHttpApp({ actorId: "actor-a", tenantId: "tenant-a" }, repository);
     const response = await app.inject({ method: "GET", url: "/v1/runs/run-read" });
     expect(response.statusCode).toBe(200);
     expect(response.json()).toMatchObject({
@@ -80,7 +93,7 @@ describe("HTTP adapter", () => {
         gold: 6,
         shop: [{ heroId: "H01", cost: 1 }],
         bench: [{ instanceId: "hero-bench", heroId: "H02", cost: 2 }],
-        board: [{ instanceId: "hero-board", heroId: "H03", cost: 3 }, ...Array(11).fill(null)],
+        board: [{ instanceId: "hero-board", heroId: "H03", cost: 3 }, ...Array(15).fill(null)],
         items: [{ instanceId: "item-read", itemId: "I01", kind: "normal" }],
       },
     });
@@ -90,9 +103,9 @@ describe("HTTP adapter", () => {
     const { createHttpApp } = await import("../src/http/app.js");
     const { createInMemoryRunRepository } = await import("../src/application/run-commands.js");
     const repository = createInMemoryRunRepository();
-    const ownerApp = createHttpApp({ actorId: "actor-a", tenantId: "tenant-a" }, repository);
-    const otherTenantApp = createHttpApp({ actorId: "actor-b", tenantId: "tenant-b" }, repository);
-    await ownerApp.inject({ method: "POST", url: "/v1/runs", payload: { id: "run-private", content_version: "alpha-0.3.0" } });
+    const ownerApp = createTestHttpApp({ actorId: "actor-a", tenantId: "tenant-a" }, repository);
+    const otherTenantApp = createTestHttpApp({ actorId: "actor-b", tenantId: "tenant-b" }, repository);
+    await ownerApp.inject({ method: "POST", url: "/v1/runs", payload: { id: "run-private", content_version: "alpha-0.3.0", ruleset_version: productionRules.version } });
 
     const response = await otherTenantApp.inject({ method: "GET", url: "/v1/runs/run-private" });
 
@@ -114,7 +127,7 @@ describe("HTTP adapter", () => {
         ],
       },
     });
-    const app = createHttpApp({ actorId: "actor-a", tenantId: "tenant-a" }, repository);
+    const app = createTestHttpApp({ actorId: "actor-a", tenantId: "tenant-a" }, repository);
 
     const response = await app.inject({ method: "GET", url: "/v1/runs/run-events/events?after_sequence=0" });
 
@@ -135,7 +148,7 @@ describe("HTTP adapter", () => {
         events: [{ sequence: 7, tick: 3, type: "COMBAT_ENDED", payload: { winner: "player" } }],
       },
     });
-    const app = createHttpApp({ actorId: "actor-a", tenantId: "tenant-a" }, repository);
+    const app = createTestHttpApp({ actorId: "actor-a", tenantId: "tenant-a" }, repository);
 
     const response = await app.inject({ method: "GET", url: "/v1/runs/run-resume/resume" });
 
@@ -151,7 +164,7 @@ describe("HTTP adapter", () => {
     const { createHttpApp } = await import("../src/http/app.js");
     const bundlePath = fileURLToPath(new URL("../../content/alpha-0.3.0/bundle.json", import.meta.url));
     const content = compileContentBundle(JSON.parse(readFileSync(bundlePath, "utf8")));
-    const app = createHttpApp(
+    const app = createTestHttpApp(
       { actorId: "actor-a", tenantId: "tenant-a" },
       undefined,
       undefined,
@@ -173,12 +186,12 @@ describe("HTTP adapter", () => {
     const { createInMemoryRunRepository } = await import("../src/application/run-commands.js");
     const content = compileContentBundle(JSON.parse(readFileSync(fileURLToPath(new URL("../../content/alpha-0.3.0/bundle.json", import.meta.url)), "utf8")));
     const repository = createInMemoryRunRepository();
-    const app = createHttpApp(
+    const app = createTestHttpApp(
       { actorId: "actor-a", tenantId: "tenant-a" }, repository, undefined,
       { getByVersion: async (version: string) => version === content.version ? content : undefined },
     );
 
-    const response = await app.inject({ method: "POST", url: "/v1/runs", payload: { id: "run-http-unique", content_version: "alpha-0.3.0" } });
+    const response = await app.inject({ method: "POST", url: "/v1/runs", payload: { id: "run-http-unique", content_version: "alpha-0.3.0", ruleset_version: productionRules.version } });
     const stored = await repository.get("run-http-unique", "tenant-a");
 
     expect(response.statusCode).toBe(201);
@@ -190,8 +203,8 @@ describe("HTTP adapter", () => {
 
   it("applies a tenant-scoped refresh command", async () => {
     const { createHttpApp } = await import("../src/http/app.js");
-    const app = createHttpApp({ actorId: "actor-a", tenantId: "tenant-a" });
-    await app.inject({ method: "POST", url: "/v1/runs", payload: { id: "run-command", content_version: "alpha-0.3.0" } });
+    const app = createTestHttpApp({ actorId: "actor-a", tenantId: "tenant-a" });
+    await app.inject({ method: "POST", url: "/v1/runs", payload: { id: "run-command", content_version: "alpha-0.3.0", ruleset_version: productionRules.version } });
     const response = await app.inject({ method: "POST", url: "/v1/runs/run-command/commands", payload: { command_id: "cmd-http", expected_run_revision: 0, type: "REFRESH_SHOP" } });
     expect(response.statusCode).toBe(200);
     expect(response.json()).toMatchObject({ data: { runRevision: 1, status: "APPLIED" } });
@@ -199,8 +212,8 @@ describe("HTTP adapter", () => {
 
   it("exposes a server-backed shop lock after the lock command", async () => {
     const { createHttpApp } = await import("../src/http/app.js");
-    const app = createHttpApp({ actorId: "actor-a", tenantId: "tenant-a" });
-    await app.inject({ method: "POST", url: "/v1/runs", payload: { id: "run-shop-lock", content_version: "alpha-0.3.0" } });
+    const app = createTestHttpApp({ actorId: "actor-a", tenantId: "tenant-a" });
+    await app.inject({ method: "POST", url: "/v1/runs", payload: { id: "run-shop-lock", content_version: "alpha-0.3.0", ruleset_version: productionRules.version } });
 
     const command = await app.inject({ method: "POST", url: "/v1/runs/run-shop-lock/commands", payload: { command_id: "cmd-lock-shop", expected_run_revision: 0, type: "LOCK_SHOP" } });
     const view = await app.inject({ method: "GET", url: "/v1/runs/run-shop-lock" });
@@ -221,7 +234,7 @@ describe("HTTP adapter", () => {
         offers: [{ id: "reward:3:normal_item_choice:0", kind: "normal_item_choice", options: [{ id: "I01", kind: "normal_item" }, { id: "I02", kind: "normal_item" }, { id: "I03", kind: "normal_item" }] }],
       },
     });
-    const app = createHttpApp({ actorId: "actor-a", tenantId: "tenant-a" }, repository);
+    const app = createTestHttpApp({ actorId: "actor-a", tenantId: "tenant-a" }, repository);
 
     const before = await app.inject({ method: "GET", url: "/v1/runs/run-http-reward" });
     const claim = await app.inject({
@@ -240,8 +253,8 @@ describe("HTTP adapter", () => {
     const { createInMemoryRunRepository } = await import("../src/application/run-commands.js");
     const repository = createInMemoryRunRepository();
     const boardHero = { instanceId: "hero-http-start", heroId: "H01", cost: 1 };
-    await repository.save({ id: "run-http-start", tenantId: "tenant-a", contentVersion: "alpha-0.3.0", state: "PREPARE", round: 1, revision: 0, gold: 8, commandResponses: {}, board: [boardHero, ...Array(11).fill(null)] });
-    const app = createHttpApp({ actorId: "actor-a", tenantId: "tenant-a" }, repository);
+    await repository.save({ id: "run-http-start", tenantId: "tenant-a", contentVersion: "alpha-0.3.0", state: "PREPARE", round: 1, revision: 0, gold: 8, commandResponses: {}, board: [boardHero, ...Array(15).fill(null)] });
+    const app = createTestHttpApp({ actorId: "actor-a", tenantId: "tenant-a" }, repository);
 
     const command = await app.inject({ method: "POST", url: "/v1/runs/run-http-start/commands", payload: { command_id: "cmd-http-start", expected_run_revision: 0, type: "START_ROUND" } });
     const resume = await app.inject({ method: "GET", url: "/v1/runs/run-http-start" });
@@ -249,7 +262,7 @@ describe("HTTP adapter", () => {
     expect(command.statusCode).toBe(200);
     expect(command.json()).toMatchObject({ data: { runRevision: 1, status: "APPLIED" } });
     expect(resume.statusCode).toBe(200);
-    expect(resume.json()).toMatchObject({ data: { state: "COMBAT", round: 1, board: [boardHero, ...Array(11).fill(null)] } });
+    expect(resume.json()).toMatchObject({ data: { state: "COMBAT", round: 1, board: [boardHero, ...Array(15).fill(null)] } });
     expect(resume.json()).not.toHaveProperty("data.lockedSnapshot");
     expect(resume.json()).not.toHaveProperty("data.commandResponses");
   });
@@ -262,9 +275,9 @@ describe("HTTP adapter", () => {
     const repository = createInMemoryRunRepository();
     await repository.save({
       id: "run-http-resolve", tenantId: "tenant-a", contentVersion: content.version, state: "PREPARE", round: 1, revision: 0, gold: 8,
-      runSeed: "0".repeat(64), commandResponses: {}, board: [{ instanceId: "hero-http-resolve", heroId: "H01", cost: 1 }, ...Array(11).fill(null)],
+      runSeed: "0".repeat(64), commandResponses: {}, board: [{ instanceId: "hero-http-resolve", heroId: "H01", cost: 1 }, ...Array(15).fill(null)],
     });
-    const app = createHttpApp(
+    const app = createTestHttpApp(
       { actorId: "actor-a", tenantId: "tenant-a" }, repository, undefined,
       { getByVersion: async (version: string) => version === content.version ? content : undefined },
     );
@@ -292,10 +305,10 @@ describe("HTTP adapter", () => {
         { instanceId: "hero-http-eight-1", heroId: "H20", cost: 3, stars: 3 },
         { instanceId: "hero-http-eight-2", heroId: "H20", cost: 3, stars: 3 },
         { instanceId: "hero-http-eight-3", heroId: "H20", cost: 3, stars: 3 },
-        ...Array(9).fill(null),
+        ...Array(13).fill(null),
       ],
     });
-    const app = createHttpApp(
+    const app = createTestHttpApp(
       { actorId: "actor-a", tenantId: "tenant-a" }, repository, undefined,
       { getByVersion: async (version: string) => version === content.version ? content : undefined },
     );
@@ -338,9 +351,9 @@ describe("HTTP adapter", () => {
     const { createInMemoryRunRepository } = await import("../src/application/run-commands.js");
     const repository = createInMemoryRunRepository();
     const boardHero = { instanceId: "hero-http-private", heroId: "H01", cost: 1 };
-    const initialRun = { id: "run-http-private-start", tenantId: "tenant-a", contentVersion: "alpha-0.3.0", state: "PREPARE" as const, round: 1, revision: 0, gold: 8, commandResponses: {}, board: [boardHero, ...Array(11).fill(null)] };
+    const initialRun = { id: "run-http-private-start", tenantId: "tenant-a", contentVersion: "alpha-0.3.0", state: "PREPARE" as const, round: 1, revision: 0, gold: 8, commandResponses: {}, board: [boardHero, ...Array(15).fill(null)] };
     await repository.save(initialRun);
-    const app = createHttpApp({ actorId: "actor-b", tenantId: "tenant-b" }, repository);
+    const app = createTestHttpApp({ actorId: "actor-b", tenantId: "tenant-b" }, repository);
 
     const response = await app.inject({ method: "POST", url: "/v1/runs/run-http-private-start/commands", payload: { command_id: "cmd-http-private-start", expected_run_revision: 0, type: "START_ROUND" } });
 
@@ -354,14 +367,14 @@ describe("HTTP adapter", () => {
     const { createInMemoryRunRepository } = await import("../src/application/run-commands.js");
     const repository = createInMemoryRunRepository();
     const hero = { instanceId: "hero-http", heroId: "H01", cost: 1 };
-    await repository.save({ id: "run-move-http", tenantId: "tenant-a", contentVersion: "alpha-0.3.0", state: "PREPARE", revision: 0, gold: 8, commandResponses: {}, bench: [hero], board: Array(12).fill(null) });
-    const app = createHttpApp({ actorId: "actor-a", tenantId: "tenant-a" }, repository);
+    await repository.save({ id: "run-move-http", tenantId: "tenant-a", contentVersion: "alpha-0.3.0", state: "PREPARE", revision: 0, gold: 8, commandResponses: {}, bench: [hero], board: Array(16).fill(null) });
+    const app = createTestHttpApp({ actorId: "actor-a", tenantId: "tenant-a" }, repository);
 
-    const response = await app.inject({ method: "POST", url: "/v1/runs/run-move-http/commands", payload: { command_id: "cmd-move-http", expected_run_revision: 0, type: "MOVE_HERO", hero_instance_id: hero.instanceId, destination: 12 } });
+    const response = await app.inject({ method: "POST", url: "/v1/runs/run-move-http/commands", payload: { command_id: "cmd-move-http", expected_run_revision: 0, type: "MOVE_HERO", hero_instance_id: hero.instanceId, destination: 16 } });
 
     expect(response.statusCode).toBe(200);
     expect(response.json()).toMatchObject({ data: { runRevision: 1, status: "APPLIED" } });
-    await expect(repository.get("run-move-http", "tenant-a")).resolves.toMatchObject({ bench: [], board: [hero, ...Array(11).fill(null)] });
+    await expect(repository.get("run-move-http", "tenant-a")).resolves.toMatchObject({ bench: [], board: [hero, ...Array(15).fill(null)] });
   });
 
   it("does not allow a tenant to move a hero in another tenant's run", async () => {
@@ -369,11 +382,11 @@ describe("HTTP adapter", () => {
     const { createInMemoryRunRepository } = await import("../src/application/run-commands.js");
     const repository = createInMemoryRunRepository();
     const hero = { instanceId: "hero-other-tenant", heroId: "H01", cost: 1 };
-    const initialRun = { id: "run-other-tenant", tenantId: "tenant-a", contentVersion: "alpha-0.3.0", state: "PREPARE" as const, revision: 0, gold: 8, commandResponses: {}, bench: [hero], board: Array(12).fill(null) };
+    const initialRun = { id: "run-other-tenant", tenantId: "tenant-a", contentVersion: "alpha-0.3.0", state: "PREPARE" as const, revision: 0, gold: 8, commandResponses: {}, bench: [hero], board: Array(16).fill(null) };
     await repository.save(initialRun);
-    const app = createHttpApp({ actorId: "actor-b", tenantId: "tenant-b" }, repository);
+    const app = createTestHttpApp({ actorId: "actor-b", tenantId: "tenant-b" }, repository);
 
-    const response = await app.inject({ method: "POST", url: "/v1/runs/run-other-tenant/commands", payload: { command_id: "cmd-other-tenant", expected_run_revision: 0, type: "MOVE_HERO", hero_instance_id: hero.instanceId, destination: 12 } });
+    const response = await app.inject({ method: "POST", url: "/v1/runs/run-other-tenant/commands", payload: { command_id: "cmd-other-tenant", expected_run_revision: 0, type: "MOVE_HERO", hero_instance_id: hero.instanceId, destination: 16 } });
 
     expect(response.statusCode).toBe(404);
     expect(response.json()).toMatchObject({ error: { code: "RUN_NOT_FOUND", retryable: false } });
@@ -392,14 +405,14 @@ describe("HTTP adapter", () => {
       revision: 0,
       gold: 8,
       commandResponses: {},
-      shop: [{ heroId: "H01", cost: 1 }, { heroId: "H02", cost: 2 }, { heroId: "H03", cost: 1 }, { heroId: "H04", cost: 3 }],
+      shop: [{ heroId: "H01", cost: 1 }, { heroId: "H02", cost: 2 }, { heroId: "H03", cost: 1 }, { heroId: "H04", cost: 3 }, { heroId: "H05", cost: 1 }],
     });
-    const app = createHttpApp(
+    const app = createTestHttpApp(
       { actorId: "actor-a", tenantId: "tenant-a" },
       repository,
       {
         initialShop: () => [],
-        refreshShop: () => [{ heroId: "H05", cost: 2 }, { heroId: "H06", cost: 1 }, { heroId: "H07", cost: 2 }, { heroId: "H08", cost: 2 }],
+        refreshShop: () => [{ heroId: "H05", cost: 2 }, { heroId: "H06", cost: 1 }, { heroId: "H07", cost: 2 }, { heroId: "H08", cost: 2 }, { heroId: "H09", cost: 3 }],
       },
     );
 
@@ -409,7 +422,7 @@ describe("HTTP adapter", () => {
     await expect(repository.get("run-refresh-http", "tenant-a")).resolves.toMatchObject({
       gold: 6,
       shopRefreshes: 1,
-      shop: [{ heroId: "H05", cost: 2 }, { heroId: "H06", cost: 1 }, { heroId: "H07", cost: 2 }, { heroId: "H08", cost: 2 }],
+      shop: [{ heroId: "H05", cost: 2 }, { heroId: "H06", cost: 1 }, { heroId: "H07", cost: 2 }, { heroId: "H08", cost: 2 }, { heroId: "H09", cost: 3 }],
     });
   });
 
@@ -428,7 +441,7 @@ describe("HTTP adapter", () => {
       shop: [{ heroId: "H01", cost: 1 }],
       bench: [],
     });
-    const app = createHttpApp({ actorId: "actor-a", tenantId: "tenant-a" }, repository);
+    const app = createTestHttpApp({ actorId: "actor-a", tenantId: "tenant-a" }, repository);
 
     const response = await app.inject({
       method: "POST",
@@ -460,7 +473,7 @@ describe("HTTP adapter", () => {
       commandResponses: {},
       bench: [{ instanceId: "hero-run-sell-http-1", heroId: "H02", cost: 2 }],
     });
-    const app = createHttpApp({ actorId: "actor-a", tenantId: "tenant-a" }, repository);
+    const app = createTestHttpApp({ actorId: "actor-a", tenantId: "tenant-a" }, repository);
 
     const response = await app.inject({
       method: "POST",
@@ -474,8 +487,8 @@ describe("HTTP adapter", () => {
 
   it("maps an optimistic concurrency conflict to the API error envelope", async () => {
     const { createHttpApp } = await import("../src/http/app.js");
-    const app = createHttpApp({ actorId: "actor-a", tenantId: "tenant-a" });
-    await app.inject({ method: "POST", url: "/v1/runs", payload: { id: "run-conflict", content_version: "alpha-0.3.0" } });
+    const app = createTestHttpApp({ actorId: "actor-a", tenantId: "tenant-a" });
+    await app.inject({ method: "POST", url: "/v1/runs", payload: { id: "run-conflict", content_version: "alpha-0.3.0", ruleset_version: productionRules.version } });
     await app.inject({ method: "POST", url: "/v1/runs/run-conflict/commands", payload: { command_id: "cmd-first", expected_run_revision: 0, type: "REFRESH_SHOP" } });
     const response = await app.inject({ method: "POST", url: "/v1/runs/run-conflict/commands", payload: { command_id: "cmd-stale", expected_run_revision: 0, type: "REFRESH_SHOP" } });
     expect(response.statusCode).toBe(409);
@@ -487,8 +500,8 @@ describe("HTTP adapter", () => {
     const { createInMemoryRunRepository } = await import("../src/application/run-commands.js");
     const repository = createInMemoryRunRepository();
     const hero = { instanceId: "hero-http-equip", heroId: "H01", cost: 1 };
-    await repository.save({ id: "run-http-equip", tenantId: "tenant-a", contentVersion: "alpha-0.3.0", state: "PREPARE", revision: 0, gold: 8, commandResponses: {}, bench: [hero], board: Array(12).fill(null), items: [{ instanceId: "item-http-equip", itemId: "I01", kind: "normal" }] });
-    const app = createHttpApp({ actorId: "actor-a", tenantId: "tenant-a" }, repository);
+    await repository.save({ id: "run-http-equip", tenantId: "tenant-a", contentVersion: "alpha-0.3.0", state: "PREPARE", revision: 0, gold: 8, commandResponses: {}, bench: [hero], board: Array(16).fill(null), items: [{ instanceId: "item-http-equip", itemId: "I01", kind: "normal" }] });
+    const app = createTestHttpApp({ actorId: "actor-a", tenantId: "tenant-a" }, repository);
 
     const response = await app.inject({ method: "POST", url: "/v1/runs/run-http-equip/commands", payload: { command_id: "cmd-http-equip", expected_run_revision: 0, type: "EQUIP_ITEM", item_instance_id: "item-http-equip", hero_instance_id: hero.instanceId } });
 
@@ -501,9 +514,9 @@ describe("HTTP adapter", () => {
     const { createInMemoryRunRepository } = await import("../src/application/run-commands.js");
     const repository = createInMemoryRunRepository();
     const hero = { instanceId: "hero-other-equip", heroId: "H01", cost: 1 };
-    const initialRun = { id: "run-other-equip", tenantId: "tenant-a", contentVersion: "alpha-0.3.0", state: "PREPARE" as const, revision: 0, gold: 8, commandResponses: {}, bench: [hero], board: Array(12).fill(null), items: [{ instanceId: "item-other-equip", itemId: "I01", kind: "normal" as const }] };
+    const initialRun = { id: "run-other-equip", tenantId: "tenant-a", contentVersion: "alpha-0.3.0", state: "PREPARE" as const, revision: 0, gold: 8, commandResponses: {}, bench: [hero], board: Array(16).fill(null), items: [{ instanceId: "item-other-equip", itemId: "I01", kind: "normal" as const }] };
     await repository.save(initialRun);
-    const app = createHttpApp({ actorId: "actor-b", tenantId: "tenant-b" }, repository);
+    const app = createTestHttpApp({ actorId: "actor-b", tenantId: "tenant-b" }, repository);
 
     const response = await app.inject({ method: "POST", url: "/v1/runs/run-other-equip/commands", payload: { command_id: "cmd-other-equip", expected_run_revision: 0, type: "EQUIP_ITEM", item_instance_id: "item-other-equip", hero_instance_id: hero.instanceId } });
 

@@ -1,75 +1,61 @@
 import { describe, expect, it } from "vitest";
+import { createShopPool, rollShop, returnHeroToShopPool, returnShopSlots } from "../src/application/shop-pool.js";
+import { productionRules } from "./support/production-rules.js";
 
 const runSeed = "000102030405060708090a0b0c0d0e0f";
 
 function contentWithHeroes(heroes: readonly { id: string; cost: number; rarity: 1 | 2 | 3 | 4 | 5; is_unique_hero: boolean }[]) {
-  return { heroesById: new Map(heroes.map((hero) => [hero.id, hero])) };
+  return { heroesById: new Map(heroes.map((hero) => [hero.id, hero])) } as any;
 }
 
 describe("deterministic shop pool", () => {
-  it("excludes content-marked Unique heroes and produces five slots", async () => {
-    const shopPool = await import("../src/application/shop-pool.js") as {
-      createShopPool(content: unknown, seed: string): unknown;
-      rollShop(pool: unknown, level: number, stream: string): readonly { heroId: string; cost: number }[];
-    };
-    const pool = shopPool.createShopPool(contentWithHeroes([
+  it("excludes content-marked Unique heroes and produces the configured slots", () => {
+    const pool = createShopPool(contentWithHeroes([
       { id: "H01", cost: 1, rarity: 1, is_unique_hero: false },
       { id: "H99", cost: 1, rarity: 1, is_unique_hero: true },
-    ]), runSeed);
+    ]), runSeed, productionRules.shop);
 
-    const slots = shopPool.rollShop(pool, 1, "shop:1:0");
+    const slots = rollShop(pool, 3, "shop:1:0", productionRules.shop);
 
-    expect(slots).toHaveLength(5);
+    expect(slots).toHaveLength(productionRules.shop.slotCount);
     expect(slots.every((slot) => slot.heroId === "H01" && slot.cost === 1)).toBe(true);
   });
 
-  it("keeps a bought copy out of the pool and restores it when sold", async () => {
-    const shopPool = await import("../src/application/shop-pool.js") as {
-      createShopPool(content: unknown, seed: string): { heroes: Record<string, { remainingCopies: number }> };
-      rollShop(pool: unknown, level: number, stream: string): readonly { heroId: string; cost: number }[];
-      returnShopSlots(pool: unknown, slots: readonly { heroId: string; cost: number }[]): void;
-      returnHeroToShopPool(pool: unknown, heroId: string): void;
-    };
-    const pool = shopPool.createShopPool(contentWithHeroes([{ id: "H01", cost: 1, rarity: 1, is_unique_hero: false }]), runSeed);
+  it("keeps a bought copy out of the pool and restores it when sold", () => {
+    const pool = createShopPool(contentWithHeroes([{ id: "H01", cost: 1, rarity: 1, is_unique_hero: false }]), runSeed, productionRules.shop);
     const startingCopies = pool.heroes.H01!.remainingCopies;
-    const slots = shopPool.rollShop(pool, 1, "shop:1:0");
+    const slots = rollShop(pool, 3, "shop:1:0", productionRules.shop);
 
-    shopPool.returnShopSlots(pool, slots.slice(1));
+    returnShopSlots(pool, slots.slice(1));
 
     expect(pool.heroes.H01!.remainingCopies).toBe(startingCopies - 1);
-    shopPool.returnHeroToShopPool(pool, "H01");
+    returnHeroToShopPool(pool, "H01");
     expect(pool.heroes.H01!.remainingCopies).toBe(startingCopies);
   });
 
-  it("uses the same seeded stream for repeatable level-aware rolls", async () => {
-    const shopPool = await import("../src/application/shop-pool.js") as {
-      createShopPool(content: unknown, seed: string): unknown;
-      rollShop(pool: unknown, level: number, stream: string): readonly { heroId: string; cost: number }[];
-    };
+  it("uses the same seeded stream for repeatable level-aware rolls", () => {
     const content = contentWithHeroes([
       { id: "H01", cost: 1, rarity: 1, is_unique_hero: false },
       { id: "H02", cost: 2, rarity: 2, is_unique_hero: false },
       { id: "H03", cost: 3, rarity: 3, is_unique_hero: false },
     ]);
-    const first = shopPool.createShopPool(content, runSeed);
-    const second = shopPool.createShopPool(content, runSeed);
+    const first = createShopPool(content, runSeed, productionRules.shop);
+    const second = createShopPool(content, runSeed, productionRules.shop);
 
-    expect(shopPool.rollShop(first, 3, "shop:2:4")).toEqual(shopPool.rollShop(second, 3, "shop:2:4"));
+    expect(rollShop(first, 3, "shop:2:4", productionRules.shop))
+      .toEqual(rollShop(second, 3, "shop:2:4", productionRules.shop));
   });
 
-  it("makes five-cost heroes available at the supported high tier", async () => {
-    const shopPool = await import("../src/application/shop-pool.js") as {
-      createShopPool(content: unknown, seed: string): unknown;
-      rollShop(pool: unknown, level: number, stream: string): readonly { heroId: string; cost: number }[];
-    };
+  it("makes five-cost heroes available at the supported high tier", () => {
     const content = contentWithHeroes([
       { id: "H01", cost: 1, rarity: 1, is_unique_hero: false },
       { id: "H05", cost: 5, rarity: 5, is_unique_hero: false },
     ]);
-    const levelOne = shopPool.rollShop(shopPool.createShopPool(content, runSeed), 1, "shop:1:0");
-    const levelTenSlots = Array.from({ length: 20 }, (_, refresh) => shopPool.rollShop(shopPool.createShopPool(content, runSeed), 10, `shop:1:${refresh}`)).flat();
+    const levelThree = rollShop(createShopPool(content, runSeed, productionRules.shop), 3, "shop:1:0", productionRules.shop);
+    const levelNineSlots = Array.from({ length: 20 }, (_, refresh) =>
+      rollShop(createShopPool(content, runSeed, productionRules.shop), 9, `shop:1:${refresh}`, productionRules.shop)).flat();
 
-    expect(levelOne.every((slot) => slot.cost === 1)).toBe(true);
-    expect(levelTenSlots.some((slot) => slot.cost === 5)).toBe(true);
+    expect(levelThree.every((slot) => slot.cost === 1)).toBe(true);
+    expect(levelNineSlots.some((slot) => slot.cost === 5)).toBe(true);
   });
 });

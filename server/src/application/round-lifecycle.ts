@@ -1,12 +1,11 @@
-import type { CombatEvent, CombatResult, CompiledContentBundle } from "@auto-battler/game-core";
+import type { CombatEvent, CombatResult, CompiledContentBundle, CompiledRuleset } from "@auto-battler/game-core";
 import type { CombatRecord, HeroInstance, ItemInstance, RunRecap, RunRecord } from "./run-commands.js";
 import { buildRoundRewardPlan, type RewardSelection } from "./reward-selection.js";
 import { cloneShopPool, reserveHeroFromShopPool } from "./shop-pool.js";
 
-const BASE_WIN_GOLD = 5;
-
-export function recordResolvedCombat(run: RunRecord, result: CombatResult): RunRecord {
+export function recordResolvedCombat(run: RunRecord, result: CombatResult, ruleset: CompiledRuleset): RunRecord {
   if (run.state !== "COMBAT" || run.lockedSnapshot === undefined) throw new Error("COMMAND_NOT_ALLOWED");
+  if (run.rulesetVersion !== ruleset.version || run.lockedSnapshot.rulesetVersion !== ruleset.version) throw new Error("RULESET_VERSION_MISMATCH");
   const combatRecord: CombatRecord = Object.freeze({
     round: run.lockedSnapshot.round,
     winner: result.winner,
@@ -15,12 +14,16 @@ export function recordResolvedCombat(run: RunRecord, result: CombatResult): RunR
     reason: result.reason,
     events: Object.freeze([...result.events]),
   });
+  const survivingEnemies = result.units.filter((unit) => unit.side === "enemy" && !unit.isSummon && unit.currentHp > 0).length;
   const lossDamage = result.winner === "enemy"
-    ? Math.min(12, 4 + 2 * result.units.filter((unit) => unit.side === "enemy" && !unit.isSummon && unit.currentHp > 0).length)
+    ? Math.min(ruleset.adventure.lossDamage.cap, ruleset.adventure.lossDamage.base + ruleset.adventure.lossDamage.perSurvivor * survivingEnemies)
     : 0;
-  const health = Math.max(0, (run.health ?? 30) - lossDamage);
-  const shouldRevealUnique = run.lockedSnapshot.round === 4 && health > 0 && run.preselectedUniqueId !== undefined && run.uniqueRevealed !== true;
-  if (shouldRevealUnique && (run.items ?? []).some((item) => item.kind === "unique")) throw new Error("GAME_RULE_VIOLATION");
+  const health = Math.max(0, (run.health ?? ruleset.adventure.initialHealth) - lossDamage);
+  const shouldRevealUnique = run.lockedSnapshot.round === ruleset.adventure.uniqueRevealRound
+    && health > 0 && run.preselectedUniqueId !== undefined && run.uniqueRevealed !== true;
+  if (shouldRevealUnique && (run.items ?? []).filter((item) => item.kind === "unique").length >= ruleset.roster.maxUniquePerTeam) {
+    throw new Error("GAME_RULE_VIOLATION");
+  }
   const items = shouldRevealUnique
     ? [...(run.items ?? []), { instanceId: `unique:${run.id}:${run.preselectedUniqueId!}`, itemId: run.preselectedUniqueId!, kind: "unique" as const }]
     : run.items;
@@ -36,7 +39,8 @@ export function recordResolvedCombat(run: RunRecord, result: CombatResult): RunR
 }
 
 /** Binds immutable, seed-derived content rewards to the completed round. */
-export function attachContentRoundRewards(run: RunRecord, content: CompiledContentBundle): RunRecord {
+export function attachContentRoundRewards(run: RunRecord, content: CompiledContentBundle, ruleset: CompiledRuleset): RunRecord {
+	if (run.rulesetVersion !== ruleset.version) throw new Error("RULESET_VERSION_MISMATCH");
 	if ((run.state !== "REWARD" && run.state !== "COMPLETE") || run.combatRecord === undefined) return run;
 	const recap = run.lockedSnapshot === undefined ? run.recap : buildAuthoritativeRecap(run.lockedSnapshot.board, run.combatRecord, content);
 	if (run.state !== "REWARD" || run.runSeed === undefined) return recap === undefined ? run : Object.freeze({ ...run, recap });
@@ -70,7 +74,7 @@ function buildAuthoritativeRecap(board: readonly (HeroInstance | null)[], combat
 	}
 	const heroIds = [...new Set(heroByCombatUnitId.values())].sort();
 	const mvp = heroIds.sort((left, right) => (damageByHero[right] ?? 0) - (damageByHero[left] ?? 0)
-		|| (healByHero[right] ?? 0) - (healByHero[left] ?? 0) || left.localeCompare(right))[0] ?? "";
+		|| (healByHero[right] ?? 0) - (healByHero[left] ?? 0) || (left < right ? -1 : left > right ? 1 : 0))[0] ?? "";
 	const activeTraits = [...distinctHeroIdsByTrait.entries()]
 		.flatMap(([traitId, heroIdsForTrait]) => {
 			const breakpoints = content.traitsById.get(traitId)?.breakpoints;
@@ -135,7 +139,8 @@ function materializeRewardSelections(run: RunRecord, selections: readonly Reward
   };
 }
 
-export function claimResolvedRoundReward(run: RunRecord, selections: readonly RewardSelection[] = []): RunRecord {
+export function claimResolvedRoundReward(run: RunRecord, selections: readonly RewardSelection[] = [], ruleset: CompiledRuleset): RunRecord {
+  if (run.rulesetVersion !== ruleset.version) throw new Error("RULESET_VERSION_MISMATCH");
   const resolvedRound = run.combatRecord?.round;
   if (resolvedRound === undefined) throw new Error("COMMAND_NOT_ALLOWED");
   if (run.rewardClaimedRound === resolvedRound) return run;
@@ -148,12 +153,12 @@ export function claimResolvedRoundReward(run: RunRecord, selections: readonly Re
   const freeRefreshes = (run.freeRefreshes ?? 0) + (roundRewardPlan?.freeRefreshes ?? 0);
   return Object.freeze({
     ...unlockedRun,
-    gold: run.gold + BASE_WIN_GOLD + (roundRewardPlan?.supplementalGold ?? 0),
+    gold: run.gold + ruleset.adventure.baseRoundIncome + (roundRewardPlan?.supplementalGold ?? 0),
     ...(freeRefreshes === 0 ? {} : { freeRefreshes }),
     ...materializedRewards,
-    round: resolvedRound === 8 ? resolvedRound : resolvedRound + 1,
+    round: resolvedRound === ruleset.adventure.roundCount ? resolvedRound : resolvedRound + 1,
     rewardClaimedRound: resolvedRound,
-    state: resolvedRound === 8 ? "COMPLETE" : "PREPARE",
+    state: resolvedRound === ruleset.adventure.roundCount ? "COMPLETE" : "PREPARE",
     revision: run.revision + 1,
   });
 }
