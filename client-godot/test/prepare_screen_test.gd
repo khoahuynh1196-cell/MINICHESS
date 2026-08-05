@@ -7,17 +7,17 @@ var _failed := false
 func _init() -> void:
 	var screen = PrepareScreenScript.new()
 	screen.bind_run(_prepare_view())
-	_expect(_label(screen, "GoldValue") == "12 Gold", "Prepare header must render gold from the authoritative public view")
+	_expect(_label(screen, "GoldValue") == "12 GOLD", "Prepare header must render gold from the authoritative public view")
 	_expect(_label(screen, "HealthValue") == "31 HP", "Prepare header must render health from the authoritative public view")
-	_expect(_label(screen, "LevelValue") == "Level 4", "Prepare header must render level from the authoritative public view")
+	_expect(_label(screen, "LevelValue") == "LV. 4", "Prepare header must render level from the authoritative public view")
 	_expect(_all_core_controls_fit(screen), "Prepare core controls must fit within the 1080 x 1920 portrait viewport")
 	_expect(not _button(screen, "BuySlot0").disabled and not _button(screen, "BuyXp").disabled and not _button(screen, "StartRound").disabled, "Prepare controls must be available during PREPARE")
 	_expect(_label(screen, "TierOdds") == "T1 45%  T2 35%  T3 18%  T4 2%  T5 0%", "Prepare must pass authoritative shop odds into its presentation panel")
 	_expect(_button(screen, "LockShop") != null and not _button(screen, "LockShop").disabled, "Prepare must offer the server-backed shop lock control")
 	for index in range(1, 8):
 		var bench_button := _button(screen, "BenchSlot%02d" % index)
-		_expect(bench_button.text == "Empty" and bench_button.tooltip_text == "Empty bench slot %d" % (index + 1) and bench_button.get_rect().end.x <= 1080.0, "Empty bench controls must use short labels that fit without collision")
-	_expect(_board_cell_count(screen) == 12 and _button(screen, "BoardCell11") != null and _button(screen, "BoardCell12") == null, "Prepare must render exactly the 12 legal player-half board slots")
+		_expect(bench_button.find_child("BenchEmpty", true, false) != null and bench_button.tooltip_text == "Empty bench slot %d" % (index + 1) and bench_button.get_rect().end.x <= 1080.0, "Empty bench controls must expose a compact, accessible empty-slot affordance")
+	_expect(_board_cell_count(screen) == 12 and _enemy_cell_count(screen) == 12 and _button(screen, "BoardCell11") != null and _button(screen, "BoardCell12") == null, "Prepare must render a 4x6 battlefield with 12 legal player-half board slots")
 	_expect(screen.find_child("TraitBottomSheet", true, false) != null, "Prepare must render trait chips in a bottom sheet")
 	_expect(_trait_chip_texts(screen).any(func(text): return text.contains("Cat  1 / 6")), "trait chips must count board heroes only, never matching bench heroes")
 	var combined_view := _prepare_view()
@@ -131,6 +131,13 @@ func _board_cell_count(screen: Control) -> int:
 	var count := 0
 	for button in _buttons(screen):
 		if String(button.name).begins_with("BoardCell"):
+			count += 1
+	return count
+
+func _enemy_cell_count(screen: Control) -> int:
+	var count := 0
+	for child in screen.get_children():
+		if String(child.name).begins_with("EnemyCell"):
 			count += 1
 	return count
 

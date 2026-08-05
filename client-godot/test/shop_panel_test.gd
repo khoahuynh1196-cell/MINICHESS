@@ -32,7 +32,7 @@ func _init() -> void:
 	_expect(capybara.tooltip_text.contains("Capybara Guardian") and capybara.tooltip_text.contains("exotic") and capybara.tooltip_text.contains("guardian"), "Focusable hero cards must expose the full identity in accessible tooltip text")
 	_expect(_label(panel, "TierOdds") == "T1 45%  T2 35%  T3 18%  T4 2%  T5 0%", "Shop must render server-provided tier odds")
 	var lock_button: Button = panel.find_child("LockShop", true, false) as Button
-	_expect(lock_button != null and not lock_button.disabled and lock_button.text == "Lock shop" and (lock_button.get_theme_stylebox("normal") as StyleBoxFlat).bg_color == ThemeTokensScript.GOLD, "Server-backed shop locking must be exposed as a high-contrast enabled control")
+	_expect(lock_button != null and not lock_button.disabled and lock_button.text == "LOCK SHOP" and (lock_button.get_theme_stylebox("normal") as StyleBoxFlat).bg_color == ThemeTokensScript.GOLD, "Server-backed shop locking must be exposed as a high-contrast enabled control")
 
 	var intents: Array = []
 	panel.buy_shop_slot.connect(func(index: int) -> void: intents.append(["buy", index]))
@@ -45,7 +45,7 @@ func _init() -> void:
 	_expect(intents == [["buy", 0], ["refresh"], ["lock"]], "Shop controls must emit presentation intents instead of mutating economy or pool state")
 	panel.bind_shop(_five_slots(), { "tier1": 45, "tier2": 35, "tier3": 18, "tier4": 2, "tier5": 0 }, true)
 	var locked_button: Button = panel.find_child("LockShop", true, false) as Button
-	_expect(locked_button != null and locked_button.text == "Unlock shop" and (panel.find_child("RefreshShop", true, false) as Button).disabled, "The authoritative locked state must relabel lock and prevent a refresh request")
+	_expect(locked_button != null and locked_button.text == "UNLOCK SHOP" and (panel.find_child("RefreshShop", true, false) as Button).disabled, "The authoritative locked state must relabel lock and prevent a refresh request")
 
 	panel.set_purchase_context(2, 1, true, 0)
 	_expect((panel.find_child("BuySlot3", true, false) as Button).disabled, "A hero must be disabled when authoritative gold is insufficient")

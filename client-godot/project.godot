@@ -1,11 +1,18 @@
 ; Engine configuration file.
-; This project renders authoritative combat events and never simulates combat rules.
+; It's best edited using the editor UI and not directly,
+; since the parameters that go here are not all obvious.
+;
+; Format:
+;   [section] ; section goes between []
+;   param=value ; assign values to parameters
+
 config_version=5
 
 [application]
 
 config/name="Auto Battler 2D Alpha"
 run/main_scene="res://scenes/main.tscn"
+config/features=PackedStringArray("4.7")
 config/icon="res://assets/icons/app-icon-v1.png"
 
 [display]
@@ -15,21 +22,11 @@ window/size/viewport_height=1920
 window/size/window_width_override=540
 window/size/window_height_override=960
 window/stretch/mode="canvas_items"
-; Keep the 1080 x 1920 design canvas, but use the full height of taller phones
-; instead of adding non-interactive letterbox bars.
 window/stretch/aspect="expand"
-
-[display/window/handheld]
-
-orientation=1
+window/handheld/orientation=1
 
 [rendering]
 
-; This is a 2D game. Use the Compatibility renderer so the Android build has a
-; stable OpenGL path on devices/emulators where Vulkan presentation is absent.
 renderer/rendering_method="gl_compatibility"
 renderer/rendering_method.mobile="gl_compatibility"
-
-[rendering/textures/vram_compression]
-
-import_etc2_astc=true
+textures/vram_compression/import_etc2_astc=true

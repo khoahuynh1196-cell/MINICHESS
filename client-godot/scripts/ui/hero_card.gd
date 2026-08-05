@@ -56,6 +56,10 @@ func configure(hero: Dictionary, catalog: Dictionary) -> void:
 	_label("Cost").text = cost_text
 	_label("Rarity").text = rarity_text
 	_label("Stars").text = star_text
+	var tier_color := ThemeTokensScript.rarity_color(rarity)
+	add_theme_stylebox_override("normal", ThemeTokensScript.panel_style(tier_color.darkened(0.52)))
+	add_theme_stylebox_override("hover", ThemeTokensScript.panel_style(tier_color.darkened(0.38)))
+	add_theme_stylebox_override("pressed", ThemeTokensScript.panel_style(tier_color.darkened(0.64)))
 	_load_portrait(portrait, String(profile.get("source_sprite", "")))
 	set_purchase_enabled(true)
 
@@ -67,17 +71,17 @@ func set_purchase_enabled(available: bool, reason: String = "") -> void:
 func _build_content() -> void:
 	var portrait := TextureRect.new()
 	portrait.name = "Portrait"
-	portrait.position = Vector2(12.0, 44.0)
-	portrait.size = Vector2(48.0, 52.0)
+	portrait.position = Vector2(10.0, 42.0)
+	portrait.size = Vector2(72.0, 94.0)
 	portrait.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	portrait.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(portrait)
-	_add_label("HeroName", Rect2(10.0, 6.0, 160.0, 32.0), 15, ThemeTokensScript.INK, true)
-	_add_label("FactionClass", Rect2(70.0, 44.0, 98.0, 48.0), 13, ThemeTokensScript.INK, true)
-	_add_label("Cost", Rect2(12.0, 98.0, 76.0, 20.0), 15, ThemeTokensScript.INK)
-	_add_label("Rarity", Rect2(88.0, 98.0, 80.0, 20.0), 15, ThemeTokensScript.INK)
-	_add_label("Stars", Rect2(12.0, 118.0, 156.0, 18.0), 14, ThemeTokensScript.INK)
+	_add_label("HeroName", Rect2(10.0, 7.0, 170.0, 30.0), 16, ThemeTokensScript.PARCHMENT, true)
+	_add_label("FactionClass", Rect2(90.0, 44.0, 84.0, 54.0), 12, ThemeTokensScript.PARCHMENT, true)
+	_add_label("Cost", Rect2(90.0, 104.0, 80.0, 20.0), 14, ThemeTokensScript.GOLD)
+	_add_label("Rarity", Rect2(90.0, 124.0, 80.0, 20.0), 13, ThemeTokensScript.PARCHMENT)
+	_add_label("Stars", Rect2(10.0, 145.0, 160.0, 18.0), 14, ThemeTokensScript.GOLD)
 
 func _add_label(node_name: String, rect: Rect2, font_size: int, color: Color, wrap: bool = false) -> void:
 	var label := Label.new()

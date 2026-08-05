@@ -29,7 +29,7 @@ describe("Alpha content bundle", () => {
     };
     const manifest = JSON.parse(readFileSync(assetManifestPath, "utf8")) as {
       assets: Record<string, { path: string; frames?: Array<{ x: number; y: number; width: number; height: number }> }>;
-      visual_profiles: Record<string, { portrait: string; sprite: string; icon: string; vfx: string; animations: Record<string, string> }>;
+      visual_profiles: Record<string, { portrait: string; sprite: string; icon: string; vfx: string; animation_mode: string; animations: Record<string, string> }>;
       items: Record<string, { icon: string; badge?: string }>;
       biomes: Record<string, { layers: string[] }>;
       transformations: Record<string, { accessory: string; aura: string; vfx: string; icon: string; portrait_badge: string }>;
@@ -41,8 +41,9 @@ describe("Alpha content bundle", () => {
       expect(entry, `missing visual profile ${profile.id}`).toBeTruthy();
       expect([entry?.portrait, entry?.sprite, entry?.icon, entry?.vfx].every((key) => Boolean(key && hasAsset(key)))).toBe(true);
       expect([profile.portrait_key, profile.sprite_key, profile.ability_icon_key, profile.vfx_key].every(hasAsset)).toBe(true);
+      expect(entry?.animation_mode).toBe("rig_transform_static_pose");
       expect(Object.keys(entry?.animations ?? {}).sort()).toEqual([...profile.animations].sort());
-      expect(Object.values(entry?.animations ?? {}).every((key) => (manifest.assets[key]?.frames?.length ?? 0) >= 6)).toBe(true);
+      expect(Object.values(entry?.animations ?? {}).every((key) => (manifest.assets[key]?.frames?.length ?? 0) === 1)).toBe(true);
     }
 
     for (const item of [...bundle.normal_items, ...bundle.unique_items]) {

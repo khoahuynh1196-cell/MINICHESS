@@ -2,8 +2,10 @@ class_name MonsterView
 extends Node2D
 
 const AssetManifestScript = preload("res://scripts/presentation/asset_manifest.gd")
-const CELL_WIDTH := 340.0
-const CELL_HEIGHT := 130.0
+const BOARD_COLUMNS := 4
+const CELL_WIDTH := 250.0
+const CELL_HEIGHT := 120.0
+const BOARD_ORIGIN := Vector2(40.0, 190.0)
 
 var monster_id := "meadow"
 var display_name := "Monster"
@@ -67,7 +69,7 @@ func _process(delta: float) -> void:
 		cutout.position.y = -8.0 + sin(_elapsed * 3.5) * 2.0
 
 func _update_position() -> void:
-	position = Vector2((grid_index % 3 + 0.5) * CELL_WIDTH, (grid_index / 3 + 0.5) * CELL_HEIGHT)
+	position = BOARD_ORIGIN + Vector2((grid_index % BOARD_COLUMNS + 0.5) * CELL_WIDTH, (grid_index / BOARD_COLUMNS + 0.5) * CELL_HEIGHT)
 
 func _draw() -> void:
 	# Ground, HP, and identity are engine-owned so combat state never lives in the art.

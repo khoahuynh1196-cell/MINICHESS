@@ -23,11 +23,12 @@ const FeedbackOverlayScript = preload("res://scripts/ui/feedback_overlay.gd")
 const CombatHudScript = preload("res://scripts/ui/combat_hud.gd")
 const CombatVfxPoolScript = preload("res://scripts/combat_vfx_pool.gd")
 const RunRecapScreenScript = preload("res://scripts/ui/run_recap_screen.gd")
-const BOARD_COLUMNS := 3
-const BOARD_ROWS := 8
-const CELL_WIDTH := 340.0
-const CELL_HEIGHT := 130.0
-const BOARD_RECT := Rect2(0.0, 0.0, CELL_WIDTH * BOARD_COLUMNS, CELL_HEIGHT * BOARD_ROWS)
+const BOARD_COLUMNS := 4
+const BOARD_ROWS := 6
+const CELL_WIDTH := 250.0
+const CELL_HEIGHT := 120.0
+const BOARD_ORIGIN := Vector2(40.0, 190.0)
+const BOARD_RECT := Rect2(BOARD_ORIGIN, Vector2(CELL_WIDTH * BOARD_COLUMNS, CELL_HEIGHT * BOARD_ROWS))
 const COMBAT_NOTICE_BODY_FONT_SIZE := 20.0
 const COMBAT_NOTICE_BODY_LINES := 4.0
 const COMBAT_NOTICE_VERTICAL_PADDING := 44.0
@@ -578,6 +579,7 @@ func _spawn_unit(event) -> void:
 		unit.set_sound_enabled(bool(settings.get("sound", true)))
 	unit_views[unit_id] = unit
 	add_child(unit)
+	unit.visible = screen_router == null or screen_router.current_screen_id == "combat"
 	if side == "enemy" and _is_boss_unit(unit):
 		_emphasize_camera(unit)
 	_ensure_manifest_hud_item_icon()
@@ -725,10 +727,10 @@ func _show_biome_layer(biome_id: String) -> void:
 	layer.scale = Vector2(BOARD_RECT.size.x / texture.get_size().x, BOARD_RECT.size.y / texture.get_size().y)
 
 func board_tile_fill_color() -> Color:
-	return Color(0.12, 0.16, 0.22, 0.56)
+	return Color(0.10, 0.15, 0.23, 0.42)
 
 func board_base_color() -> Color:
-	return Color(0.04, 0.07, 0.12, 0.22)
+	return Color(0.03, 0.05, 0.10, 0.16)
 
 func _ensure_manifest_hud_item_icon() -> void:
 	var icon := get_node_or_null("ManifestHudItemIcon") as Sprite2D
@@ -825,6 +827,7 @@ func set_reduced_motion(enabled: bool) -> void:
 func show_mobile_screen(screen_id: String) -> void:
 	if screen_router == null or not screen_router.show_screen(screen_id):
 		return
+	_set_combat_world_visible(screen_id == "combat")
 	match screen_id:
 		"lobby":
 			screen_router.lobby_screen.set_continue_available(not local_run_store.load_run().is_empty())
@@ -839,6 +842,21 @@ func show_mobile_screen(screen_id: String) -> void:
 			screen_router.collection_screen.bind_collection()
 		_:
 			_build_mobile_screen(screen_id)
+
+func _set_combat_world_visible(visible: bool) -> void:
+	# Prepare owns its own tactical preview. Replay actors must not bleed through
+	# translucent staging surfaces when the player is arranging a formation.
+	for unit in unit_views.values():
+		if is_instance_valid(unit):
+			unit.visible = visible
+	for node_name in ["BiomeLayer", "ManifestHudItemIcon"]:
+		var node := get_node_or_null(node_name) as CanvasItem
+		if node != null:
+			node.visible = visible
+	if combat_vfx_pool != null:
+		combat_vfx_pool.visible = visible
+	if combat_camera != null:
+		combat_camera.enabled = visible
 
 func _select_encounter(_round: int) -> void:
 	if run_state.run_id.is_empty():
@@ -1051,10 +1069,10 @@ func _place_hero_on_first_open_tile(hero_instance_id: String) -> void:
 
 func _build_combat_screen(root: Control) -> void:
 	var layout := combat_layout()
-	var panel := _screen_panel(root, Rect2(layout.controls), "Authoritative combat replay")
+	var panel := _screen_panel(root, Rect2(layout.controls), "COMBAT COMMAND DECK")
 	panel.get_parent().name = "CombatReplayControls"
 	var detail := Label.new()
-	detail.text = "Resolved server replay. Pause and speed only change this local presentation."
+	detail.text = "SERVER RESOLVED  |  Playback controls never alter combat."
 	detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	detail.add_theme_font_size_override("font_size", 22)
 	panel.add_child(detail)
@@ -1068,15 +1086,15 @@ func _build_combat_screen(root: Control) -> void:
 		reward_button.name = "ReviewRoundRewards"
 		reward_button.tooltip_text = "Open the authoritative rewards after watching this combat replay."
 		panel.add_child(reward_button)
-	var notice := _screen_panel(root, Rect2(layout.message), "Battle board")
+	var notice := _screen_panel(root, Rect2(layout.message), "4 x 6 ARENA")
 	notice.get_parent().name = "CombatBoardMessage"
 	var label := Label.new()
-	label.text = "Live board above: hero and monster cutouts, side outlines, health/mana bars, status labels, and replay VFX."
+	label.text = "Enemy ranks occupy the upper half. Your squad holds the lower half."
 	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	label.add_theme_font_size_override("font_size", 20)
 	notice.add_child(label)
 	var provenance := Label.new()
-	provenance.text = "Positions and outcomes stay server-authoritative; controls never change combat simulation."
+	provenance.text = "Health bars, VFX, positions, and outcome come from the authoritative event stream."
 	provenance.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	provenance.add_theme_font_size_override("font_size", 20)
 	provenance.add_theme_color_override("font_color", ThemeTokensScript.MUTED)
@@ -1084,8 +1102,8 @@ func _build_combat_screen(root: Control) -> void:
 
 func combat_layout() -> Dictionary:
 	var margin := 24.0
-	var controls := Rect2(margin, BOARD_RECT.end.y + margin, 1080.0 - margin * 2.0, 220.0)
-	var message := Rect2(margin, controls.end.y + 20.0, 1080.0 - margin * 2.0, combat_notice_height())
+	var controls := Rect2(margin, BOARD_RECT.end.y + margin, 1080.0 - margin * 2.0, 170.0)
+	var message := Rect2(margin, controls.end.y + 16.0, 1080.0 - margin * 2.0, combat_notice_height())
 	return { "controls": controls, "message": message }
 
 func combat_notice_height() -> float:
