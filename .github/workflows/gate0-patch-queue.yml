@@ -43,11 +43,9 @@ jobs:
           fi
 
           test "$(( ${#direct[@]} + ${#manifests[@]} ))" -eq 1
-          : > /tmp/gate0-source-files
 
           if (( ${#direct[@]} == 1 )); then
             source_patch="${direct[0]}"
-            printf '%s\n' "$source_patch" >> /tmp/gate0-source-files
             if [[ "$source_patch" == *.patch ]]; then
               cp "$source_patch" /tmp/gate0-task.patch
             else
@@ -82,7 +80,6 @@ jobs:
           compressed = base64.b64decode(encoded, validate=True)
           Path("/tmp/gate0-task.patch").write_bytes(gzip.decompress(compressed))
           PY
-            printf '%s\n' "$manifest" "${parts[@]}" >> /tmp/gate0-source-files
           fi
 
           test -s /tmp/gate0-task.patch
@@ -113,8 +110,11 @@ jobs:
         run: |
           set -euo pipefail
           git am --3way /tmp/gate0-task.patch
-          mapfile -t source_files < /tmp/gate0-source-files
-          git rm -- "${source_files[@]}"
+          shopt -s nullglob
+          queue_artifacts=(.gate0/patches/*)
+          if (( ${#queue_artifacts[@]} > 0 )); then
+            git rm -- "${queue_artifacts[@]}"
+          fi
           git commit --amend --no-edit
 
       - name: Install dependencies
