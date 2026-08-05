@@ -1,0 +1,132 @@
+From 08b93e6feb75a0bc489c0a435f1e25ff59519c6a Mon Sep 17 00:00:00 2001
+From: Gate 0 Task Implementer <gate0-task@example.invalid>
+Date: Wed, 5 Aug 2026 19:27:54 +0000
+Subject: [PATCH] refactor: share canonical bundle hashing
+
+---
+ game-core/src/content/compiler.ts             | 18 +-------
+ game-core/src/serialization/canonical-json.ts | 41 +++++++++++++++++++
+ .../test/serialization/canonical-json.test.ts | 23 +++++++++++
+ 3 files changed, 66 insertions(+), 16 deletions(-)
+ create mode 100644 game-core/src/serialization/canonical-json.ts
+ create mode 100644 game-core/test/serialization/canonical-json.test.ts
+
+diff --git a/game-core/src/content/compiler.ts b/game-core/src/content/compiler.ts
+index 2cc78f9..f73594a 100644
+--- a/game-core/src/content/compiler.ts
++++ b/game-core/src/content/compiler.ts
+@@ -1,4 +1,5 @@
+ import { validateEffectDefinition, type CombatEffect } from "../effects/definitions.js";
++import { fnv1a64Hex, stableStringify } from "../serialization/canonical-json.js";
+ import { ENCOUNTER_BIOMES } from "./types.js";
+ import type {
+   CompiledContentBundle,
+@@ -337,21 +338,6 @@ function normalizeEffect(value: unknown): CombatEffect {
+   };
+ }
+ 
+-function stableSerialize(value: unknown): string {
+-  if (value === null || typeof value === "boolean" || typeof value === "number" || typeof value === "string") return JSON.stringify(value);
+-  if (Array.isArray(value)) return `[${value.map(stableSerialize).join(",")}]`;
+-  if (!isRecord(value)) throw new Error("Content contains an unsupported value");
+-  return `{${Object.keys(value).sort().map((key) => `${JSON.stringify(key)}:${stableSerialize(value[key])}`).join(",")}}`;
+-}
+-
+-function fnv1a64Hex(input: string): string {
+-  let hash = 0xcbf29ce484222325n;
+-  for (const character of input) {
+-    hash ^= BigInt(character.charCodeAt(0));
+-    hash = BigInt.asUintN(64, hash * 0x100000001b3n);
+-  }
+-  return hash.toString(16).padStart(16, "0");
+-}
+ 
+ function toReadonlyMap<T extends RawIdentifiedContent>(values: readonly T[]): ReadonlyMap<string, T> {
+   return new Map(values.map((value) => [value.id, Object.freeze({ ...value })]));
+@@ -431,7 +417,7 @@ export function compileContentBundle(raw: unknown): CompiledContentBundle {
+   const canonical: RawContentBundle = { version, heroes, skills, traits, visual_profiles: visualProfiles, normal_items: normalItems, unique_items: uniqueItems, transformations, encounters };
+   return Object.freeze({
+     version,
+-    contentHash: fnv1a64Hex(stableSerialize(canonical)),
++    contentHash: fnv1a64Hex(stableStringify(canonical)),
+     manifest: Object.freeze({
+       heroCount: heroes.length,
+       shopHeroCount: heroes.filter((hero) => !hero.is_unique_hero).length,
+diff --git a/game-core/src/serialization/canonical-json.ts b/game-core/src/serialization/canonical-json.ts
+new file mode 100644
+index 0000000..57d9d66
+--- /dev/null
++++ b/game-core/src/serialization/canonical-json.ts
+@@ -0,0 +1,41 @@
++import { createHash } from "node:crypto";
++
++function unsupported(value: unknown): never {
++  const kind = value === undefined ? "undefined" : typeof value;
++  throw new Error(`Unsupported canonical JSON value: ${kind}`);
++}
++
++export function stableStringify(value: unknown): string {
++  if (value === null || typeof value === "string" || typeof value === "boolean") {
++    return JSON.stringify(value);
++  }
++  if (typeof value === "number") {
++    if (!Number.isFinite(value)) return unsupported(value);
++    return JSON.stringify(value);
++  }
++  if (Array.isArray(value)) {
++    return `[${value.map(stableStringify).join(",")}]`;
++  }
++  if (typeof value === "object") {
++    const record = value as Record<string, unknown>;
++    return `{${Object.keys(record).sort().map((key) => {
++      const entry = record[key];
++      if (entry === undefined) return unsupported(entry);
++      return `${JSON.stringify(key)}:${stableStringify(entry)}`;
++    }).join(",")}}`;
++  }
++  return unsupported(value);
++}
++
++export function fnv1a64Hex(input: string): string {
++  let hash = 0xcbf29ce484222325n;
++  for (const character of input) {
++    hash ^= BigInt(character.charCodeAt(0));
++    hash = BigInt.asUintN(64, hash * 0x100000001b3n);
++  }
++  return hash.toString(16).padStart(16, "0");
++}
++
++export function sha256Hex(value: unknown): string {
++  return createHash("sha256").update(stableStringify(value)).digest("hex");
++}
+diff --git a/game-core/test/serialization/canonical-json.test.ts b/game-core/test/serialization/canonical-json.test.ts
+new file mode 100644
+index 0000000..fe01178
+--- /dev/null
++++ b/game-core/test/serialization/canonical-json.test.ts
+@@ -0,0 +1,23 @@
++import { describe, expect, it } from "vitest";
++
++import { fnv1a64Hex, sha256Hex, stableStringify } from "../../src/serialization/canonical-json.js";
++
++describe("canonical JSON", () => {
++  it("sorts object keys recursively and preserves array order", () => {
++    expect(stableStringify({ z: 1, a: { y: 2, x: 3 }, list: [2, 1] }))
++      .toBe('{"a":{"x":3,"y":2},"list":[2,1],"z":1}');
++  });
++
++  it("keeps the legacy FNV digest stable", () => {
++    expect(fnv1a64Hex("abc")).toBe("e71fa2190541574b");
++  });
++
++  it("uses a 64-character SHA-256 digest for new rulesets", () => {
++    expect(sha256Hex({ b: 2, a: 1 })).toMatch(/^[0-9a-f]{64}$/);
++    expect(sha256Hex({ b: 2, a: 1 })).toBe(sha256Hex({ a: 1, b: 2 }));
++  });
++
++  it("rejects undefined", () => {
++    expect(() => stableStringify({ value: undefined })).toThrow("Unsupported canonical JSON value");
++  });
++});
+-- 
+2.47.3
