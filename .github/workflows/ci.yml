@@ -35,8 +35,10 @@ jobs:
       - uses: actions/checkout@v4
       - name: Verify Godot runtime
         run: godot --version
+      - name: Import Godot project assets
+        run: godot --headless --path client-godot --editor --quit-after 2
       - name: Run Godot regression suite
         run: |
           for test in client-godot/test/*_test.gd; do
-            godot --headless --path client-godot --script "res://test/$(basename "$test")" --quit
+            godot --headless --path client-godot --script "res://test/$(basename "$test")"
           done
