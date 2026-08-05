@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - production/gate-0-canonical-rules
+  pull_request:
+    branches:
+      - main
 
 permissions:
   contents: write
@@ -39,11 +42,13 @@ jobs:
           pnpm run check
 
       - name: Create baseline tag when absent
+        if: github.event_name == 'push'
         shell: bash
         run: |
           set -euo pipefail
           baseline_sha=417ede007c9627fb0262cf18bf7b1c2af3ac3380
           if git ls-remote --exit-code --tags origin refs/tags/alpha-pve-0.3.0-baseline >/dev/null 2>&1; then
+            git fetch --tags origin alpha-pve-0.3.0-baseline
             test "$(git rev-list -n 1 alpha-pve-0.3.0-baseline)" = "$baseline_sha"
           else
             git config user.name "github-actions[bot]"
