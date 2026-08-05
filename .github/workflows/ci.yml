@@ -36,7 +36,7 @@ jobs:
       - name: Verify Godot runtime
         run: godot --version
       - name: Import Godot project assets
-        run: godot --headless --path client-godot --editor --quit-after 2
+        run: godot --headless --path client-godot --import
       - name: Run Godot regression suite
         run: |
           for test in client-godot/test/*_test.gd; do
