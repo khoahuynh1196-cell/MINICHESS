@@ -23,6 +23,7 @@ export {
   type SummonDefinition,
 } from "./effects/definitions.js";
 export { compileContentBundle } from "./content/compiler.js";
+export { validateContentAgainstRuleset } from "./compatibility/content-ruleset.js";
 export type { CompiledCombatTrigger, CompiledContentBundle, CompiledItem, CompiledUniqueItem, ContentManifest, RawContentBundle, RawEncounter, RawEncounterReward, RawUniqueItem } from "./content/types.js";
 export { compileRuleset } from "./rules/compiler.js";
 export type { BoardGeometry, CompiledRuleset, ProgressionLevelRule, RuleRowRange, RulesetRarity, ShopOddsTuple } from "./rules/types.js";

@@ -24,7 +24,7 @@ const REQUIRED_STATS = [
 ] as const;
 const REQUIRED_ANCHORS = ["head", "chest", "back", "feet", "weapon"] as const;
 const REQUIRED_ANIMATIONS = ["idle", "move", "basic_attack", "hit", "skill_cast", "death"] as const;
-const ALPHA_V03_HERO_IDS = new Set(Array.from({ length: 20 }, (_, index) => `H${String(index + 1).padStart(2, "0")}`));
+const RETAINED_ALPHA_HERO_IDS = new Set(Array.from({ length: 20 }, (_, index) => `H${String(index + 1).padStart(2, "0")}`));
 const ITEM_MODIFIER_STATS = [
   "max_hp", "attack_damage", "attack_speed", "armor", "magic_resist", "move_speed",
   "starting_mana", "max_mana", "crit_chance", "crit_multiplier", "skill_power",
@@ -280,7 +280,6 @@ function requireEncounter(value: unknown): RawEncounter {
     if (!isRecord(enemy)) throw new Error(`${encounter.id}.enemy_composition[${index}] must be an object`);
     const heroId = requireString(enemy.hero_id, `${encounter.id}.enemy_composition[${index}].hero_id`);
     const position = requireSafeInteger(enemy.position, `${encounter.id}.enemy_composition[${index}].position`, 0);
-    if (position > 11) throw new Error(`${encounter.id}.enemy_composition[${index}].position must be <= 11`);
     const statMultiplier = requireSafeInteger(enemy.stat_multiplier, `${encounter.id}.enemy_composition[${index}].stat_multiplier`, 1);
     if (statMultiplier > 5_000) throw new Error(`${encounter.id}.enemy_composition[${index}].stat_multiplier must be <= 5000`);
     return { hero_id: heroId, position, stat_multiplier: statMultiplier } satisfies RawEncounterEnemy;
@@ -347,7 +346,7 @@ function toReadonlyValues<T extends RawIdentifiedContent>(values: readonly T[]):
   return Object.freeze(values.map((value) => Object.freeze({ ...value })));
 }
 
-function validateAlphaV03Cardinality(input: {
+function validateRetainedAlphaCardinality(input: {
   readonly version: string;
   readonly heroes: readonly RawHero[];
   readonly traits: readonly RawIdentifiedContent[];
@@ -356,19 +355,19 @@ function validateAlphaV03Cardinality(input: {
   readonly transformations: readonly RawIdentifiedContent[];
   readonly encounters: readonly RawEncounter[];
 }): void {
-  if (input.version !== "alpha-0.3.0") return;
+  if (input.version !== "alpha-0.3.0" && input.version !== "alpha-0.4.0") return;
   const speciesTraits = input.traits.filter((trait) => (trait as Record<string, unknown>).kind === "species").length;
   const classTraits = input.traits.filter((trait) => (trait as Record<string, unknown>).kind === "class").length;
   const shopHeroes = input.heroes.filter((hero) => !hero.is_unique_hero).length;
   const uniqueHeroes = input.heroes.filter((hero) => hero.is_unique_hero).length;
   const alphaHeroIds = new Set(input.heroes.map((hero) => hero.id));
-  const hasInitialHeroRoster = alphaHeroIds.size === ALPHA_V03_HERO_IDS.size && [...ALPHA_V03_HERO_IDS].every((heroId) => alphaHeroIds.has(heroId));
+  const hasInitialHeroRoster = alphaHeroIds.size === RETAINED_ALPHA_HERO_IDS.size && [...RETAINED_ALPHA_HERO_IDS].every((heroId) => alphaHeroIds.has(heroId));
   const uniqueRevealCount = input.encounters.flatMap((encounter) => encounter.rewards).filter((reward) => reward.kind === "unique_reveal").length;
   const validRounds = input.encounters.length === 8 && input.encounters.every((encounter) => encounter.round >= 1 && encounter.round <= 8);
   if (
     input.heroes.length !== 20 || !hasInitialHeroRoster || shopHeroes !== 20 || uniqueHeroes !== 0 || speciesTraits !== 5 || classTraits !== 5 || input.normalItems.length !== 12 ||
     input.uniqueItems.length !== 6 || input.transformations.length !== 6 || !validRounds || uniqueRevealCount !== 1
-  ) throw new Error("Alpha v0.3 content requires hero IDs H01 through H20, 20 shop heroes and 0 Unique heroes, 5 species traits, 5 class traits, 12 normal items, 6 Unique items, 6 transformations, 8 encounters, and one unique_reveal");
+  ) throw new Error("Retained Alpha content requires hero IDs H01 through H20, 20 shop heroes and 0 Unique heroes, 5 species traits, 5 class traits, 12 normal items, 6 Unique items, 6 transformations, 8 encounters, and one unique_reveal");
 }
 
 export function compileContentBundle(raw: unknown): CompiledContentBundle {
@@ -405,15 +404,11 @@ export function compileContentBundle(raw: unknown): CompiledContentBundle {
     const round = encounter.round;
     if (encounterRounds.has(round)) throw new Error(`Duplicate encounter round: ${round}`);
     encounterRounds.add(round);
-    const rewards = encounter.rewards;
-    if (round !== 4 && rewards.some((reward) => reward.kind === "unique_reveal")) {
-      throw new Error(`unique_reveal is only valid on round 4 (found on round ${round})`);
-    }
     for (const enemy of encounter.enemy_composition ?? []) {
       if (!heroIds.has(enemy.hero_id)) throw new Error(`${encounter.id}.enemy_composition references missing hero ${enemy.hero_id}`);
     }
   }
-  validateAlphaV03Cardinality({ version, heroes, traits, normalItems, uniqueItems, transformations, encounters });
+  validateRetainedAlphaCardinality({ version, heroes, traits, normalItems, uniqueItems, transformations, encounters });
   const canonical: RawContentBundle = { version, heroes, skills, traits, visual_profiles: visualProfiles, normal_items: normalItems, unique_items: uniqueItems, transformations, encounters };
   return Object.freeze({
     version,
