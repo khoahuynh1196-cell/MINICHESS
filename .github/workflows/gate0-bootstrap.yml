@@ -60,16 +60,33 @@ jobs:
             git push origin refs/tags/alpha-pve-0.3.0-baseline
           fi
 
+      - name: Prepare current Gate 0 workspace
+        shell: bash
+        run: |
+          set -euo pipefail
+          pnpm install --frozen-lockfile
+          pnpm --filter @auto-battler/game-core build
+
       - name: Package current branch source
-        if: always()
         shell: bash
         run: git archive --format=tar.gz --output=/tmp/gate0-source.tar.gz HEAD
 
+      - name: Package prepared current workspace
+        shell: bash
+        run: tar --exclude=.git -czf /tmp/gate0-workspace.tar.gz .
+
       - name: Upload source snapshot
-        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: gate0-source
           path: /tmp/gate0-source.tar.gz
+          if-no-files-found: error
+          retention-days: 3
+
+      - name: Upload prepared workspace
+        uses: actions/upload-artifact@v4
+        with:
+          name: gate0-workspace
+          path: /tmp/gate0-workspace.tar.gz
           if-no-files-found: error
           retention-days: 3
