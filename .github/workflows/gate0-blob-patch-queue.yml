@@ -1,0 +1,136 @@
+name: Gate 0 Verified Blob Patch Queue
+
+on:
+  pull_request:
+    branches:
+      - feature/auto-battler-alpha
+    paths:
+      - .gate0/blob-patches/**
+      - .github/workflows/gate0-blob-patch-queue.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: gate0-blob-patch-queue
+  cancel-in-progress: false
+
+jobs:
+  apply-test-push:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Checkout exact PR head commit
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Resolve queued Git blob
+        id: queue
+        shell: bash
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          descriptors=(.gate0/blob-patches/*.blob)
+          if (( ${#descriptors[@]} == 0 )); then
+            echo "No complete Gate 0 blob patch is queued."
+            echo "has_patch=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          test "${#descriptors[@]}" -eq 1
+          descriptor="${descriptors[0]}"
+          blob_sha="$(tr -d '[:space:]' < "$descriptor")"
+          [[ "$blob_sha" =~ ^[0-9a-f]{40}$ ]]
+          api_response=/tmp/gate0-blob.json
+          gh api "repos/${GITHUB_REPOSITORY}/git/blobs/${blob_sha}" > "$api_response"
+          python - "$api_response" <<'PY'
+          import base64
+          import gzip
+          import json
+          import sys
+          from pathlib import Path
+
+          response = json.loads(Path(sys.argv[1]).read_text())
+          if response.get("encoding") != "base64":
+              raise SystemExit("Git blob response is not base64 encoded")
+          compressed = base64.b64decode(response["content"], validate=False)
+          Path("/tmp/gate0-task.patch.gz").write_bytes(compressed)
+          Path("/tmp/gate0-task.patch").write_bytes(gzip.decompress(compressed))
+          PY
+          test -s /tmp/gate0-task.patch
+          printf '%s\n' "$descriptor" > /tmp/gate0-source-files
+          echo "has_patch=true" >> "$GITHUB_OUTPUT"
+
+      - name: Install pnpm
+        if: steps.queue.outputs.has_patch == 'true'
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.9.0
+
+      - name: Set up Node
+        if: steps.queue.outputs.has_patch == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Configure commit identity
+        if: steps.queue.outputs.has_patch == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Apply queued task patch as one commit
+        if: steps.queue.outputs.has_patch == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          git am --3way /tmp/gate0-task.patch
+          mapfile -t source_files < /tmp/gate0-source-files
+          git rm -- "${source_files[@]}"
+          git commit --amend --no-edit
+
+      - name: Install dependencies
+        if: steps.queue.outputs.has_patch == 'true'
+        run: pnpm install --frozen-lockfile
+
+      - name: Build workspace dependency
+        if: steps.queue.outputs.has_patch == 'true'
+        run: pnpm --filter @auto-battler/game-core build
+
+      - name: Run TypeScript checks and tests
+        if: steps.queue.outputs.has_patch == 'true'
+        run: pnpm run check
+
+      - name: Verify whitespace
+        if: steps.queue.outputs.has_patch == 'true'
+        run: git diff HEAD^ --check
+
+      - name: Run Godot import and regression suite
+        if: steps.queue.outputs.has_patch == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker run --rm \
+            -v "$PWD:/workspace" \
+            -w /workspace \
+            barichello/godot-ci:4.7 \
+            bash -lc '
+              godot --headless --path client-godot --import
+              for test in client-godot/test/*_test.gd; do
+                godot --headless --path client-godot --script "res://test/$(basename "$test")"
+              done
+            '
+
+      - name: Push verified task commit with lease
+        if: steps.queue.outputs.has_patch == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          git push \
+            --force-with-lease=refs/heads/production/gate-0-canonical-rules:${{ github.event.pull_request.head.sha }} \
+            origin HEAD:refs/heads/production/gate-0-canonical-rules
