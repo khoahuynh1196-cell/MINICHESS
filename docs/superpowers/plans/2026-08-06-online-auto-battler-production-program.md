@@ -25,7 +25,7 @@
 
 ## Program decomposition
 
-The master specification spans multiple independent systems. Implementation is therefore split into eight plans. A detailed plan is written immediately before its gate begins, using the interfaces and verification evidence produced by the preceding gate. This prevents later online or presentation assumptions from being encoded before the canonical rules are stable.
+The master specification spans multiple independent systems. Implementation is split into eight plans. The exact reserved plan paths are listed below. A plan is expanded and reviewed immediately before its gate begins, using the interfaces and verification evidence produced by the preceding gate.
 
 ```text
 Gate 0  Canonical rules and migration foundation
@@ -49,15 +49,15 @@ Gate 7  Google Play testing and staged release
 
 ```text
 /rules
-  /production-0.1.0/ruleset.json      # authored canonical rules
+  /production-0.1.0/ruleset.json
 /content
-  /production-0.1.0/bundle.json       # retained launch roster/content
+  /production-0.1.0/bundle.json
 /game-core/src
-  /rules                              # ruleset compiler and board helpers
-  /simulation                         # deterministic combat
-  /effects                            # legal primitives
-  /content                            # content compiler
-  /compatibility                      # rules/content validation
+  /rules
+  /simulation
+  /effects
+  /content
+  /compatibility
 /server/src
   /modules/identity
   /modules/profile
@@ -94,12 +94,10 @@ Gate 7  Google Play testing and staged release
   /load-tests
   /observability
 /tools
-  rules/content/asset exporters and drift checks
 /docs/superpowers/plans
-  one executable plan per production gate
 ```
 
-The existing folders remain until their behavior is migrated and parity-tested. Deleting legacy code is always a final step in the gate that replaces it, never an opening cleanup step.
+Existing folders remain until their behavior is migrated and parity-tested. Deleting legacy code is a final step in the gate that replaces it, never an opening cleanup step.
 
 ---
 
@@ -119,7 +117,7 @@ The existing folders remain until their behavior is migrated and parity-tested. 
 **Acceptance gate:**
 
 - All TypeScript and Godot tests pass against the generated rules projection.
-- No production board/shop/progression constant remains independently hardcoded in the audited paths.
+- No production board/shop/progression constant remains independently hardcoded in audited paths.
 - A deterministic replay remains stable for repeated identical 4×8 snapshots.
 - Adventure API creates a 16-cell player board and five-slot shop using the production ruleset.
 
@@ -127,7 +125,7 @@ The existing folders remain until their behavior is migrated and parity-tested. 
 
 ## Gate 1 — Complete Adventure and Godot scene rebuild
 
-**Plan filename when Gate 0 passes:** `docs/superpowers/plans/YYYY-MM-DD-gate-1-adventure-client-rebuild.md`
+**Reserved plan path:** `docs/superpowers/plans/2026-08-06-gate-1-adventure-client-rebuild.md`
 
 **Produces:**
 
@@ -149,7 +147,7 @@ The existing folders remain until their behavior is migrated and parity-tested. 
 
 ## Gate 2 — Combat presentation and full asset/audio remake
 
-**Plan filename when Gate 1 passes:** `docs/superpowers/plans/YYYY-MM-DD-gate-2-combat-presentation-assets.md`
+**Reserved plan path:** `docs/superpowers/plans/2026-08-06-gate-2-combat-presentation-assets.md`
 
 **Produces:**
 
@@ -171,7 +169,7 @@ The existing folders remain until their behavior is migrated and parity-tested. 
 
 ## Gate 3 — Identity, profile, endpoint, and realtime foundation
 
-**Plan filename when Gate 2 passes:** `docs/superpowers/plans/YYYY-MM-DD-gate-3-identity-realtime-foundation.md`
+**Reserved plan path:** `docs/superpowers/plans/2026-08-06-gate-3-identity-realtime-foundation.md`
 
 **Produces:**
 
@@ -192,7 +190,7 @@ The existing folders remain until their behavior is migrated and parity-tested. 
 
 ## Gate 4 — Eight-player room, matchmaking, and Normal mode
 
-**Plan filename when Gate 3 passes:** `docs/superpowers/plans/YYYY-MM-DD-gate-4-eight-player-normal.md`
+**Reserved plan path:** `docs/superpowers/plans/2026-08-06-gate-4-eight-player-normal.md`
 
 **Produces:**
 
@@ -212,7 +210,7 @@ The existing folders remain until their behavior is migrated and parity-tested. 
 
 ## Gate 5 — Ranked, seasons, achievements, and match history
 
-**Plan filename when Gate 4 passes:** `docs/superpowers/plans/YYYY-MM-DD-gate-5-ranked-progression.md`
+**Reserved plan path:** `docs/superpowers/plans/2026-08-06-gate-5-ranked-progression.md`
 
 **Produces:**
 
@@ -233,7 +231,7 @@ The existing folders remain until their behavior is migrated and parity-tested. 
 
 ## Gate 6 — Production hardening, load, security, admin, and compliance
 
-**Plan filename when Gate 5 passes:** `docs/superpowers/plans/YYYY-MM-DD-gate-6-production-hardening.md`
+**Reserved plan path:** `docs/superpowers/plans/2026-08-06-gate-6-production-hardening.md`
 
 **Produces:**
 
@@ -254,7 +252,7 @@ The existing folders remain until their behavior is migrated and parity-tested. 
 
 ## Gate 7 — Google Play testing and staged release
 
-**Plan filename when Gate 6 passes:** `docs/superpowers/plans/YYYY-MM-DD-gate-7-google-play-release.md`
+**Reserved plan path:** `docs/superpowers/plans/2026-08-06-gate-7-google-play-release.md`
 
 **Produces:**
 
