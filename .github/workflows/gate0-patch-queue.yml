@@ -25,11 +25,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - name: Checkout Gate 0 branch
+      - name: Checkout exact queued commit
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          ref: production/gate-0-canonical-rules
+          ref: ${{ github.sha }}
 
       - name: Install pnpm
         uses: pnpm/action-setup@v4
@@ -91,5 +91,10 @@ jobs:
               done
             '
 
-      - name: Push verified task commit
-        run: git push origin HEAD:production/gate-0-canonical-rules
+      - name: Push verified task commit with lease
+        shell: bash
+        run: |
+          set -euo pipefail
+          git push \
+            --force-with-lease=refs/heads/production/gate-0-canonical-rules:${{ github.sha }} \
+            origin HEAD:refs/heads/production/gate-0-canonical-rules
