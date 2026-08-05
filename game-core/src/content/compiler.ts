@@ -1,4 +1,5 @@
 import { validateEffectDefinition, type CombatEffect } from "../effects/definitions.js";
+import { fnv1a64Hex, stableStringify } from "../serialization/canonical-json.js";
 import { ENCOUNTER_BIOMES } from "./types.js";
 import type {
   CompiledContentBundle,
@@ -337,21 +338,6 @@ function normalizeEffect(value: unknown): CombatEffect {
   };
 }
 
-function stableSerialize(value: unknown): string {
-  if (value === null || typeof value === "boolean" || typeof value === "number" || typeof value === "string") return JSON.stringify(value);
-  if (Array.isArray(value)) return `[${value.map(stableSerialize).join(",")}]`;
-  if (!isRecord(value)) throw new Error("Content contains an unsupported value");
-  return `{${Object.keys(value).sort().map((key) => `${JSON.stringify(key)}:${stableSerialize(value[key])}`).join(",")}}`;
-}
-
-function fnv1a64Hex(input: string): string {
-  let hash = 0xcbf29ce484222325n;
-  for (const character of input) {
-    hash ^= BigInt(character.charCodeAt(0));
-    hash = BigInt.asUintN(64, hash * 0x100000001b3n);
-  }
-  return hash.toString(16).padStart(16, "0");
-}
 
 function toReadonlyMap<T extends RawIdentifiedContent>(values: readonly T[]): ReadonlyMap<string, T> {
   return new Map(values.map((value) => [value.id, Object.freeze({ ...value })]));
@@ -431,7 +417,7 @@ export function compileContentBundle(raw: unknown): CompiledContentBundle {
   const canonical: RawContentBundle = { version, heroes, skills, traits, visual_profiles: visualProfiles, normal_items: normalItems, unique_items: uniqueItems, transformations, encounters };
   return Object.freeze({
     version,
-    contentHash: fnv1a64Hex(stableSerialize(canonical)),
+    contentHash: fnv1a64Hex(stableStringify(canonical)),
     manifest: Object.freeze({
       heroCount: heroes.length,
       shopHeroCount: heroes.filter((hero) => !hero.is_unique_hero).length,
