@@ -1,0 +1,65 @@
+name: Gate 0 Bootstrap
+
+on:
+  push:
+    branches:
+      - production/gate-0-canonical-rules
+
+permissions:
+  contents: write
+
+jobs:
+  baseline-and-source:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout implementation branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Enable pnpm
+        run: corepack enable
+
+      - name: Verify Alpha baseline in isolated worktree
+        shell: bash
+        run: |
+          set -euo pipefail
+          baseline_sha=417ede007c9627fb0262cf18bf7b1c2af3ac3380
+          git cat-file -e "${baseline_sha}^{commit}"
+          git worktree add /tmp/MINICHESS-alpha-baseline "$baseline_sha"
+          cd /tmp/MINICHESS-alpha-baseline
+          pnpm install --frozen-lockfile
+          pnpm run check
+
+      - name: Create baseline tag when absent
+        shell: bash
+        run: |
+          set -euo pipefail
+          baseline_sha=417ede007c9627fb0262cf18bf7b1c2af3ac3380
+          if git ls-remote --exit-code --tags origin refs/tags/alpha-pve-0.3.0-baseline >/dev/null 2>&1; then
+            test "$(git rev-list -n 1 alpha-pve-0.3.0-baseline)" = "$baseline_sha"
+          else
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git tag -a alpha-pve-0.3.0-baseline "$baseline_sha" -m "Alpha PvE code baseline before production rules migration"
+            git push origin refs/tags/alpha-pve-0.3.0-baseline
+          fi
+
+      - name: Package current branch source
+        shell: bash
+        run: git archive --format=tar.gz --output=/tmp/gate0-source.tar.gz HEAD
+
+      - name: Upload source snapshot
+        uses: actions/upload-artifact@v4
+        with:
+          name: gate0-source
+          path: /tmp/gate0-source.tar.gz
+          if-no-files-found: error
+          retention-days: 3
