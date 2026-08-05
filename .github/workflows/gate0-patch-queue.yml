@@ -1,0 +1,83 @@
+name: Gate 0 Verified Patch Queue
+
+on:
+  push:
+    branches:
+      - production/gate-0-canonical-rules
+    paths:
+      - .gate0/patches/**
+
+permissions:
+  contents: write
+
+concurrency:
+  group: gate0-patch-queue
+  cancel-in-progress: false
+
+jobs:
+  apply-test-push:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout Gate 0 branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: production/gate-0-canonical-rules
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.9.0
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Configure commit identity
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Apply queued task patch as one commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          patches=(.gate0/patches/*.patch)
+          test "${#patches[@]}" -eq 1
+          git am --3way "${patches[0]}"
+          git rm "${patches[0]}"
+          git commit --amend --no-edit
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build workspace dependency
+        run: pnpm --filter @auto-battler/game-core build
+
+      - name: Run TypeScript checks and tests
+        run: pnpm run check
+
+      - name: Verify whitespace
+        run: git diff HEAD^ --check
+
+      - name: Run Godot import and regression suite
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker run --rm \
+            -v "$PWD:/workspace" \
+            -w /workspace \
+            barichello/godot-ci:4.7 \
+            bash -lc '
+              godot --headless --path client-godot --import
+              for test in client-godot/test/*_test.gd; do
+                godot --headless --path client-godot --script "res://test/$(basename "$test")"
+              done
+            '
+
+      - name: Push verified task commit
+        run: git push origin HEAD:production/gate-0-canonical-rules
