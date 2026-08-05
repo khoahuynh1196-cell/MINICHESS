@@ -1,11 +1,12 @@
 name: Gate 0 Verified Patch Queue
 
 on:
-  push:
+  pull_request:
     branches:
-      - production/gate-0-canonical-rules
+      - feature/auto-battler-alpha
     paths:
       - .gate0/patches/**
+      - .github/workflows/gate0-patch-queue.yml
 
 permissions:
   contents: write
@@ -16,14 +17,15 @@ concurrency:
 
 jobs:
   apply-test-push:
+    if: github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - name: Checkout exact queued branch commit
+      - name: Checkout exact PR head commit
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          ref: ${{ github.sha }}
+          ref: ${{ github.event.pull_request.head.sha }}
 
       - name: Install pnpm
         uses: pnpm/action-setup@v4
@@ -47,10 +49,6 @@ jobs:
           set -euo pipefail
           shopt -s nullglob
           queued=(.gate0/patches/*.patch .gate0/patches/*.patch.gz.b64)
-          if [[ "${#queued[@]}" -eq 0 ]]; then
-            echo "No queued patch remains; verifying the cleanup commit."
-            exit 0
-          fi
           test "${#queued[@]}" -eq 1
           source_patch="${queued[0]}"
           apply_patch="$source_patch"
@@ -89,8 +87,10 @@ jobs:
               done
             '
 
-      - name: Push verified task commit
+      - name: Push verified task commit with lease
         shell: bash
         run: |
           set -euo pipefail
-          git push origin HEAD:refs/heads/production/gate-0-canonical-rules
+          git push \
+            --force-with-lease=refs/heads/production/gate-0-canonical-rules:${{ github.event.pull_request.head.sha }} \
+            origin HEAD:refs/heads/production/gate-0-canonical-rules
