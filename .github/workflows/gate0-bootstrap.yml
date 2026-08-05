@@ -6,7 +6,7 @@ on:
       - production/gate-0-canonical-rules
   pull_request:
     branches:
-      - main
+      - feature/auto-battler-alpha
 
 permissions:
   contents: write
