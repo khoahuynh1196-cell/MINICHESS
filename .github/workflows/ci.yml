@@ -22,17 +22,19 @@ jobs:
           node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @auto-battler/game-core build
       - run: pnpm run check
       - run: git diff --check
 
   godot:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
+    container:
+      image: barichello/godot-ci:4.7
     steps:
       - uses: actions/checkout@v4
-      - uses: firebelley/setup-godot@v1.1.0
-        with:
-          godot-version: 4.7.1
+      - name: Verify Godot runtime
+        run: godot --version
       - name: Run Godot regression suite
         run: |
           for test in client-godot/test/*_test.gd; do
