@@ -1,7 +1,20 @@
-import type { CombatEffect, CombatImmunity, CombatPassive, CombatSnapshot, CombatUnit, CompiledCombatTrigger, CompiledContentBundle } from "@auto-battler/game-core";
+import type { BoardGeometry, CombatEffect, CombatImmunity, CombatPassive, CombatSnapshot, CombatUnit, CompiledCombatTrigger, CompiledContentBundle } from "@auto-battler/game-core";
 import type { ItemInstance, LockedRoundSnapshot } from "./run-commands.js";
 
 const SCALE = 1_000;
+
+const ALPHA_V03_BOARD: BoardGeometry = Object.freeze({
+  columns: 3,
+  rows: 8,
+  enemyRows: Object.freeze({ start: 0, end: 3 }),
+  playerRows: Object.freeze({ start: 4, end: 7 }),
+  movement: "orthogonal",
+});
+
+function boardForContentVersion(contentVersion: string): BoardGeometry {
+  if (contentVersion === "alpha-0.3.0") return ALPHA_V03_BOARD;
+  throw new Error(`RULESET_BOARD_MISSING:${contentVersion}`);
+}
 
 export interface BuildCombatSnapshotInput {
   readonly content: CompiledContentBundle;
@@ -327,6 +340,7 @@ export function buildCombatSnapshot(input: BuildCombatSnapshotInput): CombatSnap
     contentVersion: input.lockedSnapshot.contentVersion,
     rulesetVersion: input.rulesetVersion,
     combatSeed: input.combatSeed,
+    board: boardForContentVersion(input.lockedSnapshot.contentVersion),
     defenderSide: "enemy",
     units: [...playerUnits, ...enemyUnits],
   };

@@ -21,6 +21,13 @@ describe("combat snapshot adapter", () => {
       combatId: "combat-h15-summon", combatSeed: "seed-h15-summon", rulesetVersion: "alpha-0.3.0",
     });
 
+    expect(snapshot.board).toEqual({
+      columns: 3, rows: 8,
+      enemyRows: { start: 0, end: 3 },
+      playerRows: { start: 4, end: 7 },
+      movement: "orthogonal",
+    });
+
     let enemyIndex = 0;
     const result = runHeadlessCombat({
       ...snapshot,

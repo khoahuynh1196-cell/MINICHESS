@@ -1,10 +1,9 @@
 export {
   SCALE,
   canonicalizeSnapshot,
-  findPathToRange,
+  hashCombatSnapshot,
   resolveDamage,
   runHeadlessCombat,
-  selectNearestTarget,
   type CombatEvent,
   type CombatImmunity,
   type CombatResult,
@@ -12,7 +11,6 @@ export {
   type CombatSnapshot,
   type CombatUnit,
   type CombatPassive,
-  type TargetingUnit,
 } from "./simulation/kernel.js";
 export { createSeededRng, type SeededRng } from "./simulation/seeded-rng.js";
 export {
@@ -28,3 +26,17 @@ export { compileContentBundle } from "./content/compiler.js";
 export type { CompiledCombatTrigger, CompiledContentBundle, CompiledItem, CompiledUniqueItem, ContentManifest, RawContentBundle, RawEncounter, RawEncounterReward, RawUniqueItem } from "./content/types.js";
 export { compileRuleset } from "./rules/compiler.js";
 export type { BoardGeometry, CompiledRuleset, ProgressionLevelRule, RuleRowRange, RulesetRarity, ShopOddsTuple } from "./rules/types.js";
+
+export {
+  assertBoardGeometry,
+  assertBoardPosition,
+  boardCellCount,
+  findPathToRange,
+  manhattanDistance,
+  playerBoardCellCount,
+  playerStartCell,
+  selectNearestTarget,
+  sortedNeighbors,
+  type BoardSide,
+  type TargetingUnit,
+} from "./rules/board.js";

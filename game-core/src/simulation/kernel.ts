@@ -1,12 +1,24 @@
 import { createSeededRng } from "./seeded-rng.js";
 import { validateEffectDefinition, type CombatEffect, type CombatStat } from "../effects/definitions.js";
+import { fnv1a64Hex, stableStringify } from "../serialization/canonical-json.js";
 import type { CombatTriggerKind } from "../content/types.js";
+import {
+  assertBoardGeometry,
+  assertBoardPosition,
+  boardCellCount,
+  findPathToRange,
+  manhattanDistance,
+  selectNearestTarget,
+  sortedNeighbors,
+  type BoardSide,
+  type TargetingUnit,
+} from "../rules/board.js";
+import type { BoardGeometry } from "../rules/types.js";
 
 export const SCALE = 1_000;
-const BOARD_CELL_COUNT = 24;
 const MAX_COMBAT_TICKS = 700;
 
-export type CombatSide = "player" | "enemy";
+export type CombatSide = BoardSide;
 export type CombatImmunity = "knockback";
 
 export interface CombatSkill {
@@ -57,6 +69,7 @@ export interface CombatSnapshot {
   readonly contentVersion: string;
   readonly rulesetVersion: string;
   readonly combatSeed: string;
+  readonly board: BoardGeometry;
   readonly units: readonly CombatUnit[];
   readonly maxTicks?: number;
   readonly defenderSide?: CombatSide;
@@ -111,13 +124,6 @@ export interface RuntimeUnit {
   readonly attackMeter: number;
 }
 
-export interface TargetingUnit {
-  readonly id: string;
-  readonly side: CombatSide;
-  readonly position: number;
-  readonly currentHp: number;
-  readonly attackRange: number;
-}
 
 interface MutableRuntimeUnit {
   id: string;
@@ -217,14 +223,16 @@ function assertSafeInteger(value: number, label: string, minimum = 0): void {
   }
 }
 
-function assertUnit(unit: CombatUnit): void {
+function assertUnit(board: BoardGeometry, unit: CombatUnit): void {
   if (unit.id.length === 0) {
     throw new Error("Unit ID must not be empty");
   }
   if (unit.side !== "player" && unit.side !== "enemy") {
     throw new Error(`Invalid unit side for ${unit.id}`);
   }
-  if (!Number.isSafeInteger(unit.position) || unit.position < 0 || unit.position >= BOARD_CELL_COUNT) {
+  try {
+    assertBoardPosition(board, unit.position);
+  } catch {
     throw new Error(`Invalid board position for ${unit.id}`);
   }
 
@@ -271,6 +279,15 @@ export function canonicalizeSnapshot(snapshot: CombatSnapshot): CombatSnapshot {
     throw new Error("Combat snapshot requires at least one unit");
   }
 
+  assertBoardGeometry(snapshot.board);
+  const board: BoardGeometry = Object.freeze({
+    columns: snapshot.board.columns,
+    rows: snapshot.board.rows,
+    enemyRows: Object.freeze({ ...snapshot.board.enemyRows }),
+    playerRows: Object.freeze({ ...snapshot.board.playerRows }),
+    movement: snapshot.board.movement,
+  });
+
   const maxTicks = snapshot.maxTicks ?? MAX_COMBAT_TICKS;
   assertSafeInteger(maxTicks, "maxTicks", 1);
   if (maxTicks > MAX_COMBAT_TICKS) {
@@ -290,7 +307,7 @@ export function canonicalizeSnapshot(snapshot: CombatSnapshot): CombatSnapshot {
   }));
 
   for (const unit of units) {
-    assertUnit(unit);
+    assertUnit(board, unit);
     if (unitIds.has(unit.id)) {
       throw new Error(`Duplicate unit ID: ${unit.id}`);
     }
@@ -308,38 +325,15 @@ export function canonicalizeSnapshot(snapshot: CombatSnapshot): CombatSnapshot {
     contentVersion: snapshot.contentVersion,
     rulesetVersion: snapshot.rulesetVersion,
     combatSeed: snapshot.combatSeed,
+    board,
     maxTicks,
     defenderSide: snapshot.defenderSide ?? "enemy",
     units: Object.freeze(units),
   });
 }
 
-function stableSerialize(value: unknown): string {
-  if (value === null || typeof value !== "object") {
-    return JSON.stringify(value);
-  }
-  if (Array.isArray(value)) {
-    return `[${value.map((item) => stableSerialize(item)).join(",")}]`;
-  }
-
-  const record = value as Record<string, unknown>;
-  return `{${Object.keys(record)
-    .sort(compareStrings)
-    .map((key) => `${JSON.stringify(key)}:${stableSerialize(record[key])}`)
-    .join(",")}}`;
-}
-
-function fnv1a64Hex(input: string): string {
-  let hash = 0xcbf29ce484222325n;
-  const prime = 0x100000001b3n;
-  const mask = 0xffffffffffffffffn;
-
-  for (let index = 0; index < input.length; index += 1) {
-    hash ^= BigInt(input.charCodeAt(index));
-    hash = (hash * prime) & mask;
-  }
-
-  return hash.toString(16).padStart(16, "0");
+export function hashCombatSnapshot(snapshot: CombatSnapshot): string {
+  return fnv1a64Hex(stableStringify(canonicalizeSnapshot(snapshot)));
 }
 
 function createMutableRuntimeUnit(unit: CombatUnit): MutableRuntimeUnit {
@@ -457,119 +451,12 @@ function readStat(unit: MutableRuntimeUnit, stat: CombatStat): number {
   }
 }
 
-function manhattanDistance(left: number, right: number): number {
-  const leftRow = Math.floor(left / 3);
-  const leftColumn = left % 3;
-  const rightRow = Math.floor(right / 3);
-  const rightColumn = right % 3;
-  return Math.abs(leftRow - rightRow) + Math.abs(leftColumn - rightColumn);
-}
-
-function sortedNeighbors(position: number): number[] {
-  const row = Math.floor(position / 3);
-  const column = position % 3;
-  const neighbors: number[] = [];
-
-  if (column > 0) {
-    neighbors.push(position - 1);
-  }
-  if (column < 2) {
-    neighbors.push(position + 1);
-  }
-  if (row > 0) {
-    neighbors.push(position - 3);
-  }
-  if (row < 7) {
-    neighbors.push(position + 3);
-  }
-
-  return neighbors.sort((left, right) => left - right);
-}
-
-/** Returns the positions to enter, excluding `start` and never entering target. */
-export function findPathToRange(
-  start: number,
-  target: number,
-  attackRange: number,
-  occupiedPositions: readonly number[],
-): readonly number[] | undefined {
-  if (manhattanDistance(start, target) <= attackRange) {
-    return [];
-  }
-
-  const blocked = new Set(occupiedPositions);
-  blocked.delete(start);
-  const queue: number[] = [start];
-  const predecessor = new Map<number, number>();
-  const visited = new Set<number>([start]);
-
-  for (let index = 0; index < queue.length; index += 1) {
-    const current = queue[index]!;
-    for (const next of sortedNeighbors(current)) {
-      if (visited.has(next) || blocked.has(next)) {
-        continue;
-      }
-      visited.add(next);
-      predecessor.set(next, current);
-
-      if (manhattanDistance(next, target) <= attackRange) {
-        const path: number[] = [next];
-        let step = next;
-        while (predecessor.get(step) !== start) {
-          const previous = predecessor.get(step);
-          if (previous === undefined) {
-            throw new Error("Path reconstruction failed");
-          }
-          path.push(previous);
-          step = previous;
-        }
-        return path.reverse();
-      }
-
-      queue.push(next);
-    }
-  }
-
-  return undefined;
-}
-
-export function selectNearestTarget(
-  actor: TargetingUnit,
-  candidates: readonly TargetingUnit[],
-  occupiedPositions: readonly number[],
-): TargetingUnit | undefined {
-  const options = candidates
-    .filter((candidate) => candidate.side !== actor.side && candidate.currentHp > 0)
-    .map((candidate) => ({
-      candidate,
-      path: findPathToRange(actor.position, candidate.position, actor.attackRange, occupiedPositions),
-    }))
-    .filter((option): option is { candidate: TargetingUnit; path: readonly number[] } => option.path !== undefined);
-
-  options.sort((left, right) => {
-    const pathDelta = left.path.length - right.path.length;
-    if (pathDelta !== 0) {
-      return pathDelta;
-    }
-    const hpDelta = left.candidate.currentHp - right.candidate.currentHp;
-    if (hpDelta !== 0) {
-      return hpDelta;
-    }
-    const positionDelta = left.candidate.position - right.candidate.position;
-    if (positionDelta !== 0) {
-      return positionDelta;
-    }
-    return compareStrings(left.candidate.id, right.candidate.id);
-  });
-
-  return options[0]?.candidate;
-}
-
 function sortUnitsById(units: readonly MutableRuntimeUnit[]): MutableRuntimeUnit[] {
   return [...units].sort((left, right) => compareStrings(left.id, right.id));
 }
 
 function selectEffectTargets(
+  board: BoardGeometry,
   effect: CombatEffect,
   source: MutableRuntimeUnit,
   lockedTarget: MutableRuntimeUnit | undefined,
@@ -587,7 +474,7 @@ function selectEffectTargets(
       const origin = lockedTarget ?? source;
       const enemies = livingUnits
         .filter((unit) => unit.side !== source.side && unit.id !== lockedTarget?.id)
-        .sort((left, right) => manhattanDistance(left.position, origin.position) - manhattanDistance(right.position, origin.position)
+        .sort((left, right) => manhattanDistance(board, left.position, origin.position) - manhattanDistance(board, right.position, origin.position)
           || compareStrings(left.id, right.id));
       return enemies[0] === undefined ? [] : [enemies[0]];
     }
@@ -595,11 +482,11 @@ function selectEffectTargets(
       return sortUnitsById(livingUnits.filter((unit) => unit.side !== source.side));
     case "adjacent_enemies":
       return sortUnitsById(
-        livingUnits.filter((unit) => unit.side !== source.side && manhattanDistance(unit.position, source.position) === 1),
+        livingUnits.filter((unit) => unit.side !== source.side && manhattanDistance(board, unit.position, source.position) === 1),
       );
     case "adjacent_allies":
       return sortUnitsById(
-        livingUnits.filter((unit) => unit.id !== source.id && unit.side === source.side && manhattanDistance(unit.position, source.position) === 1),
+        livingUnits.filter((unit) => unit.id !== source.id && unit.side === source.side && manhattanDistance(board, unit.position, source.position) === 1),
       );
     case "lowest_hp_ally": {
       const allies = livingUnits.filter((unit) => unit.side === source.side);
@@ -613,7 +500,7 @@ function selectEffectTargets(
       return allies[0] === undefined ? [] : [allies[0]];
     }
     case "rear_ally": {
-      const direction = source.side === "player" ? 3 : -3;
+      const direction = source.side === "player" ? board.columns : -board.columns;
       const position = source.position + direction;
       const ally = livingUnits.find((unit) => unit.side === source.side && unit.position === position);
       return ally === undefined ? [] : [ally];
@@ -622,7 +509,7 @@ function selectEffectTargets(
       if (traitOwnerId === undefined) return [];
       const allies = livingUnits
         .filter((unit) => unit.id !== source.id && unit.side === source.side && unit.passives.some((passive) => passive.ownerId === traitOwnerId))
-        .sort((left, right) => manhattanDistance(left.position, source.position) - manhattanDistance(right.position, source.position)
+        .sort((left, right) => manhattanDistance(board, left.position, source.position) - manhattanDistance(board, right.position, source.position)
           || compareStrings(left.id, right.id));
       return allies[0] === undefined ? [] : [allies[0]];
     }
@@ -630,7 +517,7 @@ function selectEffectTargets(
       if (traitOwnerId === undefined) return [];
       return sortUnitsById(livingUnits.filter((unit) => unit.id !== source.id
         && unit.side === source.side
-        && manhattanDistance(unit.position, source.position) === 1
+        && manhattanDistance(board, unit.position, source.position) === 1
         && unit.passives.some((passive) => passive.ownerId === traitOwnerId)));
     }
     case "all_trait_allies": {
@@ -790,7 +677,7 @@ export function runHeadlessCombat(input: CombatSnapshot): CombatResult {
     traitOwnerId?: string,
   ): void => {
     for (const effect of effects) {
-      for (const target of selectEffectTargets(effect, source, lockedTarget, runtimeUnits, traitOwnerId)) {
+      for (const target of selectEffectTargets(snapshot.board, effect, source, lockedTarget, runtimeUnits, traitOwnerId)) {
         emit(tick, "EFFECT_APPLIED", { effectId: effect.id, primitive: effect.primitive }, source.id, target.id);
         switch (effect.primitive) {
           case "deal_damage":
@@ -924,7 +811,7 @@ export function runHeadlessCombat(input: CombatSnapshot): CombatResult {
             const occupied = runtimeUnits
               .filter((unit) => unit.currentHp > 0 && unit.id !== target.id)
               .map((unit) => unit.position);
-            const path = findPathToRange(target.position, lockedTarget.position, 1, occupied);
+            const path = findPathToRange(snapshot.board, target.position, lockedTarget.position, 1, occupied);
             const next = path?.[Math.min(effect.distance!, path.length) - 1];
             if (next !== undefined) {
               const from = target.position;
@@ -936,16 +823,16 @@ export function runHeadlessCombat(input: CombatSnapshot): CombatResult {
           }
           case "retreat": {
             if (lockedTarget === undefined || (effect.onlyWhenEngaged === true
-              && manhattanDistance(target.position, lockedTarget.position) > target.attackRange)) {
+              && manhattanDistance(snapshot.board, target.position, lockedTarget.position) > target.attackRange)) {
               break;
             }
             const occupied = new Set(runtimeUnits
               .filter((unit) => unit.currentHp > 0 && unit.id !== target.id)
               .map((unit) => unit.position));
-            const candidates = sortedNeighbors(target.position)
+            const candidates = sortedNeighbors(snapshot.board, target.position)
               .filter((cell) => !occupied.has(cell))
               .sort((left, right) => {
-                const distanceDelta = manhattanDistance(right, lockedTarget.position) - manhattanDistance(left, lockedTarget.position);
+                const distanceDelta = manhattanDistance(snapshot.board, right, lockedTarget.position) - manhattanDistance(snapshot.board, left, lockedTarget.position);
                 return distanceDelta !== 0 ? distanceDelta : left - right;
               });
             const next = candidates[0];
@@ -961,19 +848,22 @@ export function runHeadlessCombat(input: CombatSnapshot): CombatResult {
             if (target.immunities.has("knockback")) {
               break;
             }
-            const sourceRow = Math.floor(source.position / 3);
-            const targetRow = Math.floor(target.position / 3);
+            const columns = snapshot.board.columns;
+            const sourceRow = Math.floor(source.position / columns);
+            const sourceColumn = source.position % columns;
+            const targetRow = Math.floor(target.position / columns);
+            const targetColumn = target.position % columns;
             const direction = targetRow === sourceRow
-              ? Math.sign((target.position % 3) - (source.position % 3))
-              : Math.sign(targetRow - sourceRow) * 3;
+              ? Math.sign(targetColumn - sourceColumn)
+              : Math.sign(targetRow - sourceRow) * columns;
             let destination = target.position;
             for (let step = 1; step <= effect.distance!; step += 1) {
               const candidate = target.position + direction * step;
               const blocked = runtimeUnits.some(
                 (unit) => unit.currentHp > 0 && unit.id !== target.id && unit.position === candidate,
               );
-              const crossesRow = Math.floor(candidate / 3) !== targetRow && Math.abs(direction) === 1;
-              if (candidate < 0 || candidate >= BOARD_CELL_COUNT || crossesRow || blocked) {
+              const crossesRow = Math.abs(direction) === 1 && Math.floor(candidate / columns) !== targetRow;
+              if (candidate < 0 || candidate >= boardCellCount(snapshot.board) || crossesRow || blocked) {
                 break;
               }
               destination = candidate;
@@ -993,7 +883,7 @@ export function runHeadlessCombat(input: CombatSnapshot): CombatResult {
             if (activeSummons.length >= 3) {
               break;
             }
-            const position = sortedNeighbors(source.position).find(
+            const position = sortedNeighbors(snapshot.board, source.position).find(
               (cell) => !runtimeUnits.some((unit) => unit.currentHp > 0 && unit.position === cell),
             );
             if (position === undefined) {
@@ -1158,7 +1048,7 @@ export function runHeadlessCombat(input: CombatSnapshot): CombatResult {
       const selectedTarget =
         priorTarget !== undefined && priorTarget.currentHp > 0 && priorTarget.side !== unit.side
           ? priorTarget
-          : selectNearestTarget(unit, runtimeUnits, occupiedPositions);
+          : selectNearestTarget(snapshot.board, unit, runtimeUnits, occupiedPositions);
       const target = selectedTarget === undefined ? undefined : unitsById.get(selectedTarget.id);
 
       if (target === undefined) {
@@ -1195,7 +1085,7 @@ export function runHeadlessCombat(input: CombatSnapshot): CombatResult {
         continue;
       }
 
-      const path = findPathToRange(unit.position, target.position, unit.attackRange, occupiedPositions);
+      const path = findPathToRange(snapshot.board, unit.position, target.position, unit.attackRange, occupiedPositions);
       const nextPosition = path?.[0];
       if (nextPosition !== undefined) {
         const slow = Math.min(900, unit.slows.reduce((maximum, item) => Math.max(maximum, item.value), 0));
@@ -1209,7 +1099,7 @@ export function runHeadlessCombat(input: CombatSnapshot): CombatResult {
         }
       }
 
-      if (manhattanDistance(unit.position, target.position) > unit.attackRange) {
+      if (manhattanDistance(snapshot.board, unit.position, target.position) > unit.attackRange) {
         continue;
       }
 
@@ -1266,7 +1156,7 @@ export function runHeadlessCombat(input: CombatSnapshot): CombatResult {
   );
   const immutableEvents = Object.freeze(events);
   const resultHash = fnv1a64Hex(
-    stableSerialize({
+    stableStringify({
       combatId: snapshot.combatId,
       events: immutableEvents,
       finalTick: endedAtTick,
