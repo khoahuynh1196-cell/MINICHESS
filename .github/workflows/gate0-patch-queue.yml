@@ -11,7 +11,6 @@ on:
       - feature/auto-battler-alpha
     paths:
       - .gate0/patches/**
-      - .github/workflows/gate0-patch-queue.yml
 
 permissions:
   contents: write
@@ -53,10 +52,16 @@ jobs:
         run: |
           set -euo pipefail
           shopt -s nullglob
-          patches=(.gate0/patches/*.patch)
-          test "${#patches[@]}" -eq 1
-          git am --3way "${patches[0]}"
-          git rm "${patches[0]}"
+          queued=(.gate0/patches/*.patch .gate0/patches/*.patch.gz.b64)
+          test "${#queued[@]}" -eq 1
+          source_patch="${queued[0]}"
+          apply_patch="$source_patch"
+          if [[ "$source_patch" == *.patch.gz.b64 ]]; then
+            base64 --decode "$source_patch" | gzip --decompress > /tmp/gate0-task.patch
+            apply_patch=/tmp/gate0-task.patch
+          fi
+          git am --3way "$apply_patch"
+          git rm "$source_patch"
           git commit --amend --no-edit
 
       - name: Install dependencies
