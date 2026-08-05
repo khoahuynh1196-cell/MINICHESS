@@ -27,62 +27,114 @@ jobs:
           fetch-depth: 0
           ref: ${{ github.event.pull_request.head.sha }}
 
+      - name: Prepare queued task patch
+        id: queue
+        shell: bash
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          direct=(.gate0/patches/*.patch .gate0/patches/*.patch.gz.b64)
+          manifests=(.gate0/patches/*.manifest)
+
+          if (( ${#direct[@]} == 0 && ${#manifests[@]} == 0 )); then
+            echo "No complete Gate 0 patch is queued."
+            echo "has_patch=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          test "$(( ${#direct[@]} + ${#manifests[@]} ))" -eq 1
+          : > /tmp/gate0-source-files
+
+          if (( ${#direct[@]} == 1 )); then
+            source_patch="${direct[0]}"
+            printf '%s\n' "$source_patch" >> /tmp/gate0-source-files
+            if [[ "$source_patch" == *.patch ]]; then
+              cp "$source_patch" /tmp/gate0-task.patch
+            else
+              python - "$source_patch" <<'PY'
+          import base64
+          import gzip
+          import sys
+          from pathlib import Path
+
+          encoded = b"".join(Path(sys.argv[1]).read_bytes().split())
+          compressed = base64.b64decode(encoded, validate=True)
+          Path("/tmp/gate0-task.patch").write_bytes(gzip.decompress(compressed))
+          PY
+            fi
+          else
+            manifest="${manifests[0]}"
+            mapfile -t parts < <(grep -Ev '^[[:space:]]*(#|$)' "$manifest")
+            test "${#parts[@]}" -gt 0
+            for part in "${parts[@]}"; do
+              [[ "$part" == .gate0/patches/* ]]
+              [[ "$part" == *.part[0-9][0-9][0-9] ]]
+              test -f "$part"
+            done
+            cat "${parts[@]}" > /tmp/gate0-task.patch.gz.b64
+            python - /tmp/gate0-task.patch.gz.b64 <<'PY'
+          import base64
+          import gzip
+          import sys
+          from pathlib import Path
+
+          encoded = b"".join(Path(sys.argv[1]).read_bytes().split())
+          compressed = base64.b64decode(encoded, validate=True)
+          Path("/tmp/gate0-task.patch").write_bytes(gzip.decompress(compressed))
+          PY
+            printf '%s\n' "$manifest" "${parts[@]}" >> /tmp/gate0-source-files
+          fi
+
+          test -s /tmp/gate0-task.patch
+          echo "has_patch=true" >> "$GITHUB_OUTPUT"
+
       - name: Install pnpm
+        if: steps.queue.outputs.has_patch == 'true'
         uses: pnpm/action-setup@v4
         with:
           version: 11.9.0
 
       - name: Set up Node
+        if: steps.queue.outputs.has_patch == 'true'
         uses: actions/setup-node@v4
         with:
           node-version: 24
           cache: pnpm
 
       - name: Configure commit identity
+        if: steps.queue.outputs.has_patch == 'true'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
       - name: Apply queued task patch as one commit
+        if: steps.queue.outputs.has_patch == 'true'
         shell: bash
         run: |
           set -euo pipefail
-          shopt -s nullglob
-          queued=(.gate0/patches/*.patch .gate0/patches/*.patch.gz.b64)
-          test "${#queued[@]}" -eq 1
-          source_patch="${queued[0]}"
-          apply_patch="$source_patch"
-          if [[ "$source_patch" == *.patch.gz.b64 ]]; then
-            python - "$source_patch" <<'PY'
-          import base64
-          import gzip
-          import sys
-          from pathlib import Path
-
-          source = Path(sys.argv[1])
-          encoded = b"".join(source.read_bytes().split())
-          compressed = base64.b64decode(encoded, validate=True)
-          Path("/tmp/gate0-task.patch").write_bytes(gzip.decompress(compressed))
-          PY
-            apply_patch=/tmp/gate0-task.patch
-          fi
-          git am --3way "$apply_patch"
-          git rm "$source_patch"
+          git am --3way /tmp/gate0-task.patch
+          mapfile -t source_files < /tmp/gate0-source-files
+          git rm -- "${source_files[@]}"
           git commit --amend --no-edit
 
       - name: Install dependencies
+        if: steps.queue.outputs.has_patch == 'true'
         run: pnpm install --frozen-lockfile
 
       - name: Build workspace dependency
+        if: steps.queue.outputs.has_patch == 'true'
         run: pnpm --filter @auto-battler/game-core build
 
       - name: Run TypeScript checks and tests
+        if: steps.queue.outputs.has_patch == 'true'
         run: pnpm run check
 
       - name: Verify whitespace
+        if: steps.queue.outputs.has_patch == 'true'
         run: git diff HEAD^ --check
 
       - name: Run Godot import and regression suite
+        if: steps.queue.outputs.has_patch == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -98,6 +150,7 @@ jobs:
             '
 
       - name: Push verified task commit with lease
+        if: steps.queue.outputs.has_patch == 'true'
         shell: bash
         run: |
           set -euo pipefail
