@@ -1,0 +1,65 @@
+{
+  "version": "production-rules-0.1.0",
+  "tick_rate": 20,
+  "max_combat_ticks": 700,
+  "board": {
+    "columns": 4,
+    "rows": 8,
+    "enemy_rows": { "start": 0, "end": 3 },
+    "player_rows": { "start": 4, "end": 7 },
+    "movement": "orthogonal"
+  },
+  "roster": {
+    "bench_slots": 8,
+    "max_items_per_hero": 2,
+    "max_unique_per_team": 1
+  },
+  "shop": {
+    "slot_count": 5,
+    "refresh_cost": 2,
+    "copies_by_rarity": { "1": 29, "2": 22, "3": 18, "4": 12, "5": 10 },
+    "odds_by_level": {
+      "3": [55, 35, 10, 0, 0],
+      "4": [45, 35, 18, 2, 0],
+      "5": [30, 35, 25, 9, 1],
+      "6": [19, 30, 35, 15, 1],
+      "7": [15, 20, 35, 25, 5],
+      "8": [10, 15, 30, 30, 15],
+      "9": [5, 10, 20, 35, 30]
+    }
+  },
+  "progression": {
+    "initial_level": 3,
+    "max_level": 9,
+    "xp_purchase_cost": 4,
+    "xp_per_purchase": 4,
+    "levels": [
+      { "level": 3, "xp_to_next": 10, "board_cap": 3 },
+      { "level": 4, "xp_to_next": 20, "board_cap": 4 },
+      { "level": 5, "xp_to_next": 36, "board_cap": 5 },
+      { "level": 6, "xp_to_next": 56, "board_cap": 6 },
+      { "level": 7, "xp_to_next": 80, "board_cap": 7 },
+      { "level": 8, "xp_to_next": 100, "board_cap": 8 },
+      { "level": 9, "xp_to_next": 0, "board_cap": 8 }
+    ]
+  },
+  "adventure": {
+    "initial_health": 30,
+    "initial_gold": 8,
+    "base_round_income": 5,
+    "round_count": 8,
+    "unique_reveal_round": 4,
+    "loss_damage": { "base": 4, "per_survivor": 2, "cap": 12 }
+  },
+  "standard": {
+    "initial_health": 100,
+    "initial_gold": 10,
+    "base_round_income": 5,
+    "interest_threshold": 10,
+    "interest_per_threshold": 1,
+    "interest_cap": 5,
+    "streak_bonus_cap": 3,
+    "planning_seconds_early": 30,
+    "planning_seconds_late": 25
+  }
+}
