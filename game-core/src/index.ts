@@ -44,6 +44,12 @@ export {
   playerBoardCellCount,
 } from "./rules/board.js";
 export {
+  adventureRoundIncome,
+  standardRoundIncome,
+  standardStreakBonus,
+  type IncomeBreakdown,
+} from "./rules/economy.js";
+export {
   buyExperience,
   canBuyExperience,
   initialProgressionState,
@@ -64,4 +70,5 @@ export type {
   ShopOdds,
   ShopRules,
   StandardRules,
+  StreakBonusRule,
 } from "./rules/types.js";
