@@ -55,7 +55,7 @@ func is_global_position(position: int) -> bool:
 	return _valid and position >= 0 and position < global_cell_count()
 
 func row_for(position: int) -> int:
-	return position / _columns if is_global_position(position) else -1
+	return floori(float(position) / float(_columns)) if is_global_position(position) else -1
 
 func column_for(position: int) -> int:
 	return position % _columns if is_global_position(position) else -1
