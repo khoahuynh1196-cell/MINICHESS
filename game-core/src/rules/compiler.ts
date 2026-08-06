@@ -159,12 +159,18 @@ function compileAdventure(value: unknown): AdventureRules {
   const roundCount = requireInteger(raw.round_count, "adventure.round_count", 1);
   const uniqueRevealRound = requireInteger(raw.unique_reveal_round, "adventure.unique_reveal_round", 1);
   if (uniqueRevealRound > roundCount) throw new Error("adventure.unique_reveal_round must be within the run");
+  const lossRaw = requireRecord(raw.loss_damage, "adventure.loss_damage");
+  const lossBase = requireInteger(lossRaw.base, "adventure.loss_damage.base");
+  const lossPerSurvivor = requireInteger(lossRaw.per_survivor, "adventure.loss_damage.per_survivor");
+  const lossCap = requireInteger(lossRaw.cap, "adventure.loss_damage.cap");
+  if (lossCap < lossBase) throw new Error("adventure.loss_damage.cap must be >= base");
   return Object.freeze({
     initialHealth: requireInteger(raw.initial_health, "adventure.initial_health", 1),
     initialGold: requireInteger(raw.initial_gold, "adventure.initial_gold"),
     baseRoundIncome: requireInteger(raw.base_round_income, "adventure.base_round_income"),
     roundCount,
     uniqueRevealRound,
+    lossDamage: Object.freeze({ base: lossBase, perSurvivor: lossPerSurvivor, cap: lossCap }),
   });
 }
 
