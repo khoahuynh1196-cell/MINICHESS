@@ -39,6 +39,11 @@ describe("production ruleset compiler", () => {
       interestStep: 10,
       interestCap: 5,
       streakBonusCap: 3,
+      streakBonuses: [
+        { count: 2, bonus: 1 },
+        { count: 4, bonus: 2 },
+        { count: 6, bonus: 3 },
+      ],
     });
   });
 
@@ -76,5 +81,14 @@ describe("production ruleset compiler", () => {
     delete invalid.shop.odds_by_level["7"];
 
     expect(() => compileRuleset(invalid)).toThrow("shop.odds_by_level must define exactly levels 3,4,5,6,7,8,9");
+  });
+
+  it("rejects non-increasing streak thresholds", () => {
+    const invalid = structuredClone(authoredRules) as {
+      standard: { streak_bonuses: Array<{ count: number; bonus: number }> };
+    };
+    invalid.standard.streak_bonuses[1]!.count = 2;
+
+    expect(() => compileRuleset(invalid)).toThrow("standard.streak_bonuses counts must increase");
   });
 });
