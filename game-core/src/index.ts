@@ -54,6 +54,19 @@ export {
   mergeAdventureRoster,
   moveAdventureHero,
 } from "./adventure/roster.js";
+export {
+  adventureShopRemainingCopies,
+  buyAdventureShopSlot,
+  createAdventureShopPool,
+  refreshAdventureShop,
+  reserveAdventureHeroCopies,
+  returnAdventureHeroCopies,
+  returnAdventureShopSlots,
+  rollAdventureShop,
+  type AdventureShopPool,
+  type AdventureShopPoolEntry,
+  type AdventureShopRoll,
+} from "./adventure/shop.js";
 export type {
   AdventureHeroInstance,
   AdventureItemInstance,
