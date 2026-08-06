@@ -12,6 +12,7 @@ import type {
   ShopOdds,
   ShopRules,
   StandardRules,
+  StreakBonusRule,
 } from "./types.js";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -122,7 +123,8 @@ function compileOdds(value: unknown, label: string): ShopOdds {
   if (raw.length !== 5) throw new Error(`${label} must contain five rarity weights`);
   const weights = raw.map((weight, index) => requireInteger(weight, `${label}[${index}]`));
   if (weights.reduce((sum, weight) => sum + weight, 0) !== 100) throw new Error(`${label} must sum to 100`);
-  return Object.freeze([weights[0]!, weights[1]!, weights[2]!, weights[3]!, weights[4]!]);
+  const odds: ShopOdds = [weights[0]!, weights[1]!, weights[2]!, weights[3]!, weights[4]!];
+  return Object.freeze(odds);
 }
 
 function compileShop(value: unknown, progression: ProgressionRules): ShopRules {
@@ -168,13 +170,32 @@ function compileAdventure(value: unknown): AdventureRules {
 
 function compileStandard(value: unknown): StandardRules {
   const raw = requireRecord(value, "standard");
+  const streakBonusCap = requireInteger(raw.streak_bonus_cap, "standard.streak_bonus_cap");
+  const rawBonuses = requireArray(raw.streak_bonuses, "standard.streak_bonuses");
+  let previousCount = 0;
+  let previousBonus = 0;
+  const streakBonuses = rawBonuses.map((entry, index): StreakBonusRule => {
+    const rule = requireRecord(entry, `standard.streak_bonuses[${index}]`);
+    const count = requireInteger(rule.count, `standard.streak_bonuses[${index}].count`, 1);
+    const bonus = requireInteger(rule.bonus, `standard.streak_bonuses[${index}].bonus`, 1);
+    if (count <= previousCount) throw new Error("standard.streak_bonuses counts must increase");
+    if (bonus <= previousBonus) throw new Error("standard.streak_bonuses bonuses must increase");
+    if (bonus > streakBonusCap) throw new Error("standard.streak_bonuses bonus exceeds streak_bonus_cap");
+    previousCount = count;
+    previousBonus = bonus;
+    return Object.freeze({ count, bonus });
+  });
+  if (streakBonuses.length === 0 || streakBonuses.at(-1)!.bonus !== streakBonusCap) {
+    throw new Error("standard.streak_bonuses must reach streak_bonus_cap");
+  }
   return Object.freeze({
     initialHealth: requireInteger(raw.initial_health, "standard.initial_health", 1),
     initialGold: requireInteger(raw.initial_gold, "standard.initial_gold"),
     baseRoundIncome: requireInteger(raw.base_round_income, "standard.base_round_income"),
     interestStep: requireInteger(raw.interest_step, "standard.interest_step", 1),
     interestCap: requireInteger(raw.interest_cap, "standard.interest_cap"),
-    streakBonusCap: requireInteger(raw.streak_bonus_cap, "standard.streak_bonus_cap"),
+    streakBonusCap,
+    streakBonuses: Object.freeze(streakBonuses),
   });
 }
 
