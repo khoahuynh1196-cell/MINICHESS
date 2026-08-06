@@ -26,3 +26,34 @@ export {
 } from "./effects/definitions.js";
 export { compileContentBundle } from "./content/compiler.js";
 export type { CompiledCombatTrigger, CompiledContentBundle, CompiledItem, CompiledUniqueItem, ContentManifest, RawContentBundle, RawEncounter, RawEncounterReward, RawUniqueItem } from "./content/types.js";
+export { compileRuleset } from "./rules/compiler.js";
+export {
+  assertGlobalPosition,
+  boardCellCount,
+  boardColumn,
+  boardRow,
+  enemyBoardCellCount,
+  globalBoardIndex,
+  globalPlayerIndexToLocal,
+  isEnemyPosition,
+  isPlayerPosition,
+  isValidGlobalPosition,
+  localPlayerIndexToGlobal,
+  manhattanDistance,
+  orthogonalNeighbors,
+  playerBoardCellCount,
+} from "./rules/board.js";
+export type {
+  AdventureRules,
+  BoardRules,
+  CombatRules,
+  CompiledRuleset,
+  HeroRarity,
+  ProgressionLevelRule,
+  ProgressionRules,
+  RosterRules,
+  RuleRowRange,
+  ShopOdds,
+  ShopRules,
+  StandardRules,
+} from "./rules/types.js";
