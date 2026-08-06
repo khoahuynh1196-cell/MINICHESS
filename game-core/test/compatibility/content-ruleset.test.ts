@@ -48,11 +48,12 @@ describe("content and ruleset compatibility", () => {
   it("rejects an encounter enemy placed on the player half", () => {
     const invalid = withFirstEnemyPosition(16);
     const report = inspectContentRulesetCompatibility(invalid, rules, rules.version);
+    const firstEncounterId = content.encounters[0]!.id;
 
     expect(report.compatible).toBe(false);
     expect(report.issues).toContainEqual(expect.objectContaining({
       code: "ENEMY_POSITION_OUTSIDE_ENEMY_HALF",
-      path: "encounters.R01_MEADOW_SCOUTS.enemy_composition.0.position",
+      path: `encounters.${firstEncounterId}.enemy_composition.0.position`,
     }));
     expect(() => assertContentRulesetCompatibility(invalid, rules, rules.version))
       .toThrow("ENEMY_POSITION_OUTSIDE_ENEMY_HALF");
