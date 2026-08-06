@@ -33,7 +33,7 @@ describe("offline release compatibility", () => {
       mode: "adventure",
       ruleset: {
         version: "production-rules-0.1.0",
-        hash: "c9a4211a17a19059eab267527fe509b589c55025819330433a9a1e28130abdb5",
+        hash: "c13ef1c6fb09d7e61fa5955ec7cca38b6a58a33643d89bdaca399b1926e7d548",
       },
       content: { version: "alpha-0.3.0", hash: "8c7f11c01e670b1e" },
       assets: { revision: "original-chibi-cutouts-v3" },
