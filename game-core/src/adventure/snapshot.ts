@@ -2,7 +2,6 @@ import type { CompiledContentBundle } from "../content/types.js";
 import { isEnemyPosition, localPlayerIndexToGlobal } from "../rules/board.js";
 import type { CompiledRuleset } from "../rules/types.js";
 import { sha256Hex } from "../serialization/canonical-json.js";
-import { progressionState } from "../rules/progression.js";
 import { assertAdventureGameState } from "./validation.js";
 import type { AdventureGameState } from "./state.js";
 
@@ -66,12 +65,8 @@ export function buildAdventureCombatSnapshot(
   assertAdventureGameState(state, content, rules);
   if (state.run.phase !== "COMBAT") throw new Error("ADVENTURE_COMBAT_SNAPSHOT_NOT_ALLOWED");
   if (state.pendingReward !== undefined) throw new Error("ADVENTURE_COMBAT_SNAPSHOT_HAS_PENDING_REWARD");
-  const progression = progressionState(rules, state.run.level, state.run.experience);
   const playerUnits = state.run.board.flatMap((hero, localPosition) => {
     if (hero === null) return [];
-    if (localPosition >= progression.boardCap && state.run.board.slice(0, localPosition).filter((entry) => entry !== null).length >= progression.boardCap) {
-      throw new Error("ADVENTURE_COMBAT_SNAPSHOT_EXCEEDS_DEPLOYMENT_CAP");
-    }
     return [Object.freeze({
       unitId: `player:${hero.instanceId}`,
       instanceId: hero.instanceId,
