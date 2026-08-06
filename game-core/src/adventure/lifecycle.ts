@@ -19,8 +19,11 @@ import {
 import { reserveAdventureHeroCopies } from "./shop.js";
 import type { AdventureHeroInstance, AdventureRoster, AdventureRunState } from "./types.js";
 
-export interface AdventureCombatResultCommand extends AdventureMutationBase {
-  readonly type: "RECORD_COMBAT_RESULT";
+export interface AdventureCombatResolutionCommand extends AdventureMutationBase {
+  readonly type: "RESOLVE_COMBAT";
+}
+
+export interface AdventureCombatOutcome {
   readonly round: number;
   readonly winner: "player" | "enemy";
   readonly survivingEnemyUnits: number;
@@ -34,15 +37,15 @@ export interface AdventureRewardClaimCommand extends AdventureMutationBase {
   readonly selections: readonly AdventureRewardSelection[];
 }
 
-function requireCombatResult(command: AdventureCombatResultCommand, rules: CompiledRuleset): void {
-  if (!Number.isSafeInteger(command.round) || command.round < 1 || command.round > rules.adventure.roundCount) {
+function requireCombatOutcome(outcome: AdventureCombatOutcome, rules: CompiledRuleset): void {
+  if (!Number.isSafeInteger(outcome.round) || outcome.round < 1 || outcome.round > rules.adventure.roundCount) {
     throw new Error("ADVENTURE_COMBAT_ROUND_INVALID");
   }
-  if (!Number.isSafeInteger(command.survivingEnemyUnits) || command.survivingEnemyUnits < 0) {
+  if (!Number.isSafeInteger(outcome.survivingEnemyUnits) || outcome.survivingEnemyUnits < 0) {
     throw new Error("ADVENTURE_SURVIVOR_COUNT_INVALID");
   }
-  if (command.resultHash.trim().length === 0) throw new Error("ADVENTURE_RESULT_HASH_MISSING");
-  if (!Number.isSafeInteger(command.finalTick) || command.finalTick < 0 || command.finalTick > rules.combat.maxTicks) {
+  if (outcome.resultHash.trim().length === 0) throw new Error("ADVENTURE_RESULT_HASH_MISSING");
+  if (!Number.isSafeInteger(outcome.finalTick) || outcome.finalTick < 0 || outcome.finalTick > rules.combat.maxTicks) {
     throw new Error("ADVENTURE_FINAL_TICK_INVALID");
   }
 }
@@ -52,38 +55,32 @@ function assertVersions(state: AdventureGameState, rules: CompiledRuleset, conte
   if (state.run.contentVersion !== content.version) throw new Error("ADVENTURE_CONTENT_MISMATCH");
 }
 
-function combatSummary(command: AdventureCombatResultCommand): AdventureCombatSummary {
-  return Object.freeze({
-    round: command.round,
-    winner: command.winner,
-    survivingEnemyUnits: command.survivingEnemyUnits,
-    resultHash: command.resultHash,
-    finalTick: command.finalTick,
-    reason: command.reason,
-  });
+function combatSummary(outcome: AdventureCombatOutcome): AdventureCombatSummary {
+  return Object.freeze({ ...outcome });
 }
 
 export function recordAdventureCombatResult(
   state: AdventureGameState,
-  command: AdventureCombatResultCommand,
+  command: AdventureCombatResolutionCommand,
+  outcome: AdventureCombatOutcome,
   rules: CompiledRuleset,
   content: CompiledContentBundle,
 ): AdventureMutationResult {
   const replay = replayAdventureMutation(state, command);
   if (replay !== undefined) return replay;
   assertVersions(state, rules, content);
-  requireCombatResult(command, rules);
+  requireCombatOutcome(outcome, rules);
   if (state.run.phase !== "COMBAT") throw new Error("ADVENTURE_COMMAND_NOT_ALLOWED");
-  if (state.run.round !== command.round) throw new Error("ADVENTURE_COMBAT_ROUND_MISMATCH");
+  if (state.run.round !== outcome.round) throw new Error("ADVENTURE_COMBAT_ROUND_MISMATCH");
 
-  const loss = command.winner === "enemy"
+  const loss = outcome.winner === "enemy"
     ? Math.min(
       rules.adventure.lossDamage.cap,
-      rules.adventure.lossDamage.base + rules.adventure.lossDamage.perSurvivor * command.survivingEnemyUnits,
+      rules.adventure.lossDamage.base + rules.adventure.lossDamage.perSurvivor * outcome.survivingEnemyUnits,
     )
     : 0;
   const health = Math.max(0, state.run.health - loss);
-  const lastCombat = combatSummary(command);
+  const lastCombat = combatSummary(outcome);
   const pendingReward = health === 0
     ? undefined
     : buildAdventureRewardPlan({ seed: state.seed, round: state.run.round, content });
