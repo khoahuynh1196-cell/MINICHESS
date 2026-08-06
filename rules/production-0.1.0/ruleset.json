@@ -98,6 +98,20 @@
     "base_round_income": 5,
     "interest_step": 10,
     "interest_cap": 5,
-    "streak_bonus_cap": 3
+    "streak_bonus_cap": 3,
+    "streak_bonuses": [
+      {
+        "count": 2,
+        "bonus": 1
+      },
+      {
+        "count": 4,
+        "bonus": 2
+      },
+      {
+        "count": 6,
+        "bonus": 3
+      }
+    ]
   }
 }
