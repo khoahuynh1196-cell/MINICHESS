@@ -46,6 +46,12 @@ export {
   unequipAdventureItem,
 } from "./adventure/items.js";
 export {
+  claimAdventureRoundReward,
+  recordAdventureCombatResult,
+  type AdventureCombatResultCommand,
+  type AdventureRewardClaimCommand,
+} from "./adventure/lifecycle.js";
+export {
   applyAdventureCommand,
   createAdventureGame,
   type AdventureCommand,
@@ -92,6 +98,14 @@ export {
   type AdventureShopPoolEntry,
   type AdventureShopRoll,
 } from "./adventure/shop.js";
+export {
+  commitAdventureMutation,
+  freezeAdventureGameState,
+  replayAdventureMutation,
+  type AdventureCombatSummary,
+  type AdventureMutationBase,
+  type AdventureMutationResult,
+} from "./adventure/state.js";
 export type {
   AdventureHeroInstance,
   AdventureItemInstance,
