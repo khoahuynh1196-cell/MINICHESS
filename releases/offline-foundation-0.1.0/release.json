@@ -1,0 +1,16 @@
+{
+  "version": "offline-foundation-0.1.0",
+  "mode": "adventure",
+  "ruleset": {
+    "version": "production-rules-0.1.0",
+    "hash": "c9a4211a17a19059eab267527fe509b589c55025819330433a9a1e28130abdb5"
+  },
+  "content": {
+    "version": "alpha-0.3.0",
+    "hash": "8c7f11c01e670b1e"
+  },
+  "assets": {
+    "revision": "original-chibi-cutouts-v3"
+  },
+  "minimum_client_schema": 1
+}
