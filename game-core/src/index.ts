@@ -26,6 +26,12 @@ export {
 } from "./effects/definitions.js";
 export { compileContentBundle } from "./content/compiler.js";
 export type { CompiledCombatTrigger, CompiledContentBundle, CompiledItem, CompiledUniqueItem, ContentManifest, RawContentBundle, RawEncounter, RawEncounterReward, RawUniqueItem } from "./content/types.js";
+export {
+  assertContentRulesetCompatibility,
+  inspectContentRulesetCompatibility,
+  type CompatibilityIssue,
+  type ContentRulesetCompatibility,
+} from "./compatibility/content-ruleset.js";
 export { compileRuleset } from "./rules/compiler.js";
 export {
   assertGlobalPosition,
