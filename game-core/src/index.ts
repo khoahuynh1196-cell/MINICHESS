@@ -98,6 +98,12 @@ export {
   type AdventureSavePayload,
 } from "./adventure/save.js";
 export {
+  AdventureSession,
+  type AdventureSessionDependencies,
+  type AdventureStateStore,
+  type CreateAdventureSessionInput,
+} from "./adventure/session.js";
+export {
   sellAdventureHero,
   type SellAdventureHeroResult,
 } from "./adventure/sell.js";
