@@ -42,6 +42,11 @@ export {
 } from "./compatibility/release.js";
 export { sha256Hex, stableStringify } from "./serialization/canonical-json.js";
 export {
+  resolveAdventureCombat,
+  type AdventureCombatEngine,
+  type AdventureCombatEngineRequest,
+} from "./adventure/engine.js";
+export {
   equipAdventureItem,
   grantAdventureItem,
   unequipAdventureItem,
@@ -49,6 +54,8 @@ export {
 export {
   claimAdventureRoundReward,
   recordAdventureCombatResult,
+  type AdventureCombatOutcome,
+  type AdventureCombatResolutionCommand,
   type AdventureCombatResultCommand,
   type AdventureRewardClaimCommand,
 } from "./adventure/lifecycle.js";
