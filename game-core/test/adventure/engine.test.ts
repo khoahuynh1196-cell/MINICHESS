@@ -30,16 +30,28 @@ function combatReady() {
 }
 
 describe("Adventure combat engine port", () => {
-  it("resolves through an injected synchronous engine", async () => {
+  it("resolves through an injected synchronous engine using a locked 4x8 snapshot", async () => {
     let calls = 0;
     const engine: AdventureCombatEngine = {
       resolve(request) {
         calls += 1;
-        expect(request.state.run.phase).toBe("COMBAT");
+        expect(request.snapshot).toMatchObject({
+          runId: "engine-run",
+          round: 1,
+          rulesetVersion: rules.version,
+          contentVersion: content.version,
+          board: {
+            columns: 4,
+            rows: 8,
+            enemyRows: { start: 0, end: 3 },
+            playerRows: { start: 4, end: 7 },
+          },
+        });
+        expect(Object.isFrozen(request.snapshot)).toBe(true);
         expect(request.rules).toBe(rules);
         expect(request.content).toBe(content);
         return {
-          round: 1,
+          round: request.snapshot.round,
           winner: "player",
           survivingEnemyUnits: 0,
           resultHash: "engine-result",
@@ -56,13 +68,13 @@ describe("Adventure combat engine port", () => {
     expect(result.state.lastCombat?.resultHash).toBe("engine-result");
   });
 
-  it("does not call the engine again for an idempotent retry", async () => {
+  it("does not build a snapshot or call the engine again for an idempotent retry", async () => {
     let calls = 0;
     const engine: AdventureCombatEngine = {
-      async resolve() {
+      async resolve(request) {
         calls += 1;
         return {
-          round: 1,
+          round: request.snapshot.round,
           winner: "player",
           survivingEnemyUnits: 0,
           resultHash: "engine-result",
@@ -92,5 +104,24 @@ describe("Adventure combat engine port", () => {
     }, engine, rules, content)).rejects.toThrow("SIMULATION_FAILED");
     expect(state.run.revision).toBe(3);
     expect(state.commandHistory["resolve-failure"]).toBeUndefined();
+  });
+
+  it("rejects an engine outcome for another round", async () => {
+    const engine: AdventureCombatEngine = {
+      resolve() {
+        return {
+          round: 2,
+          winner: "player",
+          survivingEnemyUnits: 0,
+          resultHash: "wrong-round",
+          finalTick: 1,
+          reason: "elimination",
+        };
+      },
+    };
+
+    await expect(resolveAdventureCombat(combatReady(), {
+      commandId: "wrong-round", expectedRevision: 3, type: "RESOLVE_COMBAT",
+    }, engine, rules, content)).rejects.toThrow("ADVENTURE_ENGINE_ROUND_MISMATCH");
   });
 });
