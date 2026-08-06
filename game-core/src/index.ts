@@ -32,6 +32,14 @@ export {
   type CompatibilityIssue,
   type ContentRulesetCompatibility,
 } from "./compatibility/content-ruleset.js";
+export {
+  assertOfflineReleaseCompatibility,
+  compileOfflineRelease,
+  type AssetRevisionRef,
+  type CompiledOfflineRelease,
+  type ReleaseCompatibilityInput,
+  type VersionedArtifactRef,
+} from "./compatibility/release.js";
 export { compileRuleset } from "./rules/compiler.js";
 export {
   assertGlobalPosition,
