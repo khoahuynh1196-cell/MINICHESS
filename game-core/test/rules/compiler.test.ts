@@ -31,6 +31,7 @@ describe("production ruleset compiler", () => {
       baseRoundIncome: 5,
       roundCount: 8,
       uniqueRevealRound: 4,
+      lossDamage: { base: 4, perSurvivor: 2, cap: 12 },
     });
     expect(rules.standard).toEqual({
       initialHealth: 100,
@@ -90,5 +91,14 @@ describe("production ruleset compiler", () => {
     invalid.standard.streak_bonuses[1]!.count = 2;
 
     expect(() => compileRuleset(invalid)).toThrow("standard.streak_bonuses counts must increase");
+  });
+
+  it("rejects an Adventure loss cap below its base damage", () => {
+    const invalid = structuredClone(authoredRules) as {
+      adventure: { loss_damage: { base: number; cap: number } };
+    };
+    invalid.adventure.loss_damage.cap = invalid.adventure.loss_damage.base - 1;
+
+    expect(() => compileRuleset(invalid)).toThrow("adventure.loss_damage.cap must be >= base");
   });
 });
