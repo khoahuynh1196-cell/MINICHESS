@@ -54,6 +54,11 @@ export interface AdventureRules {
   readonly uniqueRevealRound: number;
 }
 
+export interface StreakBonusRule {
+  readonly count: number;
+  readonly bonus: number;
+}
+
 export interface StandardRules {
   readonly initialHealth: number;
   readonly initialGold: number;
@@ -61,6 +66,7 @@ export interface StandardRules {
   readonly interestStep: number;
   readonly interestCap: number;
   readonly streakBonusCap: number;
+  readonly streakBonuses: readonly StreakBonusRule[];
 }
 
 export interface CompiledRuleset {
