@@ -14,25 +14,31 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.9.0
       - uses: actions/setup-node@v4
         with:
           node-version: 24
           cache: pnpm
-      - run: corepack enable
       - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @auto-battler/game-core build
       - run: pnpm run check
       - run: git diff --check
 
   godot:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
+    container:
+      image: barichello/godot-ci:4.7
     steps:
       - uses: actions/checkout@v4
-      - uses: firebelley/setup-godot@v1.1.0
-        with:
-          godot-version: 4.7.1
+      - name: Verify Godot runtime
+        run: godot --version
+      - name: Import Godot project assets
+        run: godot --headless --path client-godot --import
       - name: Run Godot regression suite
         run: |
           for test in client-godot/test/*_test.gd; do
-            godot --headless --path client-godot --script "res://test/$(basename "$test")" --quit
+            godot --headless --path client-godot --script "res://test/$(basename "$test")"
           done

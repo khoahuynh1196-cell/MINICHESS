@@ -1,12 +1,12 @@
 import Fastify from "fastify";
 import { randomUUID } from "node:crypto";
-import type { CompiledContentBundle } from "@auto-battler/game-core";
-import { applyRunCommand, createInMemoryRunRepository, createRun, progressionForRun, type RunRecord, type RunRecap, type RunRepository, type ShopGenerator } from "../application/run-commands.js";
+import type { CompiledContentBundle, CompiledRuleset } from "@auto-battler/game-core";
+import { applyRunCommand, createRun, progressionForRun, type RunRecord, type RunRepository, type ShopGenerator } from "../application/run-commands.js";
 import { shopOddsForLevel, type ShopTierOdds } from "../application/shop-pool.js";
 import type { RewardSelection } from "../application/reward-selection.js";
 import { resolveRunCombat } from "../application/resolve-run-combat.js";
 
-type PublicRunView = Pick<RunRecord, "id" | "contentVersion" | "state" | "round" | "revision" | "gold" | "health" | "shop" | "shopLocked" | "bench" | "board" | "items" | "freeRefreshes" | "roundRewardPlan" | "rewardHeroes" | "recap"> & ReturnType<typeof progressionForRun> & { readonly shopOdds: ShopTierOdds };
+type PublicRunView = Pick<RunRecord, "id" | "contentVersion" | "state" | "round" | "revision" | "gold" | "health" | "shop" | "shopLocked" | "bench" | "board" | "items" | "freeRefreshes" | "roundRewardPlan" | "rewardHeroes" | "recap"> & ReturnType<typeof progressionForRun> & { readonly rulesetVersion: string; readonly shopOdds: ShopTierOdds };
 
 export interface ContentManifestRepository {
   getByVersion(version: string): Promise<CompiledContentBundle | undefined>;
@@ -32,6 +32,7 @@ function errorMessage(code: string): string {
     INVALID_COMMAND: "Command payload is invalid.",
     ACTIVE_RUN_EXISTS: "Tenant already has an active run.",
     CONTENT_VERSION_NOT_FOUND: "Content version is not supported.",
+    RULESET_VERSION_MISMATCH: "Ruleset version is not supported for this run.",
   } as Readonly<Record<string, string>>)[code] ?? "Internal server error.";
 }
 
@@ -58,17 +59,19 @@ function parseRewardSelections(value: unknown): readonly RewardSelection[] | und
   }));
 }
 
-function toPublicRunView(run: RunRecord): PublicRunView {
-  const progression = progressionForRun(run);
+function toPublicRunView(run: RunRecord, ruleset: CompiledRuleset): PublicRunView {
+  if (run.rulesetVersion !== ruleset.version) throw new Error("RULESET_VERSION_MISMATCH");
+  const progression = progressionForRun(run, ruleset);
   return {
     id: run.id,
     contentVersion: run.contentVersion,
+    rulesetVersion: ruleset.version,
     state: run.state,
     ...(run.round === undefined ? {} : { round: run.round }),
     revision: run.revision,
     gold: run.gold,
     ...progression,
-    shopOdds: shopOddsForLevel(progression.level),
+    shopOdds: shopOddsForLevel(progression.level, ruleset.shop),
     shopLocked: run.shopLocked ?? false,
     ...(run.health === undefined ? {} : { health: run.health }),
     ...(run.shop === undefined ? {} : { shop: run.shop }),
@@ -78,15 +81,21 @@ function toPublicRunView(run: RunRecord): PublicRunView {
     ...(run.freeRefreshes === undefined ? {} : { freeRefreshes: run.freeRefreshes }),
     ...(run.roundRewardPlan === undefined ? {} : { roundRewardPlan: run.roundRewardPlan }),
     ...(run.rewardHeroes === undefined ? {} : { rewardHeroes: run.rewardHeroes }),
-	...(run.recap === undefined ? {} : { recap: run.recap }),
+    ...(run.recap === undefined ? {} : { recap: run.recap }),
   };
 }
 
-export function createHttpApp(context = { actorId: "anonymous", tenantId: "default" }, repository: RunRepository = createInMemoryRunRepository(), shopGenerator?: ShopGenerator, contentRepository?: ContentManifestRepository) {
+export function createHttpApp(
+  context: { actorId: string; tenantId: string },
+  repository: RunRepository,
+  shopGenerator: ShopGenerator | undefined,
+  contentRepository: ContentManifestRepository | undefined,
+  ruleset: CompiledRuleset,
+) {
   const app = Fastify();
   app.setErrorHandler((error, _request, reply) => {
     const code = error.message;
-    const statusCode = code === "RUN_REVISION_CONFLICT" || code === "COMMAND_NOT_ALLOWED" || code === "IDEMPOTENCY_KEY_REUSED" || code === "ACTIVE_RUN_EXISTS" ? 409 : code === "RUN_NOT_FOUND" ? 404 : code === "GAME_RULE_VIOLATION" || code === "REWARD_SELECTION_REQUIRED" || code === "REWARD_SELECTION_INVALID" ? 422 : code === "INVALID_COMMAND" ? 400 : 500;
+    const statusCode = code === "RUN_REVISION_CONFLICT" || code === "COMMAND_NOT_ALLOWED" || code === "IDEMPOTENCY_KEY_REUSED" || code === "ACTIVE_RUN_EXISTS" || code === "RULESET_VERSION_MISMATCH" ? 409 : code === "RUN_NOT_FOUND" ? 404 : code === "GAME_RULE_VIOLATION" || code === "REWARD_SELECTION_REQUIRED" || code === "REWARD_SELECTION_INVALID" ? 422 : code === "INVALID_COMMAND" ? 400 : 500;
     const responseCode = statusCode === 500 ? "INTERNAL_ERROR" : code;
     return reply.code(statusCode).send(failure(responseCode, code === "RUN_REVISION_CONFLICT"));
   });
@@ -96,27 +105,31 @@ export function createHttpApp(context = { actorId: "anonymous", tenantId: "defau
     if (content === undefined) return reply.code(404).send(failure("CONTENT_VERSION_NOT_FOUND"));
     return success({ content_version: content.version, content_hash: content.contentHash, manifest: content.manifest });
   });
-  app.post<{ Body: { id: string; content_version: string } }>("/v1/runs", async (request, reply) => {
+  app.post<{ Body: { id: string; content_version: string; ruleset_version: string } }>("/v1/runs", async (request, reply) => {
     const content = contentRepository === undefined ? undefined : await contentRepository.getByVersion(request.body.content_version);
     if (contentRepository !== undefined && content === undefined) return reply.code(404).send(failure("CONTENT_VERSION_NOT_FOUND"));
     const run = await createRun(
-      { id: request.body.id, tenantId: context.tenantId, contentVersion: request.body.content_version },
-      repository,
-      shopGenerator,
+      {
+        id: request.body.id,
+        tenantId: context.tenantId,
+        contentVersion: request.body.content_version,
+        rulesetVersion: request.body.ruleset_version,
+      },
+      { repository, ...(shopGenerator === undefined ? {} : { shopGenerator }), ruleset },
       content === undefined ? undefined : { uniqueItemIds: content.uniqueItems.map((item) => item.id) },
     );
-    return reply.code(201).send(success(toPublicRunView(run)));
+    return reply.code(201).send(success(toPublicRunView(run, ruleset)));
   });
   app.get<{ Params: { runId: string } }>("/v1/runs/:runId", async (request, reply) => {
     const run = await repository.get(request.params.runId, context.tenantId);
     if (run === undefined) return reply.code(404).send(failure("RUN_NOT_FOUND"));
-    return success(toPublicRunView(run));
+    return success(toPublicRunView(run, ruleset));
   });
   app.get<{ Params: { runId: string } }>("/v1/runs/:runId/resume", async (request, reply) => {
     const run = await repository.get(request.params.runId, context.tenantId);
     if (run === undefined) return reply.code(404).send(failure("RUN_NOT_FOUND"));
     const latestEventSequence = (run.combatRecord?.events ?? []).reduce((latest, event) => Math.max(latest, event.sequence), -1);
-    return success({ run_view: toPublicRunView(run), latest_event_sequence: latestEventSequence });
+    return success({ run_view: toPublicRunView(run, ruleset), latest_event_sequence: latestEventSequence });
   });
   app.get<{ Params: { runId: string }; Querystring: { after_sequence?: string } }>("/v1/runs/:runId/events", async (request, reply) => {
     const run = await repository.get(request.params.runId, context.tenantId);
@@ -128,13 +141,13 @@ export function createHttpApp(context = { actorId: "anonymous", tenantId: "defau
     if (contentRepository === undefined) return reply.code(404).send(failure("CONTENT_VERSION_NOT_FOUND"));
     const run = await resolveRunCombat(
       { runId: request.params.runId, tenantId: context.tenantId },
-      { repository, contentRepository },
+      { repository, contentRepository, ruleset },
     );
-    return success(toPublicRunView(run));
+    return success(toPublicRunView(run, ruleset));
   });
   app.post<{ Params: { runId: string }; Body: { command_id: string; expected_run_revision: number; type: "REFRESH_SHOP" | "LOCK_SHOP" | "ABANDON_RUN" | "BUY_XP" | "BUY_SHOP_HERO" | "SELL_HERO" | "MOVE_HERO" | "EQUIP_ITEM" | "UNEQUIP_ITEM" | "START_ROUND" | "CLAIM_ROUND_REWARD" | "ACK_UNIQUE_REVEAL" | "CLAIM_REWARD_HERO"; shop_slot_index?: number; hero_instance_id?: string; item_instance_id?: string; destination?: number; reveal_id?: string; reward_selections?: unknown } }>("/v1/runs/:runId/commands", async (request) => {
     const rewardSelections = parseRewardSelections(request.body.reward_selections);
-    return success(await applyRunCommand({ actorId: context.actorId, tenantId: context.tenantId, runId: request.params.runId, commandId: request.body.command_id, expectedRevision: request.body.expected_run_revision, type: request.body.type, ...(request.body.shop_slot_index === undefined ? {} : { shopSlotIndex: request.body.shop_slot_index }), ...(request.body.hero_instance_id === undefined ? {} : { heroInstanceId: request.body.hero_instance_id }), ...(request.body.item_instance_id === undefined ? {} : { itemInstanceId: request.body.item_instance_id }), ...(request.body.destination === undefined ? {} : { destination: request.body.destination }), ...(request.body.reveal_id === undefined ? {} : { revealId: request.body.reveal_id }), ...(rewardSelections === undefined ? {} : { rewardSelections }) }, repository, shopGenerator));
+    return success(await applyRunCommand({ actorId: context.actorId, tenantId: context.tenantId, runId: request.params.runId, commandId: request.body.command_id, expectedRevision: request.body.expected_run_revision, type: request.body.type, ...(request.body.shop_slot_index === undefined ? {} : { shopSlotIndex: request.body.shop_slot_index }), ...(request.body.hero_instance_id === undefined ? {} : { heroInstanceId: request.body.hero_instance_id }), ...(request.body.item_instance_id === undefined ? {} : { itemInstanceId: request.body.item_instance_id }), ...(request.body.destination === undefined ? {} : { destination: request.body.destination }), ...(request.body.reveal_id === undefined ? {} : { revealId: request.body.reveal_id }), ...(rewardSelections === undefined ? {} : { rewardSelections }) }, { repository, ...(shopGenerator === undefined ? {} : { shopGenerator }), ruleset }));
   });
   return app;
 }

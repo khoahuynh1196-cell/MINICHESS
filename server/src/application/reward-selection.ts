@@ -46,11 +46,15 @@ function rewardKind(value: unknown): string {
   return value;
 }
 
+function compareStrings(left: string, right: string): number {
+  return left < right ? -1 : left > right ? 1 : 0;
+}
+
 function rankedIds(runSeed: string, stream: string, ids: readonly string[]): readonly string[] {
   return [...ids].sort((left, right) => {
     const leftHash = createHmac("sha256", Buffer.from(runSeed, "hex")).update(`${stream}:${left}`).digest("hex");
     const rightHash = createHmac("sha256", Buffer.from(runSeed, "hex")).update(`${stream}:${right}`).digest("hex");
-    return leftHash < rightHash ? -1 : leftHash > rightHash ? 1 : left.localeCompare(right);
+    return leftHash < rightHash ? -1 : leftHash > rightHash ? 1 : compareStrings(left, right);
   });
 }
 

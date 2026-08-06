@@ -9,21 +9,23 @@ function port(value: string | undefined): number {
   return parsed;
 }
 
-function defaultContentPath(): string {
+function defaultBundlePath(relativePath: string, envLabel: string): string {
   const candidates = [
-    resolve(process.cwd(), "content", "alpha-0.3.0", "bundle.json"),
-    resolve(process.cwd(), "..", "content", "alpha-0.3.0", "bundle.json"),
+    resolve(process.cwd(), relativePath),
+    resolve(process.cwd(), "..", relativePath),
   ];
   const existing = candidates.find((candidate) => existsSync(candidate));
-  if (existing === undefined) throw new Error("CONTENT_BUNDLE_PATH must point to bundle.json");
+  if (existing === undefined) throw new Error(`${envLabel} must point to an existing JSON bundle`);
   return existing;
 }
 
-const contentPath = process.env.CONTENT_BUNDLE_PATH ?? defaultContentPath();
+const contentPath = process.env.CONTENT_BUNDLE_PATH ?? defaultBundlePath("content/alpha-0.4.0/bundle.json", "CONTENT_BUNDLE_PATH");
+const rulesPath = process.env.RULESET_BUNDLE_PATH ?? defaultBundlePath("rules/production-0.1.0/ruleset.json", "RULESET_BUNDLE_PATH");
 const postgresRuntime = process.env.DATABASE_URL === undefined ? undefined : createPostgresRuntime(process.env.DATABASE_URL);
 
 startRuntimeServer({
   contentPath,
+  rulesPath,
   host: process.env.HOST ?? "127.0.0.1",
   port: port(process.env.PORT),
   ...(process.env.LOCAL_ACTOR_ID === undefined ? {} : { actorId: process.env.LOCAL_ACTOR_ID }),

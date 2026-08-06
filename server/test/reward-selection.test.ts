@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import { productionRules, rulesRun } from "./support/production-rules.js";
 
 describe("deterministic round reward selection", () => {
   it("derives replay-stable R3 item choices and R5 supplemental payouts from compiled content", async () => {
@@ -34,7 +35,7 @@ describe("deterministic round reward selection", () => {
   it("persists the content-derived offer on a surviving resolved run", async () => {
     const { compileContentBundle } = await import("@auto-battler/game-core");
     const lifecycle = await import("../src/application/round-lifecycle.js") as {
-      attachContentRoundRewards?: (run: unknown, content: unknown) => { roundRewardPlan?: { round: number; offers: readonly { kind: string }[] } };
+      attachContentRoundRewards?: (run: unknown, content: unknown, ruleset: typeof productionRules) => { roundRewardPlan?: { round: number; offers: readonly { kind: string }[] } };
     };
     expect(lifecycle.attachContentRoundRewards).toBeDefined();
     if (lifecycle.attachContentRoundRewards === undefined) return;
@@ -45,7 +46,7 @@ describe("deterministic round reward selection", () => {
       combatRecord: { round: 3, winner: "player", resultHash: "rewardoffer123456", finalTick: 10, reason: "elimination", events: [] },
     };
 
-    expect(lifecycle.attachContentRoundRewards(resolvedRun, content)).toMatchObject({
+    expect(lifecycle.attachContentRoundRewards(rulesRun(resolvedRun), content, productionRules)).toMatchObject({
       state: "REWARD",
       roundRewardPlan: { round: 3, supplementalGold: 0, freeRefreshes: 0, offers: [expect.objectContaining({ kind: "normal_item_choice" })] },
     });

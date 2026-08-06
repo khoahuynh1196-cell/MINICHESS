@@ -4,7 +4,8 @@ import { describe, expect, it } from "vitest";
 
 import { compileContentBundle } from "../../src/index.js";
 
-const bundlePath = fileURLToPath(new URL("../../../content/alpha-0.3.0/bundle.json", import.meta.url));
+const bundlePath = fileURLToPath(new URL("../../../content/alpha-0.4.0/bundle.json", import.meta.url));
+const legacyBundlePath = fileURLToPath(new URL("../../../content/alpha-0.3.0/bundle.json", import.meta.url));
 const assetManifestPath = fileURLToPath(new URL("../../../client-godot/assets/asset_manifest.json", import.meta.url));
 const heroIds = Array.from({ length: 20 }, (_value, index) => `H${String(index + 1).padStart(2, "0")}`);
 const requiredSkillPrimitives = [
@@ -16,6 +17,22 @@ function countBy(values: readonly { species_trait_id: string; class_trait_id: st
 }
 
 describe("Alpha content bundle", () => {
+  it("migrates only version and row-preserving encounter positions from alpha-0.3.0", () => {
+    const legacy = JSON.parse(readFileSync(legacyBundlePath, "utf8")) as Record<string, unknown> & { encounters: Array<{ enemy_composition?: Array<{ position: number }> }> };
+    const migrated = JSON.parse(readFileSync(bundlePath, "utf8")) as Record<string, unknown> & { encounters: Array<{ enemy_composition?: Array<{ position: number }> }> };
+    const expected = structuredClone(legacy);
+    expected.version = "alpha-0.4.0";
+    expected.encounters = legacy.encounters.map((encounter) => ({
+      ...encounter,
+      ...(encounter.enemy_composition === undefined ? {} : {
+        enemy_composition: encounter.enemy_composition.map((enemy) => ({
+          ...enemy,
+          position: Math.floor(enemy.position / 3) * 4 + (enemy.position % 3),
+        })),
+      }),
+    }));
+    expect(migrated).toEqual(expected);
+  });
   it("registers every bundle visual, item, biome, and Unique transformation in the asset manifest", () => {
     expect(existsSync(assetManifestPath)).toBe(true);
     if (!existsSync(assetManifestPath) || !existsSync(bundlePath)) return;
@@ -211,7 +228,7 @@ describe("Alpha content bundle", () => {
     for (const encounter of inventory.encounters) {
       const positions = encounter.enemy_composition?.map((enemy) => enemy.position) ?? [];
       expect(new Set(positions).size).toBe(positions.length);
-      expect(positions.every((position) => position >= 0 && position <= 11)).toBe(true);
+      expect(positions.every((position) => position >= 0 && position <= 15)).toBe(true);
     }
     expect(inventory.encounters.filter((encounter) => encounter.affix !== undefined).map((encounter) => encounter.round)).toEqual([5]);
     expect(inventory.encounters.find((encounter) => encounter.round === 5)?.affix).toEqual({ kind: "attack_speed_multiplier", value: 150 });

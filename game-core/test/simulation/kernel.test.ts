@@ -6,9 +6,12 @@ import {
   canonicalizeSnapshot,
   compileContentBundle,
   createSeededRng,
+  findPathToRange,
+  hashCombatSnapshot,
   runHeadlessCombat,
   resolveDamage,
   selectNearestTarget,
+  type BoardGeometry,
   type CombatSnapshot,
   type CombatEffect,
   type CombatPassive,
@@ -16,6 +19,14 @@ import {
 
 const bundlePath = fileURLToPath(new URL("../../../content/alpha-0.3.0/bundle.json", import.meta.url));
 const content = compileContentBundle(JSON.parse(readFileSync(bundlePath, "utf8")));
+
+const legacyBoard: BoardGeometry = {
+  columns: 3,
+  rows: 8,
+  enemyRows: { start: 0, end: 3 },
+  playerRows: { start: 4, end: 7 },
+  movement: "orthogonal",
+};
 
 function contentSkill(skillId: string): { id: string; castTimeTicks: number; effects: readonly CombatEffect[] } {
   const skill = content.skillsById.get(skillId);
@@ -79,6 +90,7 @@ const snapshot: CombatSnapshot = {
   contentVersion: "alpha-0.3.0",
   rulesetVersion: "alpha-0.3.0",
   combatSeed: "combat-seed-001",
+  board: legacyBoard,
   maxTicks: 3,
   defenderSide: "enemy",
   units: [
@@ -116,6 +128,16 @@ const snapshot: CombatSnapshot = {
 };
 
 describe("deterministic combat kernel", () => {
+  it("accepts explicit production geometry for pathfinding", () => {
+    const productionBoard = {
+      columns: 4, rows: 8,
+      enemyRows: { start: 0, end: 3 },
+      playerRows: { start: 4, end: 7 },
+      movement: "orthogonal" as const,
+    };
+    expect(findPathToRange(productionBoard, 16, 3, 1, [16, 3])).toEqual([12, 8, 4, 0, 1, 2]);
+  });
+
   it("executes Alpha damage skill S_H03 against its locked target", () => {
     expect(runContentSkill("S_H03").events).toContainEqual(expect.objectContaining({
       type: "DAMAGE_APPLIED", sourceUnitId: "enemy:E01:1", payload: expect.objectContaining({ amount: 18_000 }),
@@ -197,6 +219,18 @@ describe("deterministic combat kernel", () => {
       "player:H01:1",
     ]);
     expect(snapshot.units[0]?.id).toBe("enemy:E01:1");
+  });
+
+  it("includes board geometry in the canonical snapshot hash without changing result semantics", () => {
+    const productionBoard: BoardGeometry = {
+      columns: 4, rows: 8,
+      enemyRows: { start: 0, end: 3 },
+      playerRows: { start: 4, end: 7 },
+      movement: "orthogonal",
+    };
+
+    expect(hashCombatSnapshot({ ...snapshot, board: productionBoard }))
+      .not.toBe(hashCombatSnapshot(snapshot));
   });
 
   it("emits the exact same event log and result hash for identical input", () => {
@@ -599,6 +633,7 @@ describe("deterministic combat kernel", () => {
 
   it("selects targets by path length, then HP, grid index and unit ID", () => {
     const target = selectNearestTarget(
+      legacyBoard,
       { id: "player:H01:1", side: "player", position: 13, currentHp: 100, attackRange: 1 },
       [
         { id: "enemy:E02:1", side: "enemy", position: 9, currentHp: 100, attackRange: 1 },

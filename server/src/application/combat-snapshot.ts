@@ -1,4 +1,4 @@
-import type { CombatEffect, CombatImmunity, CombatPassive, CombatSnapshot, CombatUnit, CompiledCombatTrigger, CompiledContentBundle } from "@auto-battler/game-core";
+import { playerStartCell, type CombatEffect, type CombatImmunity, type CombatPassive, type CombatSnapshot, type CombatUnit, type CompiledCombatTrigger, type CompiledContentBundle, type CompiledRuleset } from "@auto-battler/game-core";
 import type { ItemInstance, LockedRoundSnapshot } from "./run-commands.js";
 
 const SCALE = 1_000;
@@ -8,7 +8,7 @@ export interface BuildCombatSnapshotInput {
   readonly lockedSnapshot: LockedRoundSnapshot;
   readonly combatId: string;
   readonly combatSeed: string;
-  readonly rulesetVersion: string;
+  readonly ruleset: CompiledRuleset;
 }
 
 function requiredStat(stats: Readonly<Record<string, number>>, name: string): number {
@@ -309,7 +309,7 @@ export function buildCombatSnapshot(input: BuildCombatSnapshotInput): CombatSnap
   const traitHealShieldPower = traitHealShieldPowerByHero(input.content, input.lockedSnapshot.board);
   const playerUnits = input.lockedSnapshot.board.flatMap((hero, localPosition) => hero === null
     ? []
-    : [toCombatUnit(input.content, hero.heroId, `player:${hero.instanceId}`, "player", 12 + localPosition, SCALE, hero.stars ?? 1, [...(traitModifiers.get(hero.instanceId) ?? []), ...itemModifiers(input.content, input.lockedSnapshot.items ?? [], hero.instanceId)], [...(traitPassives.get(hero.instanceId) ?? []), ...itemPassives(input.content, input.lockedSnapshot.items ?? [], hero.instanceId)], 0, traitImmunities.get(hero.instanceId) ?? [], traitHealShieldPower.get(hero.instanceId) ?? 0)]);
+    : [toCombatUnit(input.content, hero.heroId, `player:${hero.instanceId}`, "player", playerStartCell(input.ruleset.board) + localPosition, SCALE, hero.stars ?? 1, [...(traitModifiers.get(hero.instanceId) ?? []), ...itemModifiers(input.content, input.lockedSnapshot.items ?? [], hero.instanceId)], [...(traitPassives.get(hero.instanceId) ?? []), ...itemPassives(input.content, input.lockedSnapshot.items ?? [], hero.instanceId)], 0, traitImmunities.get(hero.instanceId) ?? [], traitHealShieldPower.get(hero.instanceId) ?? 0)]);
   const enemyUnits = encounter.enemy_composition.map((enemy, index) => toCombatUnit(
     input.content,
     enemy.hero_id,
@@ -325,7 +325,9 @@ export function buildCombatSnapshot(input: BuildCombatSnapshotInput): CombatSnap
   return {
     combatId: input.combatId,
     contentVersion: input.lockedSnapshot.contentVersion,
-    rulesetVersion: input.rulesetVersion,
+    rulesetVersion: input.ruleset.version,
+    board: input.ruleset.board,
+    maxTicks: input.ruleset.maxCombatTicks,
     combatSeed: input.combatSeed,
     defenderSide: "enemy",
     units: [...playerUnits, ...enemyUnits],

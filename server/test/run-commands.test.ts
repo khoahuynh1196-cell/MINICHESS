@@ -2,30 +2,51 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import type { CombatSnapshot } from "@auto-battler/game-core";
+import { createRunInput, productionRules, rulesRun, runDependencies } from "./support/production-rules.js";
+
 
 const modulePath = "../src/application/run-commands.js";
+
+type RunCommandsModule = typeof import("../src/application/run-commands.js");
+
+function createTestRun(module: any, input: any, repository: any, shopGenerator?: any, setup?: any) {
+  return module.createRun(createRunInput(input), runDependencies(repository, shopGenerator), setup);
+}
+
+function applyTestCommand(module: any, input: any, repository: any, shopGenerator?: any) {
+  return module.applyRunCommand(input, runDependencies(repository, shopGenerator));
+}
+
+function recordTestCombat(lifecycle: any, run: Record<string, unknown>, result: unknown) {
+  return lifecycle.recordResolvedCombat(rulesRun(run), result, productionRules);
+}
+
+function claimTestReward(lifecycle: any, run: Record<string, unknown>, selections: readonly unknown[] = []) {
+  return lifecycle.claimResolvedRoundReward(rulesRun(run), selections, productionRules);
+}
+
 
 describe("run commands", () => {
 	it("toggles a persisted shop lock and refuses refresh while the server lock is active", async () => {
 		const module = await import(modulePath) as typeof import("../src/application/run-commands.js");
 		const repository = module.createInMemoryRunRepository();
-		await module.createRun({ id: "run-lock-shop", tenantId: "tenant-a", contentVersion: "alpha-0.3.0" }, repository);
+		await createTestRun(module, { id: "run-lock-shop", tenantId: "tenant-a", contentVersion: "alpha-0.3.0" }, repository);
 
-		await expect(module.applyRunCommand({ actorId: "actor-a", tenantId: "tenant-a", runId: "run-lock-shop", commandId: "cmd-lock", expectedRevision: 0, type: "LOCK_SHOP" as never }, repository))
+		await expect(applyTestCommand(module, { actorId: "actor-a", tenantId: "tenant-a", runId: "run-lock-shop", commandId: "cmd-lock", expectedRevision: 0, type: "LOCK_SHOP" as never }, repository))
 			.resolves.toEqual({ runRevision: 1, status: "APPLIED" });
 		await expect(repository.get("run-lock-shop", "tenant-a")).resolves.toMatchObject({ shopLocked: true, gold: 8, revision: 1 });
-		await expect(module.applyRunCommand({ actorId: "actor-a", tenantId: "tenant-a", runId: "run-lock-shop", commandId: "cmd-locked-refresh", expectedRevision: 1, type: "REFRESH_SHOP" }, repository))
+		await expect(applyTestCommand(module, { actorId: "actor-a", tenantId: "tenant-a", runId: "run-lock-shop", commandId: "cmd-locked-refresh", expectedRevision: 1, type: "REFRESH_SHOP" }, repository))
 			.rejects.toThrow("COMMAND_NOT_ALLOWED");
-		await expect(module.applyRunCommand({ actorId: "actor-a", tenantId: "tenant-a", runId: "run-lock-shop", commandId: "cmd-unlock", expectedRevision: 1, type: "LOCK_SHOP" as never }, repository))
+		await expect(applyTestCommand(module, { actorId: "actor-a", tenantId: "tenant-a", runId: "run-lock-shop", commandId: "cmd-unlock", expectedRevision: 1, type: "LOCK_SHOP" as never }, repository))
 			.resolves.toEqual({ runRevision: 2, status: "APPLIED" });
 		await expect(repository.get("run-lock-shop", "tenant-a")).resolves.toMatchObject({ shopLocked: false, gold: 8, revision: 2 });
 	});
   it("spends four gold for four experience without advancing before the threshold", async () => {
     const module = await import(modulePath) as typeof import("../src/application/run-commands.js");
     const repository = module.createInMemoryRunRepository();
-    await module.createRun({ id: "run-buy-xp", tenantId: "tenant-a", contentVersion: "alpha-0.3.0" }, repository);
+    await createTestRun(module, { id: "run-buy-xp", tenantId: "tenant-a", contentVersion: "alpha-0.3.0" }, repository);
 
-    await expect(module.applyRunCommand({ actorId: "actor-a", tenantId: "tenant-a", runId: "run-buy-xp", commandId: "cmd-buy-xp", expectedRevision: 0, type: "BUY_XP" as never }, repository))
+    await expect(applyTestCommand(module, { actorId: "actor-a", tenantId: "tenant-a", runId: "run-buy-xp", commandId: "cmd-buy-xp", expectedRevision: 0, type: "BUY_XP" as never }, repository))
       .resolves.toEqual({ runRevision: 1, status: "APPLIED" });
     await expect(repository.get("run-buy-xp", "tenant-a")).resolves.toMatchObject({
       gold: 4,
@@ -40,10 +61,10 @@ describe("run commands", () => {
     const repository = module.createInMemoryRunRepository();
     await repository.save({
       id: "run-xp-level-up", tenantId: "tenant-a", contentVersion: "alpha-0.3.0", state: "PREPARE", round: 1, revision: 0, gold: 8,
-      level: 3, experience: 8, commandResponses: {}, bench: [], board: Array(12).fill(null),
+      level: 3, experience: 8, commandResponses: {}, bench: [], board: Array(16).fill(null),
     });
 
-    await module.applyRunCommand({ actorId: "actor-a", tenantId: "tenant-a", runId: "run-xp-level-up", commandId: "cmd-level-up", expectedRevision: 0, type: "BUY_XP" as never }, repository);
+    await applyTestCommand(module, { actorId: "actor-a", tenantId: "tenant-a", runId: "run-xp-level-up", commandId: "cmd-level-up", expectedRevision: 0, type: "BUY_XP" as never }, repository);
 
     await expect(repository.get("run-xp-level-up", "tenant-a")).resolves.toMatchObject({ gold: 4, level: 4, experience: 2, revision: 1 });
   });
@@ -53,11 +74,11 @@ describe("run commands", () => {
     const repository = module.createInMemoryRunRepository();
     const initialRun = {
       id: "run-xp-cap", tenantId: "tenant-a", contentVersion: "alpha-0.3.0", state: "PREPARE" as const, round: 8, revision: 0, gold: 8,
-      level: 10, experience: 0, commandResponses: {}, bench: [], board: Array(12).fill(null),
+      level: 10, experience: 0, commandResponses: {}, bench: [], board: Array(16).fill(null),
     };
     await repository.save(initialRun);
 
-    await expect(module.applyRunCommand({ actorId: "actor-a", tenantId: "tenant-a", runId: "run-xp-cap", commandId: "cmd-xp-cap", expectedRevision: 0, type: "BUY_XP" as never }, repository))
+    await expect(applyTestCommand(module, { actorId: "actor-a", tenantId: "tenant-a", runId: "run-xp-cap", commandId: "cmd-xp-cap", expectedRevision: 0, type: "BUY_XP" as never }, repository))
       .rejects.toThrow("GAME_RULE_VIOLATION");
     await expect(repository.get("run-xp-cap", "tenant-a")).resolves.toEqual(initialRun);
   });
@@ -65,12 +86,12 @@ describe("run commands", () => {
   it("replays an XP command once and rejects a different stale revision", async () => {
     const module = await import(modulePath) as typeof import("../src/application/run-commands.js");
     const repository = module.createInMemoryRunRepository();
-    await module.createRun({ id: "run-xp-idempotency", tenantId: "tenant-a", contentVersion: "alpha-0.3.0" }, repository);
+    await createTestRun(module, { id: "run-xp-idempotency", tenantId: "tenant-a", contentVersion: "alpha-0.3.0" }, repository);
     const command = { actorId: "actor-a", tenantId: "tenant-a", runId: "run-xp-idempotency", commandId: "cmd-xp-replay", expectedRevision: 0, type: "BUY_XP" as never };
 
-    await expect(module.applyRunCommand(command, repository)).resolves.toEqual({ runRevision: 1, status: "APPLIED" });
-    await expect(module.applyRunCommand(command, repository)).resolves.toEqual({ runRevision: 1, status: "APPLIED" });
-    await expect(module.applyRunCommand({ ...command, commandId: "cmd-xp-stale" }, repository)).rejects.toThrow("RUN_REVISION_CONFLICT");
+    await expect(applyTestCommand(module, command, repository)).resolves.toEqual({ runRevision: 1, status: "APPLIED" });
+    await expect(applyTestCommand(module, command, repository)).resolves.toEqual({ runRevision: 1, status: "APPLIED" });
+    await expect(applyTestCommand(module, { ...command, commandId: "cmd-xp-stale" }, repository)).rejects.toThrow("RUN_REVISION_CONFLICT");
     await expect(repository.get("run-xp-idempotency", "tenant-a")).resolves.toMatchObject({ gold: 4, experience: 4, revision: 1 });
   });
 
@@ -80,13 +101,13 @@ describe("run commands", () => {
     const heroes = Array.from({ length: 5 }, (_, index) => ({ instanceId: `hero-cap-${index + 1}`, heroId: `H0${index + 1}`, cost: 1 }));
     const initialRun = {
       id: "run-level-board-cap", tenantId: "tenant-a", contentVersion: "alpha-0.3.0", state: "PREPARE" as const, round: 8, revision: 0, gold: 8,
-      level: 4, experience: 0, commandResponses: {}, bench: [heroes[4]!], board: [...heroes.slice(0, 4), ...Array(8).fill(null)],
+      level: 4, experience: 0, commandResponses: {}, bench: [heroes[4]!], board: [...heroes.slice(0, 4), ...Array(12).fill(null)],
     };
     await repository.save(initialRun);
 
-    await expect(module.applyRunCommand({ actorId: "actor-a", tenantId: "tenant-a", runId: "run-level-board-cap", commandId: "cmd-over-cap-move", expectedRevision: 0, type: "MOVE_HERO", heroInstanceId: heroes[4]!.instanceId, destination: 16 }, repository))
+    await expect(applyTestCommand(module, { actorId: "actor-a", tenantId: "tenant-a", runId: "run-level-board-cap", commandId: "cmd-over-cap-move", expectedRevision: 0, type: "MOVE_HERO", heroInstanceId: heroes[4]!.instanceId, destination: 20 }, repository))
       .rejects.toThrow("GAME_RULE_VIOLATION");
-    await expect(module.applyRunCommand({ actorId: "actor-a", tenantId: "tenant-a", runId: "run-level-board-cap", commandId: "cmd-over-cap-start", expectedRevision: 0, type: "START_ROUND" }, repository))
+    await expect(applyTestCommand(module, { actorId: "actor-a", tenantId: "tenant-a", runId: "run-level-board-cap", commandId: "cmd-over-cap-start", expectedRevision: 0, type: "START_ROUND" }, repository))
       .resolves.toEqual({ runRevision: 1, status: "APPLIED" });
   });
 
@@ -96,10 +117,10 @@ describe("run commands", () => {
     };
     expect(lifecycle).toBeDefined();
     if (lifecycle === undefined) return;
-    const run = { id: "run-result", tenantId: "tenant-a", contentVersion: "alpha-0.3.0", state: "COMBAT", round: 1, revision: 4, gold: 8, commandResponses: {}, lockedSnapshot: { runId: "run-result", contentVersion: "alpha-0.3.0", round: 1, board: Array(12).fill(null) } };
+    const run = { id: "run-result", tenantId: "tenant-a", contentVersion: "alpha-0.3.0", state: "COMBAT", round: 1, revision: 4, gold: 8, commandResponses: {}, lockedSnapshot: { runId: "run-result", contentVersion: "alpha-0.3.0", round: 1, board: Array(16).fill(null) } };
     const result = { events: [{ sequence: 0, tick: 0, type: "COMBAT_ENDED", payload: { winner: "player" } }], finalTick: 1, reason: "elimination", resultHash: "abc123def4567890", units: [], winner: "player" };
 
-    expect(lifecycle.recordResolvedCombat(run, result)).toMatchObject({
+    expect(recordTestCombat(lifecycle, run, result)).toMatchObject({
       state: "REWARD",
       revision: 5,
       combatRecord: { winner: "player", resultHash: "abc123def4567890", finalTick: 1 },
@@ -107,10 +128,10 @@ describe("run commands", () => {
   });
 
   it("deducts capped PvE loss damage from run health using surviving non-summon enemies", async () => {
-    const lifecycle = await import("../src/application/round-lifecycle.js") as {
+    const lifecycle = await import("../src/application/round-lifecycle.js") as unknown as {
       recordResolvedCombat(run: unknown, result: unknown): { state: string; health: number; revision: number };
     };
-    const run = { id: "run-loss", tenantId: "tenant-a", contentVersion: "alpha-0.3.0", state: "COMBAT", round: 1, revision: 2, gold: 8, health: 30, commandResponses: {}, lockedSnapshot: { runId: "run-loss", contentVersion: "alpha-0.3.0", round: 1, board: Array(12).fill(null) } };
+    const run = { id: "run-loss", tenantId: "tenant-a", contentVersion: "alpha-0.3.0", state: "COMBAT", round: 1, revision: 2, gold: 8, health: 30, commandResponses: {}, lockedSnapshot: { runId: "run-loss", contentVersion: "alpha-0.3.0", round: 1, board: Array(16).fill(null) } };
     const result = {
       events: [], finalTick: 1, reason: "elimination", resultHash: "abc123def4567890", winner: "enemy",
       units: [
@@ -120,21 +141,21 @@ describe("run commands", () => {
       ],
     };
 
-    expect(lifecycle.recordResolvedCombat(run, result)).toMatchObject({ state: "REWARD", health: 22, revision: 3 });
+    expect(recordTestCombat(lifecycle, run, result)).toMatchObject({ state: "REWARD", health: 22, revision: 3 });
   });
 
   it("reveals the one preselected Unique into inventory only after a living round-four result", async () => {
-    const lifecycle = await import("../src/application/round-lifecycle.js") as {
+    const lifecycle = await import("../src/application/round-lifecycle.js") as unknown as {
       recordResolvedCombat(run: unknown, result: unknown): { uniqueRevealed: boolean; items: readonly unknown[] };
     };
     const run = {
       id: "run-unique-reveal", tenantId: "tenant-a", contentVersion: "alpha-0.3.0", state: "COMBAT", round: 4, revision: 5, gold: 18, health: 12,
       runSeed: "000102030405060708090a0b0c0d0e0f", preselectedUniqueId: "U04", uniqueRevealed: false, commandResponses: {},
-      lockedSnapshot: { runId: "run-unique-reveal", contentVersion: "alpha-0.3.0", round: 4, board: Array(12).fill(null) },
+      lockedSnapshot: { runId: "run-unique-reveal", contentVersion: "alpha-0.3.0", round: 4, board: Array(16).fill(null) },
     };
     const result = { events: [], finalTick: 1, reason: "elimination", resultHash: "uniqueabc1234567", units: [], winner: "player" };
 
-    expect(lifecycle.recordResolvedCombat(run, result)).toMatchObject({
+    expect(recordTestCombat(lifecycle, run, result)).toMatchObject({
       state: "REWARD", uniqueRevealed: true,
       items: [{ instanceId: "unique:run-unique-reveal:U04", itemId: "U04", kind: "unique" }],
     });
@@ -148,18 +169,18 @@ describe("run commands", () => {
     if (lifecycle === undefined) return;
     const run = {
       id: "run-reward", tenantId: "tenant-a", contentVersion: "alpha-0.3.0", state: "REWARD", round: 1, revision: 3, gold: 8, health: 30, commandResponses: {},
-      lockedSnapshot: { runId: "run-reward", contentVersion: "alpha-0.3.0", round: 1, board: Array(12).fill(null) },
+      lockedSnapshot: { runId: "run-reward", contentVersion: "alpha-0.3.0", round: 1, board: Array(16).fill(null) },
       combatRecord: { round: 1, winner: "player", resultHash: "abc123def4567890", finalTick: 1, reason: "elimination", events: [] },
     };
 
-    const claimed = lifecycle.claimResolvedRoundReward(run);
+    const claimed = claimTestReward(lifecycle, run);
 
     expect(claimed).toMatchObject({ state: "PREPARE", round: 2, gold: 13, revision: 4 });
-    expect(lifecycle.claimResolvedRoundReward(claimed)).toEqual(claimed);
+    expect(claimTestReward(lifecycle, claimed)).toEqual(claimed);
   });
 
   it("awards the mandatory base gold after a surviving loss as well", async () => {
-    const lifecycle = await import("../src/application/round-lifecycle.js") as {
+    const lifecycle = await import("../src/application/round-lifecycle.js") as unknown as {
       claimResolvedRoundReward(run: unknown): { state: string; round: number; gold: number; revision: number };
     };
     const run = {
@@ -167,11 +188,11 @@ describe("run commands", () => {
       combatRecord: { round: 1, winner: "enemy", resultHash: "lossabc123456789", finalTick: 5, reason: "elimination", events: [] },
     };
 
-    expect(lifecycle.claimResolvedRoundReward(run)).toMatchObject({ state: "PREPARE", round: 2, gold: 13, revision: 4 });
+    expect(claimTestReward(lifecycle, run)).toMatchObject({ state: "PREPARE", round: 2, gold: 13, revision: 4 });
   });
 
   it("claims content supplemental gold and a free refresh once alongside the mandatory base award", async () => {
-    const lifecycle = await import("../src/application/round-lifecycle.js") as {
+    const lifecycle = await import("../src/application/round-lifecycle.js") as unknown as {
       claimResolvedRoundReward(run: unknown): { state: string; round: number; gold: number; freeRefreshes?: number; roundRewardPlan?: unknown; revision: number };
     };
     const run = {
@@ -180,13 +201,13 @@ describe("run commands", () => {
       roundRewardPlan: { round: 5, supplementalGold: 5, freeRefreshes: 1, offers: [] },
     };
 
-    const claimed = lifecycle.claimResolvedRoundReward(run);
+    const claimed = claimTestReward(lifecycle, run);
     expect(claimed).toMatchObject({ state: "PREPARE", round: 6, gold: 31, freeRefreshes: 1, revision: 10 });
     expect(claimed).not.toHaveProperty("roundRewardPlan");
   });
 
   it("requires and materializes a selected normal-item reward before advancing the round", async () => {
-    const lifecycle = await import("../src/application/round-lifecycle.js") as {
+    const lifecycle = await import("../src/application/round-lifecycle.js") as unknown as {
       claimResolvedRoundReward(run: unknown, selections?: readonly { offerId: string; optionId: string }[]): { state: string; round: number; gold: number; items?: readonly { itemId: string; kind: string }[] };
     };
     const run = {
@@ -198,23 +219,23 @@ describe("run commands", () => {
       },
     };
 
-    expect(() => lifecycle.claimResolvedRoundReward(run)).toThrow("REWARD_SELECTION_REQUIRED");
-    expect(lifecycle.claimResolvedRoundReward(run, [{ offerId: "reward:3:normal_item_choice:0", optionId: "I02" }])).toMatchObject({
+    expect(() => claimTestReward(lifecycle, run)).toThrow("REWARD_SELECTION_REQUIRED");
+    expect(claimTestReward(lifecycle, run, [{ offerId: "reward:3:normal_item_choice:0", optionId: "I02" }])).toMatchObject({
       state: "PREPARE", round: 4, gold: 20, items: [expect.objectContaining({ itemId: "I02", kind: "normal" })],
     });
   });
 
   it("completes a victorious eighth round instead of creating a ninth round", async () => {
-    const lifecycle = await import("../src/application/round-lifecycle.js") as {
+    const lifecycle = await import("../src/application/round-lifecycle.js") as unknown as {
       claimResolvedRoundReward(run: unknown): { state: string; round: number; gold: number; revision: number };
     };
     const run = {
       id: "run-final-reward", tenantId: "tenant-a", contentVersion: "alpha-0.3.0", state: "REWARD", round: 8, revision: 10, gold: 41, health: 14, commandResponses: {},
-      lockedSnapshot: { runId: "run-final-reward", contentVersion: "alpha-0.3.0", round: 8, board: Array(12).fill(null) },
+      lockedSnapshot: { runId: "run-final-reward", contentVersion: "alpha-0.3.0", round: 8, board: Array(16).fill(null) },
       combatRecord: { round: 8, winner: "player", resultHash: "finalabc123456789", finalTick: 10, reason: "elimination", events: [] },
     };
 
-    expect(lifecycle.claimResolvedRoundReward(run)).toMatchObject({ state: "COMPLETE", round: 8, gold: 46, revision: 11 });
+    expect(claimTestReward(lifecycle, run)).toMatchObject({ state: "COMPLETE", round: 8, gold: 46, revision: 11 });
   });
 
   it("accepts an idempotent reward-claim command after a victorious combat", async () => {
@@ -226,8 +247,8 @@ describe("run commands", () => {
     });
     const command = { actorId: "actor-a", tenantId: "tenant-a", runId: "run-command-reward", commandId: "cmd-claim-reward", expectedRevision: 3, type: "CLAIM_ROUND_REWARD" as never };
 
-    await expect(module.applyRunCommand(command, repository)).resolves.toEqual({ runRevision: 4, status: "APPLIED" });
-    await expect(module.applyRunCommand(command, repository)).resolves.toEqual({ runRevision: 4, status: "APPLIED" });
+    await expect(applyTestCommand(module, command, repository)).resolves.toEqual({ runRevision: 4, status: "APPLIED" });
+    await expect(applyTestCommand(module, command, repository)).resolves.toEqual({ runRevision: 4, status: "APPLIED" });
     await expect(repository.get("run-command-reward", "tenant-a")).resolves.toMatchObject({ state: "PREPARE", round: 2, gold: 13, revision: 4 });
   });
 
@@ -247,8 +268,8 @@ describe("run commands", () => {
       type: "CLAIM_ROUND_REWARD" as const, rewardSelections: [{ offerId: "reward:3:normal_item_choice:0", optionId: "I03" }],
     };
 
-    await expect(module.applyRunCommand(command, repository)).resolves.toEqual({ runRevision: 4, status: "APPLIED" });
-    await expect(module.applyRunCommand(command, repository)).resolves.toEqual({ runRevision: 4, status: "APPLIED" });
+    await expect(applyTestCommand(module, command, repository)).resolves.toEqual({ runRevision: 4, status: "APPLIED" });
+    await expect(applyTestCommand(module, command, repository)).resolves.toEqual({ runRevision: 4, status: "APPLIED" });
     await expect(repository.get("run-command-item-choice", "tenant-a")).resolves.toMatchObject({
       state: "PREPARE", gold: 17, items: [expect.objectContaining({ itemId: "I03", kind: "normal" })],
     });
@@ -258,22 +279,22 @@ describe("run commands", () => {
     const module = await import(modulePath) as typeof import("../src/application/run-commands.js");
     const shopPool = await import("../src/application/shop-pool.js") as typeof import("../src/application/shop-pool.js");
     const repository = module.createInMemoryRunRepository();
-    const pool = shopPool.createShopPool({ heroesById: new Map([["H01", { id: "H01", cost: 1, rarity: 1 as const, is_unique_hero: false }]]) } as never, "000102030405060708090a0b0c0d0e0f");
+    const pool = shopPool.createShopPool({ heroesById: new Map([["H01", { id: "H01", cost: 1, rarity: 1 as const, is_unique_hero: false }]]) } as never, "000102030405060708090a0b0c0d0e0f", productionRules.shop);
     await repository.save({
       id: "run-reward-pool", tenantId: "tenant-a", contentVersion: "alpha-0.3.0", state: "REWARD", round: 4, revision: 0, gold: 20, commandResponses: {}, shopPool: pool,
       combatRecord: { round: 4, winner: "player", resultHash: "rewardpool123456", finalTick: 1, reason: "elimination", events: [] },
       roundRewardPlan: { round: 4, supplementalGold: 0, freeRefreshes: 0, offers: [{ id: "reward:4:hero_choice:0", kind: "hero_choice", options: [{ id: "H01", kind: "hero", cost: 1 }] }] },
     });
 
-    await module.applyRunCommand({ actorId: "actor-a", tenantId: "tenant-a", runId: "run-reward-pool", commandId: "cmd-materialize-hero-reward", expectedRevision: 0, type: "CLAIM_ROUND_REWARD", rewardSelections: [{ offerId: "reward:4:hero_choice:0", optionId: "H01" }] }, repository);
+    await applyTestCommand(module, { actorId: "actor-a", tenantId: "tenant-a", runId: "run-reward-pool", commandId: "cmd-materialize-hero-reward", expectedRevision: 0, type: "CLAIM_ROUND_REWARD", rewardSelections: [{ offerId: "reward:4:hero_choice:0", optionId: "H01" }] }, repository);
     const materialized = await repository.get("run-reward-pool", "tenant-a");
     expect(materialized?.shopPool?.heroes.H01?.remainingCopies).toBe(28);
     expect(materialized?.rewardHeroes).toMatchObject([{ heroId: "H01", poolCopies: 1 }]);
     const rewardHeroId = materialized?.rewardHeroes?.[0]?.instanceId;
     if (rewardHeroId === undefined) throw new Error("expected materialized reward hero");
 
-    await module.applyRunCommand({ actorId: "actor-a", tenantId: "tenant-a", runId: "run-reward-pool", commandId: "cmd-claim-hero-reward-pool", expectedRevision: 1, type: "CLAIM_REWARD_HERO", heroInstanceId: rewardHeroId }, repository);
-    await module.applyRunCommand({ actorId: "actor-a", tenantId: "tenant-a", runId: "run-reward-pool", commandId: "cmd-sell-hero-reward-pool", expectedRevision: 2, type: "SELL_HERO", heroInstanceId: rewardHeroId }, repository);
+    await applyTestCommand(module, { actorId: "actor-a", tenantId: "tenant-a", runId: "run-reward-pool", commandId: "cmd-claim-hero-reward-pool", expectedRevision: 1, type: "CLAIM_REWARD_HERO", heroInstanceId: rewardHeroId }, repository);
+    await applyTestCommand(module, { actorId: "actor-a", tenantId: "tenant-a", runId: "run-reward-pool", commandId: "cmd-sell-hero-reward-pool", expectedRevision: 2, type: "SELL_HERO", heroInstanceId: rewardHeroId }, repository);
 
     await expect(repository.get("run-reward-pool", "tenant-a")).resolves.toMatchObject({ shopPool: { heroes: { H01: { remainingCopies: 29 } } }, bench: [] });
   });
@@ -286,10 +307,10 @@ describe("run commands", () => {
     const secondCopy = { instanceId: "hero-copy-b", heroId: "H02", cost: 2, stars: 1 as const };
     await repository.save({
       id: "run-hero-choice", tenantId: "tenant-a", contentVersion: "alpha-0.3.0", state: "PREPARE", round: 6, revision: 4, gold: 28,
-      commandResponses: {}, bench: [firstCopy, secondCopy], board: Array(12).fill(null), rewardHeroes: [rewardHero],
+      commandResponses: {}, bench: [firstCopy, secondCopy], board: Array(16).fill(null), rewardHeroes: [rewardHero],
     });
 
-    await expect(module.applyRunCommand({
+    await expect(applyTestCommand(module, {
       actorId: "actor-a", tenantId: "tenant-a", runId: "run-hero-choice", commandId: "cmd-claim-hero-reward", expectedRevision: 4,
       type: "CLAIM_REWARD_HERO" as never, heroInstanceId: rewardHero.instanceId,
     }, repository)).resolves.toEqual({ runRevision: 5, status: "APPLIED" });
@@ -302,7 +323,7 @@ describe("run commands", () => {
     const module = await import(modulePath) as typeof import("../src/application/run-commands.js");
     const shopPool = await import("../src/application/shop-pool.js") as typeof import("../src/application/shop-pool.js");
     const repository = module.createInMemoryRunRepository();
-    const pool = shopPool.createShopPool({ heroesById: new Map([["H01", { id: "H01", cost: 1, rarity: 1 as const, is_unique_hero: false }]]) } as never, "000102030405060708090a0b0c0d0e0f");
+    const pool = shopPool.createShopPool({ heroesById: new Map([["H01", { id: "H01", cost: 1, rarity: 1 as const, is_unique_hero: false }]]) } as never, "000102030405060708090a0b0c0d0e0f", productionRules.shop);
     pool.heroes.H01!.remainingCopies = 27;
     const legacyReward = { instanceId: "reward:legacy-run:4:reward:4:hero_choice:0:H01", heroId: "H01", cost: 1, stars: 1 as const };
     await repository.save({
@@ -314,13 +335,13 @@ describe("run commands", () => {
       rewardHeroes: [legacyReward],
     });
 
-    await module.applyRunCommand({ actorId: "actor-a", tenantId: "tenant-a", runId: "legacy-run", commandId: "cmd-claim-legacy-reward", expectedRevision: 0, type: "CLAIM_REWARD_HERO", heroInstanceId: legacyReward.instanceId }, repository);
+    await applyTestCommand(module, { actorId: "actor-a", tenantId: "tenant-a", runId: "legacy-run", commandId: "cmd-claim-legacy-reward", expectedRevision: 0, type: "CLAIM_REWARD_HERO", heroInstanceId: legacyReward.instanceId }, repository);
     const claimed = await repository.get("legacy-run", "tenant-a");
     const mergedHero = claimed?.bench?.[0];
     expect(mergedHero).toMatchObject({ heroId: "H01", stars: 2, poolCopies: 2 });
     if (mergedHero === undefined) throw new Error("expected merged legacy reward hero");
 
-    await expect(module.applyRunCommand({ actorId: "actor-a", tenantId: "tenant-a", runId: "legacy-run", commandId: "cmd-sell-legacy-reward", expectedRevision: 1, type: "SELL_HERO", heroInstanceId: mergedHero.instanceId }, repository)).resolves.toEqual({ runRevision: 2, status: "APPLIED" });
+    await expect(applyTestCommand(module, { actorId: "actor-a", tenantId: "tenant-a", runId: "legacy-run", commandId: "cmd-sell-legacy-reward", expectedRevision: 1, type: "SELL_HERO", heroInstanceId: mergedHero.instanceId }, repository)).resolves.toEqual({ runRevision: 2, status: "APPLIED" });
     await expect(repository.get("legacy-run", "tenant-a")).resolves.toMatchObject({ bench: [], shopPool: { heroes: { H01: { remainingCopies: 29 } } } });
   });
 
@@ -328,15 +349,15 @@ describe("run commands", () => {
     const module = await import(modulePath) as typeof import("../src/application/run-commands.js");
     const shopPool = await import("../src/application/shop-pool.js") as typeof import("../src/application/shop-pool.js");
     const repository = module.createInMemoryRunRepository();
-    const pool = shopPool.createShopPool({ heroesById: new Map([["H01", { id: "H01", cost: 1, rarity: 1 as const, is_unique_hero: false }]]) } as never, "000102030405060708090a0b0c0d0e0f");
+    const pool = shopPool.createShopPool({ heroesById: new Map([["H01", { id: "H01", cost: 1, rarity: 1 as const, is_unique_hero: false }]]) } as never, "000102030405060708090a0b0c0d0e0f", productionRules.shop);
     const legacyReward = { instanceId: "reward:legacy-direct:4:reward:4:hero_choice:0:H01", heroId: "H01", cost: 1, stars: 1 as const };
     await repository.save({
       id: "legacy-direct", tenantId: "tenant-a", contentVersion: "alpha-0.3.0", state: "PREPARE", round: 4, revision: 0, gold: 10, commandResponses: {}, shopPool: pool,
       bench: [], rewardHeroes: [legacyReward],
     });
 
-    await module.applyRunCommand({ actorId: "actor-a", tenantId: "tenant-a", runId: "legacy-direct", commandId: "cmd-claim-legacy-direct", expectedRevision: 0, type: "CLAIM_REWARD_HERO", heroInstanceId: legacyReward.instanceId }, repository);
-    await expect(module.applyRunCommand({ actorId: "actor-a", tenantId: "tenant-a", runId: "legacy-direct", commandId: "cmd-sell-legacy-direct", expectedRevision: 1, type: "SELL_HERO", heroInstanceId: legacyReward.instanceId }, repository)).resolves.toEqual({ runRevision: 2, status: "APPLIED" });
+    await applyTestCommand(module, { actorId: "actor-a", tenantId: "tenant-a", runId: "legacy-direct", commandId: "cmd-claim-legacy-direct", expectedRevision: 0, type: "CLAIM_REWARD_HERO", heroInstanceId: legacyReward.instanceId }, repository);
+    await expect(applyTestCommand(module, { actorId: "actor-a", tenantId: "tenant-a", runId: "legacy-direct", commandId: "cmd-sell-legacy-direct", expectedRevision: 1, type: "SELL_HERO", heroInstanceId: legacyReward.instanceId }, repository)).resolves.toEqual({ runRevision: 2, status: "APPLIED" });
     await expect(repository.get("legacy-direct", "tenant-a")).resolves.toMatchObject({ bench: [], shopPool: { heroes: { H01: { remainingCopies: 29 } } } });
   });
 
@@ -351,20 +372,18 @@ describe("run commands", () => {
     });
     const command = { actorId: "actor-a", tenantId: "tenant-a", runId: "run-ack-unique", commandId: "cmd-ack-unique", expectedRevision: 6, type: "ACK_UNIQUE_REVEAL" as never, revealId: "unique:run-ack-unique:U04" };
 
-    await expect(module.applyRunCommand(command, repository)).resolves.toEqual({ runRevision: 7, status: "APPLIED" });
+    await expect(applyTestCommand(module, command, repository)).resolves.toEqual({ runRevision: 7, status: "APPLIED" });
     await expect(repository.get("run-ack-unique", "tenant-a")).resolves.toMatchObject({ state: "REWARD", gold: 23, revision: 7, uniqueRevealAcknowledged: true, items: [{ instanceId: "unique:run-ack-unique:U04", itemId: "U04", kind: "unique" }] });
   });
 
   it("persists one hidden Unique selected from the run seed at creation", async () => {
     const module = await import(modulePath) as typeof import("../src/application/run-commands.js");
     const repository = module.createInMemoryRunRepository();
-    const createRunWithUnique = module.createRun as unknown as (
-      input: unknown, repository: unknown, shopGenerator?: unknown,
-      setup?: { runSeed: string; uniqueItemIds: readonly string[] },
-    ) => Promise<unknown>;
-
-    const run = await createRunWithUnique(
-      { id: "run-seeded-unique", tenantId: "tenant-a", contentVersion: "alpha-0.3.0" }, repository, undefined,
+    const run = await createTestRun(
+      module,
+      { id: "run-seeded-unique", tenantId: "tenant-a", contentVersion: "alpha-0.3.0" },
+      repository,
+      undefined,
       { runSeed: "000102030405060708090a0b0c0d0e0f", uniqueItemIds: ["U06", "U04", "U02", "U05", "U03", "U01"] },
     );
 
@@ -379,10 +398,11 @@ describe("run commands", () => {
     if (adapter === undefined) return;
     const bundlePath = fileURLToPath(new URL("../../content/alpha-0.3.0/bundle.json", import.meta.url));
     const content = compileContentBundle(JSON.parse(readFileSync(bundlePath, "utf8")));
-    const board = [{ instanceId: "hero-player", heroId: "H01", cost: 1 }, ...Array(11).fill(null)] as const;
+    const board = [{ instanceId: "hero-player", heroId: "H01", cost: 1 }, ...Array(15).fill(null)] as const;
 
     const snapshot = adapter.buildCombatSnapshot({
       content,
+      ruleset: productionRules,
       lockedSnapshot: { runId: "run-combat", contentVersion: "alpha-0.3.0", round: 1, board },
       combatId: "run-combat:1",
       combatSeed: "seed-a",
@@ -390,7 +410,7 @@ describe("run commands", () => {
     });
 
     expect(snapshot.units.map((unit) => ({ id: unit.id, side: unit.side, position: unit.position }))).toEqual([
-      { id: "player:hero-player", side: "player", position: 12 },
+      { id: "player:hero-player", side: "player", position: 16 },
       { id: "enemy:PVE_01:0", side: "enemy", position: 3 },
       { id: "enemy:PVE_01:1", side: "enemy", position: 5 },
     ]);
@@ -408,7 +428,8 @@ describe("run commands", () => {
 
     const snapshot = adapter.buildCombatSnapshot({
       content,
-      lockedSnapshot: { runId: "run-star-combat", contentVersion: "alpha-0.3.0", round: 1, board: [{ instanceId: "hero-two-star", heroId: "H01", cost: 1, stars: 2 }, ...Array(11).fill(null)] },
+      ruleset: productionRules,
+      lockedSnapshot: { runId: "run-star-combat", contentVersion: "alpha-0.3.0", round: 1, board: [{ instanceId: "hero-two-star", heroId: "H01", cost: 1, stars: 2 }, ...Array(15).fill(null)] },
       combatId: "combat:run-star-combat:1", combatSeed: "seed-star", rulesetVersion: "alpha-rules-0.3.0",
     });
 
@@ -425,9 +446,10 @@ describe("run commands", () => {
 
     const snapshot = adapter.buildCombatSnapshot({
       content,
+      ruleset: productionRules,
       lockedSnapshot: {
         runId: "run-item-combat", contentVersion: "alpha-0.3.0", round: 1,
-        board: [{ instanceId: "hero-item", heroId: "H01", cost: 1 }, ...Array(11).fill(null)],
+        board: [{ instanceId: "hero-item", heroId: "H01", cost: 1 }, ...Array(15).fill(null)],
         items: [
           { instanceId: "item-blade", itemId: "I01", kind: "normal", equippedHeroInstanceId: "hero-item" },
           { instanceId: "item-plate", itemId: "I05", kind: "normal", equippedHeroInstanceId: "hero-item" },
@@ -448,9 +470,10 @@ describe("run commands", () => {
 
     const snapshot = adapter.buildCombatSnapshot({
       content,
+      ruleset: productionRules,
       lockedSnapshot: {
         runId: "run-item-passive", contentVersion: "alpha-0.3.0", round: 1,
-        board: [{ instanceId: "hero-passive", heroId: "H01", cost: 1 }, ...Array(11).fill(null)],
+        board: [{ instanceId: "hero-passive", heroId: "H01", cost: 1 }, ...Array(15).fill(null)],
         items: [{ instanceId: "item-dawn", itemId: "I10", kind: "normal", equippedHeroInstanceId: "hero-passive" }],
       },
       combatId: "combat:run-item-passive:1", combatSeed: "seed-item-passive", rulesetVersion: "alpha-rules-0.3.0",
@@ -479,11 +502,12 @@ describe("run commands", () => {
       const holderId = `hero-${itemId.toLowerCase()}`;
       const built = adapter.buildCombatSnapshot({
         content,
+        ruleset: productionRules,
         lockedSnapshot: {
           runId: `run-${itemId.toLowerCase()}`,
           contentVersion: "alpha-0.3.0",
           round: 1,
-          board: [{ instanceId: holderId, heroId: "H16", cost: 3 }, ...Array(11).fill(null)],
+          board: [{ instanceId: holderId, heroId: "H16", cost: 3 }, ...Array(15).fill(null)],
           items: [{ instanceId: `item-${itemId.toLowerCase()}`, itemId, kind: itemId.startsWith("U") ? "unique" as const : "normal" as const, equippedHeroInstanceId: holderId }],
         },
         combatId: `combat-${itemId.toLowerCase()}`,
@@ -498,7 +522,7 @@ describe("run commands", () => {
           if (unit.side === "player") {
             return {
               ...unit,
-              position: 4,
+              position: 16,
               attackSpeed: options.playerAttackSpeed ?? 0,
               startingMana: options.playerStartingMana ?? 0,
             };
@@ -506,7 +530,7 @@ describe("run commands", () => {
           const index = enemyIndex++;
           return {
             ...unit,
-            position: index + 1,
+            position: 12 + index,
             attackSpeed: index === 0 ? options.enemyAttackSpeed ?? 0 : 0,
             attackDamage: index === 0 ? options.enemyAttackDamage ?? unit.attackDamage : unit.attackDamage,
           };
@@ -547,7 +571,8 @@ describe("run commands", () => {
 
     const snapshot = adapter.buildCombatSnapshot({
       content,
-      lockedSnapshot: { runId: "run-affix", contentVersion: "alpha-0.3.0", round: 5, board: [{ instanceId: "hero-player", heroId: "H01", cost: 1 }, ...Array(11).fill(null)] },
+      ruleset: productionRules,
+      lockedSnapshot: { runId: "run-affix", contentVersion: "alpha-0.3.0", round: 5, board: [{ instanceId: "hero-player", heroId: "H01", cost: 1 }, ...Array(15).fill(null)] },
       combatId: "combat:run-affix:5", combatSeed: "seed-affix", rulesetVersion: "alpha-rules-0.3.0",
     });
 
@@ -564,12 +589,13 @@ describe("run commands", () => {
 
     const snapshot = adapter.buildCombatSnapshot({
       content,
+      ruleset: productionRules,
       lockedSnapshot: {
         runId: "run-traits", contentVersion: "alpha-0.3.0", round: 1,
         board: [
           { instanceId: "cat-guardian", heroId: "H01", cost: 1 },
           { instanceId: "cat-ranger", heroId: "H03", cost: 1 },
-          ...Array(10).fill(null),
+          ...Array(14).fill(null),
         ],
       },
       combatId: "combat:run-traits:1", combatSeed: "seed-traits", rulesetVersion: "alpha-rules-0.3.0",
@@ -587,13 +613,14 @@ describe("run commands", () => {
     const content = compileContentBundle(JSON.parse(readFileSync(fileURLToPath(new URL("../../content/alpha-0.3.0/bundle.json", import.meta.url)), "utf8")));
     const snapshot = adapter.buildCombatSnapshot({
       content,
+      ruleset: productionRules,
       lockedSnapshot: {
         runId: "run-cow-trigger", contentVersion: "alpha-0.3.0", round: 1,
         board: [
           { instanceId: "cow-a", heroId: "H15", cost: 1 },
           { instanceId: "cow-b", heroId: "H16", cost: 3 },
           { instanceId: "cow-c", heroId: "H17", cost: 2 },
-          ...Array(9).fill(null),
+          ...Array(13).fill(null),
         ],
       },
       combatId: "combat-cow-trigger", combatSeed: "seed-cow-trigger", rulesetVersion: "alpha-rules-0.3.0",
@@ -611,11 +638,11 @@ describe("run commands", () => {
       ...snapshot,
       maxTicks: 1,
       units: snapshot.units.map((unit, index) => {
-        if (unit.side === "player") return { ...unit, position: unit.id === "player:cow-a" ? 4 : 12 + index, attackSpeed: 0 };
+        if (unit.side === "player") return { ...unit, position: unit.id === "player:cow-a" ? 16 : 16 + index, attackSpeed: 0 };
         const currentEnemyIndex = enemyIndex++;
         return {
           ...unit,
-          position: currentEnemyIndex === 0 ? 1 : currentEnemyIndex + 1,
+          position: 12 + currentEnemyIndex,
           attackSpeed: currentEnemyIndex === 0 ? 20_000 : 0,
           attackDamage: currentEnemyIndex === 0 ? 80_000 : unit.attackDamage,
         };
@@ -635,6 +662,7 @@ describe("run commands", () => {
     const content = compileContentBundle(JSON.parse(readFileSync(fileURLToPath(new URL("../../content/alpha-0.3.0/bundle.json", import.meta.url)), "utf8")));
     const snapshot = adapter.buildCombatSnapshot({
       content,
+      ruleset: productionRules,
       lockedSnapshot: {
         runId: "run-cat-trigger", contentVersion: "alpha-0.3.0", round: 1,
         board: [
@@ -642,7 +670,7 @@ describe("run commands", () => {
           { instanceId: "cat-b", heroId: "H02", cost: 2 },
           { instanceId: "cat-c", heroId: "H03", cost: 1 },
           { instanceId: "cat-d", heroId: "H04", cost: 3 },
-          ...Array(8).fill(null),
+          ...Array(12).fill(null),
         ],
       },
       combatId: "combat-cat-trigger", combatSeed: "seed-cat-trigger", rulesetVersion: "alpha-rules-0.3.0",
@@ -682,6 +710,7 @@ describe("run commands", () => {
     const content = compileContentBundle(JSON.parse(readFileSync(fileURLToPath(new URL("../../content/alpha-0.3.0/bundle.json", import.meta.url)), "utf8")));
     const snapshot = adapter.buildCombatSnapshot({
       content,
+      ruleset: productionRules,
       lockedSnapshot: {
         runId: "run-rabbit-trigger", contentVersion: "alpha-0.3.0", round: 1,
         board: [
@@ -689,7 +718,7 @@ describe("run commands", () => {
           { instanceId: "rabbit-b", heroId: "H12", cost: 1 },
           { instanceId: "rabbit-c", heroId: "H13", cost: 3 },
           { instanceId: "rabbit-d", heroId: "H14", cost: 2 },
-          ...Array(8).fill(null),
+          ...Array(12).fill(null),
         ],
       },
       combatId: "combat-rabbit-trigger", combatSeed: "seed-rabbit-trigger", rulesetVersion: "alpha-rules-0.3.0",
@@ -714,6 +743,7 @@ describe("run commands", () => {
     const content = compileContentBundle(JSON.parse(readFileSync(fileURLToPath(new URL("../../content/alpha-0.3.0/bundle.json", import.meta.url)), "utf8")));
     const snapshot = adapter.buildCombatSnapshot({
       content,
+      ruleset: productionRules,
       lockedSnapshot: {
         runId: "run-guardian-trigger", contentVersion: "alpha-0.3.0", round: 1,
         board: [
@@ -721,7 +751,7 @@ describe("run commands", () => {
           { instanceId: "guardian-dog", heroId: "H06", cost: 1 },
           { instanceId: "guardian-cow", heroId: "H15", cost: 1 },
           { instanceId: "guardian-exotic", heroId: "H20", cost: 3 },
-          ...Array(8).fill(null),
+          ...Array(12).fill(null),
         ],
       },
       combatId: "combat-guardian-trigger", combatSeed: "seed-guardian-trigger", rulesetVersion: "alpha-rules-0.3.0",
@@ -743,12 +773,13 @@ describe("run commands", () => {
     const content = compileContentBundle(JSON.parse(readFileSync(fileURLToPath(new URL("../../content/alpha-0.3.0/bundle.json", import.meta.url)), "utf8")));
     const snapshot = adapter.buildCombatSnapshot({
       content,
+      ruleset: productionRules,
       lockedSnapshot: {
         runId: "run-dog-trigger", contentVersion: "alpha-0.3.0", round: 1,
         board: [
           { instanceId: "dog-a", heroId: "H06", cost: 1 }, { instanceId: "dog-b", heroId: "H07", cost: 2 },
           { instanceId: "dog-c", heroId: "H08", cost: 2 }, { instanceId: "dog-d", heroId: "H09", cost: 3 },
-          ...Array(8).fill(null),
+          ...Array(12).fill(null),
         ],
       },
       combatId: "combat-dog-trigger", combatSeed: "seed-dog-trigger", rulesetVersion: "alpha-rules-0.3.0",
@@ -768,12 +799,13 @@ describe("run commands", () => {
     const content = compileContentBundle(JSON.parse(readFileSync(fileURLToPath(new URL("../../content/alpha-0.3.0/bundle.json", import.meta.url)), "utf8")));
     const snapshot = adapter.buildCombatSnapshot({
       content,
+      ruleset: productionRules,
       lockedSnapshot: {
         runId: "run-dog-adjacent-reduction", contentVersion: "alpha-0.3.0", round: 1,
         board: [
           { instanceId: "dog-a", heroId: "H06", cost: 1 }, { instanceId: "dog-b", heroId: "H07", cost: 2 },
           { instanceId: "dog-c", heroId: "H08", cost: 2 }, { instanceId: "dog-d", heroId: "H09", cost: 3 },
-          ...Array(8).fill(null),
+          ...Array(12).fill(null),
         ],
       },
       combatId: "combat-dog-adjacent-reduction", combatSeed: "seed-dog-adjacent-reduction", rulesetVersion: "alpha-rules-0.3.0",
@@ -795,6 +827,7 @@ describe("run commands", () => {
     const content = compileContentBundle(JSON.parse(readFileSync(fileURLToPath(new URL("../../content/alpha-0.3.0/bundle.json", import.meta.url)), "utf8")));
     const snapshot = adapter.buildCombatSnapshot({
       content,
+      ruleset: productionRules,
       lockedSnapshot: {
         runId: "run-dog-five-death-heal", contentVersion: "alpha-0.3.0", round: 1,
         board: [
@@ -820,12 +853,13 @@ describe("run commands", () => {
     const content = compileContentBundle(JSON.parse(readFileSync(fileURLToPath(new URL("../../content/alpha-0.3.0/bundle.json", import.meta.url)), "utf8")));
     const snapshot = adapter.buildCombatSnapshot({
       content,
+      ruleset: productionRules,
       lockedSnapshot: {
         runId: "run-mage-trigger", contentVersion: "alpha-0.3.0", round: 1,
         board: [
           { instanceId: "mage-cat", heroId: "H04", cost: 3 }, { instanceId: "mage-dog", heroId: "H09", cost: 3 },
           { instanceId: "mage-rabbit", heroId: "H13", cost: 3 }, { instanceId: "mage-exotic", heroId: "H19", cost: 3 },
-          ...Array(8).fill(null),
+          ...Array(12).fill(null),
         ],
       },
       combatId: "combat-mage-trigger", combatSeed: "seed-mage-trigger", rulesetVersion: "alpha-rules-0.3.0",
@@ -846,6 +880,7 @@ describe("run commands", () => {
     const content = compileContentBundle(JSON.parse(readFileSync(fileURLToPath(new URL("../../content/alpha-0.3.0/bundle.json", import.meta.url)), "utf8")));
     const snapshot = adapter.buildCombatSnapshot({
       content,
+      ruleset: productionRules,
       lockedSnapshot: {
         runId: "run-cat-five", contentVersion: "alpha-0.3.0", round: 1,
         board: [
@@ -875,9 +910,10 @@ describe("run commands", () => {
     const content = compileContentBundle(JSON.parse(readFileSync(fileURLToPath(new URL("../../content/alpha-0.3.0/bundle.json", import.meta.url)), "utf8")));
     const snapshot = adapter.buildCombatSnapshot({
       content,
+      ruleset: productionRules,
       lockedSnapshot: { runId: "run-support-trigger", contentVersion: "alpha-0.3.0", round: 1, board: [
         { instanceId: "support-cat", heroId: "H05", cost: 2 }, { instanceId: "support-dog", heroId: "H10", cost: 2 },
-        { instanceId: "support-rabbit", heroId: "H14", cost: 2 }, { instanceId: "support-cow", heroId: "H17", cost: 2 }, ...Array(8).fill(null),
+        { instanceId: "support-rabbit", heroId: "H14", cost: 2 }, { instanceId: "support-cow", heroId: "H17", cost: 2 }, ...Array(12).fill(null),
       ] },
       combatId: "combat-support-trigger", combatSeed: "seed-support-trigger", rulesetVersion: "alpha-rules-0.3.0",
     });
@@ -896,12 +932,13 @@ describe("run commands", () => {
     const content = compileContentBundle(JSON.parse(readFileSync(fileURLToPath(new URL("../../content/alpha-0.3.0/bundle.json", import.meta.url)), "utf8")));
     const snapshot = adapter.buildCombatSnapshot({
       content,
+      ruleset: productionRules,
       lockedSnapshot: {
         runId: "run-fighter-trigger", contentVersion: "alpha-0.3.0", round: 1,
         board: [
           { instanceId: "fighter-a", heroId: "H02", cost: 2 },
           { instanceId: "fighter-b", heroId: "H07", cost: 2 },
-          ...Array(10).fill(null),
+          ...Array(14).fill(null),
         ],
       },
       combatId: "combat-fighter-trigger", combatSeed: "seed-fighter-trigger", rulesetVersion: "alpha-rules-0.3.0",
@@ -935,12 +972,13 @@ describe("run commands", () => {
     const content = compileContentBundle(JSON.parse(readFileSync(fileURLToPath(new URL("../../content/alpha-0.3.0/bundle.json", import.meta.url)), "utf8")));
     const snapshot = adapter.buildCombatSnapshot({
       content,
+      ruleset: productionRules,
       lockedSnapshot: {
         runId: "run-fighter-four", contentVersion: "alpha-0.3.0", round: 1,
         board: [
           { instanceId: "fighter-cat", heroId: "H02", cost: 2 }, { instanceId: "fighter-dog", heroId: "H07", cost: 2 },
           { instanceId: "fighter-rabbit", heroId: "H11", cost: 1 }, { instanceId: "fighter-cow", heroId: "H16", cost: 3 },
-          ...Array(8).fill(null),
+          ...Array(12).fill(null),
         ],
       },
       combatId: "combat-fighter-four", combatSeed: "seed-fighter-four", rulesetVersion: "alpha-rules-0.3.0",
@@ -962,12 +1000,13 @@ describe("run commands", () => {
     const content = compileContentBundle(JSON.parse(readFileSync(fileURLToPath(new URL("../../content/alpha-0.3.0/bundle.json", import.meta.url)), "utf8")));
     const snapshot = adapter.buildCombatSnapshot({
       content,
+      ruleset: productionRules,
       lockedSnapshot: {
         runId: "run-ranger-four", contentVersion: "alpha-0.3.0", round: 1,
         board: [
           { instanceId: "ranger-cat", heroId: "H03", cost: 1 }, { instanceId: "ranger-dog", heroId: "H08", cost: 2 },
           { instanceId: "ranger-rabbit", heroId: "H12", cost: 1 }, { instanceId: "ranger-exotic", heroId: "H18", cost: 3 },
-          ...Array(8).fill(null),
+          ...Array(12).fill(null),
         ],
       },
       combatId: "combat-ranger-four", combatSeed: "seed-ranger-four", rulesetVersion: "alpha-rules-0.3.0",
@@ -987,11 +1026,12 @@ describe("run commands", () => {
     const content = compileContentBundle(JSON.parse(readFileSync(fileURLToPath(new URL("../../content/alpha-0.3.0/bundle.json", import.meta.url)), "utf8")));
     const snapshot = adapter.buildCombatSnapshot({
       content,
+      ruleset: productionRules,
       lockedSnapshot: {
         runId: "run-exotic-one", contentVersion: "alpha-0.3.0", round: 1,
         board: [
           { instanceId: "exotic-red-panda", heroId: "H18", cost: 3 }, { instanceId: "exotic-owl", heroId: "H19", cost: 3 },
-          { instanceId: "exotic-capybara", heroId: "H20", cost: 3 }, ...Array(9).fill(null),
+          { instanceId: "exotic-capybara", heroId: "H20", cost: 3 }, ...Array(13).fill(null),
         ],
       },
       combatId: "combat-exotic-one", combatSeed: "seed-exotic-one", rulesetVersion: "alpha-rules-0.3.0",
@@ -1020,7 +1060,8 @@ describe("run commands", () => {
 
     const resolved = resolver.resolveContentCombat({
       content,
-      lockedSnapshot: { runId: "run-resolution", contentVersion: "alpha-0.3.0", round: 1, board: [{ instanceId: "hero-player", heroId: "H16", cost: 3 }, ...Array(11).fill(null)] },
+      ruleset: productionRules,
+      lockedSnapshot: { runId: "run-resolution", contentVersion: "alpha-0.3.0", round: 1, board: [{ instanceId: "hero-player", heroId: "H16", cost: 3 }, ...Array(15).fill(null)] },
       combatId: "run-resolution:1",
       combatSeed: "seed-resolution",
       rulesetVersion: "alpha-rules-0.3.0",
@@ -1044,6 +1085,7 @@ describe("run commands", () => {
     const repository = commands.createInMemoryRunRepository();
     await repository.save({
       id: "run-authoritative-combat",
+      rulesetVersion: productionRules.version,
       tenantId: "tenant-a",
       contentVersion: "alpha-0.3.0",
       state: "COMBAT",
@@ -1058,8 +1100,8 @@ describe("run commands", () => {
         round: 1,
         combatId: "combat:run-authoritative-combat:1",
         combatSeed: "locked-worker-seed-1",
-        rulesetVersion: "alpha-rules-0.3.0",
-        board: [{ instanceId: "hero-player", heroId: "H16", cost: 3 }, ...Array(11).fill(null)],
+        rulesetVersion: productionRules.version,
+        board: [{ instanceId: "hero-player", heroId: "H16", cost: 3 }, ...Array(15).fill(null)],
       },
     });
 
@@ -1069,6 +1111,7 @@ describe("run commands", () => {
     }, {
       repository,
       contentRepository: { getByVersion: async (version: string) => version === "alpha-0.3.0" ? content : undefined },
+      ruleset: productionRules,
     });
 
     expect(resolved).toMatchObject({ state: "REWARD", revision: 5, combatRecord: { round: 1 }, roundRewardPlan: { supplementalGold: 2, freeRefreshes: 1 } });
@@ -1077,6 +1120,7 @@ describe("run commands", () => {
     await expect(resolver.resolveRunCombat({ tenantId: "tenant-a", runId: "run-authoritative-combat" }, {
       repository,
       contentRepository: { getByVersion: async () => { throw new Error("content should not load on replay"); } },
+      ruleset: productionRules,
     }))
       .resolves.toEqual(resolved);
     await expect(repository.get("run-authoritative-combat", "tenant-b")).resolves.toBeUndefined();
@@ -1092,11 +1136,11 @@ describe("run commands", () => {
     const content = compileContentBundle(JSON.parse(readFileSync(bundlePath, "utf8")));
     const backingRepository = commands.createInMemoryRunRepository();
     await backingRepository.save({
-      id: "run-concurrent-combat", tenantId: "tenant-a", contentVersion: "alpha-0.3.0", state: "COMBAT", round: 1, revision: 9, gold: 8, commandResponses: {},
+      id: "run-concurrent-combat", rulesetVersion: productionRules.version, tenantId: "tenant-a", contentVersion: "alpha-0.3.0", state: "COMBAT", round: 1, revision: 9, gold: 8, commandResponses: {},
       lockedSnapshot: {
         runId: "run-concurrent-combat", contentVersion: "alpha-0.3.0", round: 1,
-        combatId: "combat:run-concurrent-combat:1", combatSeed: "locked-worker-seed-2", rulesetVersion: "alpha-rules-0.3.0",
-        board: [{ instanceId: "hero-player", heroId: "H16", cost: 3 }, ...Array(11).fill(null)],
+        combatId: "combat:run-concurrent-combat:1", combatSeed: "locked-worker-seed-2", rulesetVersion: productionRules.version,
+        board: [{ instanceId: "hero-player", heroId: "H16", cost: 3 }, ...Array(15).fill(null)],
       },
     });
     let successfulConditionalWrites = 0;
@@ -1109,7 +1153,7 @@ describe("run commands", () => {
       },
     };
     const input = { tenantId: "tenant-a", runId: "run-concurrent-combat" };
-    const dependencies = { repository, contentRepository: { getByVersion: async () => content } };
+    const dependencies = { repository, contentRepository: { getByVersion: async () => content }, ruleset: productionRules };
 
     const [first, second] = await Promise.all([
       resolver.resolveRunCombat(input, dependencies),
@@ -1121,7 +1165,7 @@ describe("run commands", () => {
     expect(await backingRepository.get("run-concurrent-combat", "tenant-a")).toMatchObject({ state: "REWARD", revision: 10, combatRecord: { resultHash: first.combatRecord.resultHash } });
   });
   const invalidShops = [
-    { name: "does not contain exactly four slots", shop: [{ heroId: "H01", cost: 1 }] },
+    { name: "does not contain exactly five slots", shop: [{ heroId: "H01", cost: 1 }] },
     { name: "contains an empty hero ID", shop: [{ heroId: "H01", cost: 1 }, { heroId: "  ", cost: 2 }, { heroId: "H03", cost: 1 }, { heroId: "H04", cost: 3 }] },
     { name: "contains a whitespace-padded hero ID", shop: [{ heroId: "H01", cost: 1 }, { heroId: " H02 ", cost: 2 }, { heroId: "H03", cost: 1 }, { heroId: "H04", cost: 3 }] },
     { name: "contains a cost outside the allowed range", shop: [{ heroId: "H01", cost: 1 }, { heroId: "H02", cost: 6 }, { heroId: "H03", cost: 1 }, { heroId: "H04", cost: 3 }] },
@@ -1132,28 +1176,28 @@ describe("run commands", () => {
     const module = await import(modulePath) as typeof import("../src/application/run-commands.js") & { createRun?: (input: unknown, repository: unknown) => Promise<unknown> };
     const repository = module.createInMemoryRunRepository();
 
-    await expect(module.createRun?.({ id: "run-new", tenantId: "tenant-a", contentVersion: "alpha-0.3.0" }, repository))
-      .resolves.toMatchObject({ id: "run-new", tenantId: "tenant-a", contentVersion: "alpha-0.3.0", state: "PREPARE", revision: 0, gold: 8 });
+    await expect(createTestRun(module, { id: "run-new", tenantId: "tenant-a", contentVersion: "alpha-0.3.0" }, repository))
+      .resolves.toMatchObject({ id: "run-new", tenantId: "tenant-a", contentVersion: "alpha-0.3.0", rulesetVersion: productionRules.version, state: "PREPARE", revision: 0, gold: 8 });
   });
 
-  it("creates round one with an empty bench and twelve empty board cells", async () => {
+  it("creates round one with an empty bench and sixteen empty board cells", async () => {
     const module = await import(modulePath) as typeof import("../src/application/run-commands.js");
     const repository = module.createInMemoryRunRepository();
 
-    await module.createRun({ id: "run-layout", tenantId: "tenant-a", contentVersion: "alpha-0.3.0" }, repository);
+    await createTestRun(module, { id: "run-layout", tenantId: "tenant-a", contentVersion: "alpha-0.3.0" }, repository);
 
-    await expect(repository.get("run-layout", "tenant-a")).resolves.toMatchObject({ round: 1, bench: [], board: Array(12).fill(null) });
+    await expect(repository.get("run-layout", "tenant-a")).resolves.toMatchObject({ round: 1, bench: [], board: Array(16).fill(null) });
   });
 
   it("moves a bench hero into an empty global board destination", async () => {
     const module = await import(modulePath) as typeof import("../src/application/run-commands.js");
     const repository = module.createInMemoryRunRepository();
     const hero = { instanceId: "hero-bench", heroId: "H01", cost: 1 };
-    await repository.save({ id: "run-move", tenantId: "tenant-a", contentVersion: "alpha-0.3.0", state: "PREPARE", revision: 0, gold: 8, commandResponses: {}, bench: [hero], board: Array(12).fill(null) });
+    await repository.save({ id: "run-move", tenantId: "tenant-a", contentVersion: "alpha-0.3.0", state: "PREPARE", revision: 0, gold: 8, commandResponses: {}, bench: [hero], board: Array(16).fill(null) });
 
-    await expect(module.applyRunCommand({ actorId: "actor-a", tenantId: "tenant-a", runId: "run-move", commandId: "cmd-move", expectedRevision: 0, type: "MOVE_HERO", heroInstanceId: hero.instanceId, destination: 12 }, repository))
+    await expect(applyTestCommand(module, { actorId: "actor-a", tenantId: "tenant-a", runId: "run-move", commandId: "cmd-move", expectedRevision: 0, type: "MOVE_HERO", heroInstanceId: hero.instanceId, destination: 16 }, repository))
       .resolves.toEqual({ runRevision: 1, status: "APPLIED" });
-    await expect(repository.get("run-move", "tenant-a")).resolves.toMatchObject({ bench: [], board: [hero, ...Array(11).fill(null)] });
+    await expect(repository.get("run-move", "tenant-a")).resolves.toMatchObject({ bench: [], board: [hero, ...Array(15).fill(null)] });
   });
 
   it("swaps heroes between occupied board cells", async () => {
@@ -1161,11 +1205,11 @@ describe("run commands", () => {
     const repository = module.createInMemoryRunRepository();
     const first = { instanceId: "hero-first", heroId: "H01", cost: 1 };
     const second = { instanceId: "hero-second", heroId: "H02", cost: 2 };
-    await repository.save({ id: "run-board-swap", tenantId: "tenant-a", contentVersion: "alpha-0.3.0", state: "PREPARE", revision: 0, gold: 8, commandResponses: {}, bench: [], board: [first, second, ...Array(10).fill(null)] });
+    await repository.save({ id: "run-board-swap", tenantId: "tenant-a", contentVersion: "alpha-0.3.0", state: "PREPARE", revision: 0, gold: 8, commandResponses: {}, bench: [], board: [first, second, ...Array(14).fill(null)] });
 
-    await module.applyRunCommand({ actorId: "actor-a", tenantId: "tenant-a", runId: "run-board-swap", commandId: "cmd-board-swap", expectedRevision: 0, type: "MOVE_HERO", heroInstanceId: first.instanceId, destination: 13 }, repository);
+    await applyTestCommand(module, { actorId: "actor-a", tenantId: "tenant-a", runId: "run-board-swap", commandId: "cmd-board-swap", expectedRevision: 0, type: "MOVE_HERO", heroInstanceId: first.instanceId, destination: 17 }, repository);
 
-    await expect(repository.get("run-board-swap", "tenant-a")).resolves.toMatchObject({ bench: [], board: [second, first, ...Array(10).fill(null)] });
+    await expect(repository.get("run-board-swap", "tenant-a")).resolves.toMatchObject({ bench: [], board: [second, first, ...Array(14).fill(null)] });
   });
 
   it("returns the displaced board hero to the bench when swapping a bench hero", async () => {
@@ -1173,11 +1217,11 @@ describe("run commands", () => {
     const repository = module.createInMemoryRunRepository();
     const benchHero = { instanceId: "hero-bench", heroId: "H01", cost: 1 };
     const boardHero = { instanceId: "hero-board", heroId: "H03", cost: 3 };
-    await repository.save({ id: "run-bench-swap", tenantId: "tenant-a", contentVersion: "alpha-0.3.0", state: "PREPARE", revision: 0, gold: 8, commandResponses: {}, bench: [benchHero], board: [boardHero, ...Array(11).fill(null)] });
+    await repository.save({ id: "run-bench-swap", tenantId: "tenant-a", contentVersion: "alpha-0.3.0", state: "PREPARE", revision: 0, gold: 8, commandResponses: {}, bench: [benchHero], board: [boardHero, ...Array(15).fill(null)] });
 
-    await module.applyRunCommand({ actorId: "actor-a", tenantId: "tenant-a", runId: "run-bench-swap", commandId: "cmd-bench-swap", expectedRevision: 0, type: "MOVE_HERO", heroInstanceId: benchHero.instanceId, destination: 12 }, repository);
+    await applyTestCommand(module, { actorId: "actor-a", tenantId: "tenant-a", runId: "run-bench-swap", commandId: "cmd-bench-swap", expectedRevision: 0, type: "MOVE_HERO", heroInstanceId: benchHero.instanceId, destination: 16 }, repository);
 
-    await expect(repository.get("run-bench-swap", "tenant-a")).resolves.toMatchObject({ bench: [boardHero], board: [benchHero, ...Array(11).fill(null)] });
+    await expect(repository.get("run-bench-swap", "tenant-a")).resolves.toMatchObject({ bench: [boardHero], board: [benchHero, ...Array(15).fill(null)] });
   });
 
   it("rejects a bench move into an empty board cell at the round-one capacity without mutation", async () => {
@@ -1185,11 +1229,11 @@ describe("run commands", () => {
     const repository = module.createInMemoryRunRepository();
     const benchHero = { instanceId: "hero-bench", heroId: "H04", cost: 1 };
     const initialRun = { id: "run-capacity", tenantId: "tenant-a", contentVersion: "alpha-0.3.0", state: "PREPARE" as const, revision: 0, gold: 8, commandResponses: {}, bench: [benchHero], board: [
-      { instanceId: "hero-1", heroId: "H01", cost: 1 }, { instanceId: "hero-2", heroId: "H02", cost: 2 }, { instanceId: "hero-3", heroId: "H03", cost: 3 }, ...Array(9).fill(null),
+      { instanceId: "hero-1", heroId: "H01", cost: 1 }, { instanceId: "hero-2", heroId: "H02", cost: 2 }, { instanceId: "hero-3", heroId: "H03", cost: 3 }, ...Array(13).fill(null),
     ] };
     await repository.save(initialRun);
 
-    await expect(module.applyRunCommand({ actorId: "actor-a", tenantId: "tenant-a", runId: "run-capacity", commandId: "cmd-capacity", expectedRevision: 0, type: "MOVE_HERO", heroInstanceId: benchHero.instanceId, destination: 15 }, repository))
+    await expect(applyTestCommand(module, { actorId: "actor-a", tenantId: "tenant-a", runId: "run-capacity", commandId: "cmd-capacity", expectedRevision: 0, type: "MOVE_HERO", heroInstanceId: benchHero.instanceId, destination: 19 }, repository))
       .rejects.toThrow("GAME_RULE_VIOLATION");
     await expect(repository.get("run-capacity", "tenant-a")).resolves.toEqual(initialRun);
   });
@@ -1206,14 +1250,16 @@ describe("run commands", () => {
       round: 2,
       revision: 0,
       gold: 8,
+      level: 4,
+      experience: 0,
       commandResponses: {},
       bench: [benchHero],
       board: [
-        { instanceId: "hero-1", heroId: "H01", cost: 1 }, { instanceId: "hero-2", heroId: "H02", cost: 2 }, { instanceId: "hero-3", heroId: "H03", cost: 3 }, ...Array(9).fill(null),
+        { instanceId: "hero-1", heroId: "H01", cost: 1 }, { instanceId: "hero-2", heroId: "H02", cost: 2 }, { instanceId: "hero-3", heroId: "H03", cost: 3 }, ...Array(13).fill(null),
       ],
     });
 
-    await expect(module.applyRunCommand({ actorId: "actor-a", tenantId: "tenant-a", runId: "run-round-two-capacity", commandId: "cmd-round-two-capacity", expectedRevision: 0, type: "MOVE_HERO", heroInstanceId: benchHero.instanceId, destination: 15 }, repository))
+    await expect(applyTestCommand(module, { actorId: "actor-a", tenantId: "tenant-a", runId: "run-round-two-capacity", commandId: "cmd-round-two-capacity", expectedRevision: 0, type: "MOVE_HERO", heroInstanceId: benchHero.instanceId, destination: 19 }, repository))
       .resolves.toEqual({ runRevision: 1, status: "APPLIED" });
     const updatedRun = await repository.get("run-round-two-capacity", "tenant-a");
     expect(updatedRun).toMatchObject({ bench: [] });
@@ -1226,11 +1272,11 @@ describe("run commands", () => {
     const module = await import(modulePath) as typeof import("../src/application/run-commands.js");
     const repository = module.createInMemoryRunRepository();
     const hero = { instanceId: "hero-invalid-destination", heroId: "H01", cost: 1 };
-    const initialRun = { id: "run-boundary", tenantId: "tenant-a", contentVersion: "alpha-0.3.0", state: "PREPARE" as const, revision: 0, gold: 8, commandResponses: {}, bench: [hero], board: Array(12).fill(null) };
+    const initialRun = { id: "run-boundary", tenantId: "tenant-a", contentVersion: "alpha-0.3.0", state: "PREPARE" as const, revision: 0, gold: 8, commandResponses: {}, bench: [hero], board: Array(16).fill(null) };
     await repository.save(initialRun);
 
-    await expect(module.applyRunCommand({ actorId: "actor-a", tenantId: "tenant-a", runId: "run-boundary", commandId: "cmd-destination-24", expectedRevision: 0, type: "MOVE_HERO", heroInstanceId: hero.instanceId, destination: 24 }, repository)).rejects.toThrow("GAME_RULE_VIOLATION");
-    await expect(module.applyRunCommand({ actorId: "actor-a", tenantId: "tenant-a", runId: "run-boundary", commandId: "cmd-destination-fraction", expectedRevision: 0, type: "MOVE_HERO", heroInstanceId: hero.instanceId, destination: 12.5 }, repository)).rejects.toThrow("GAME_RULE_VIOLATION");
+    await expect(applyTestCommand(module, { actorId: "actor-a", tenantId: "tenant-a", runId: "run-boundary", commandId: "cmd-destination-24", expectedRevision: 0, type: "MOVE_HERO", heroInstanceId: hero.instanceId, destination: 32 }, repository)).rejects.toThrow("GAME_RULE_VIOLATION");
+    await expect(applyTestCommand(module, { actorId: "actor-a", tenantId: "tenant-a", runId: "run-boundary", commandId: "cmd-destination-fraction", expectedRevision: 0, type: "MOVE_HERO", heroInstanceId: hero.instanceId, destination: 16.5 }, repository)).rejects.toThrow("GAME_RULE_VIOLATION");
     await expect(repository.get("run-boundary", "tenant-a")).resolves.toEqual(initialRun);
   });
 
@@ -1238,10 +1284,10 @@ describe("run commands", () => {
     const module = await import(modulePath) as typeof import("../src/application/run-commands.js");
     const repository = module.createInMemoryRunRepository();
     const hero = { instanceId: "hero-current-cell", heroId: "H01", cost: 1 };
-    const initialRun = { id: "run-current-cell", tenantId: "tenant-a", contentVersion: "alpha-0.3.0", state: "PREPARE" as const, revision: 0, gold: 8, commandResponses: {}, bench: [], board: [hero, ...Array(11).fill(null)] };
+    const initialRun = { id: "run-current-cell", tenantId: "tenant-a", contentVersion: "alpha-0.3.0", state: "PREPARE" as const, revision: 0, gold: 8, commandResponses: {}, bench: [], board: [hero, ...Array(15).fill(null)] };
     await repository.save(initialRun);
 
-    await expect(module.applyRunCommand({ actorId: "actor-a", tenantId: "tenant-a", runId: "run-current-cell", commandId: "cmd-current-cell", expectedRevision: 0, type: "MOVE_HERO", heroInstanceId: hero.instanceId, destination: 12 }, repository)).rejects.toThrow("GAME_RULE_VIOLATION");
+    await expect(applyTestCommand(module, { actorId: "actor-a", tenantId: "tenant-a", runId: "run-current-cell", commandId: "cmd-current-cell", expectedRevision: 0, type: "MOVE_HERO", heroInstanceId: hero.instanceId, destination: 16 }, repository)).rejects.toThrow("GAME_RULE_VIOLATION");
     await expect(repository.get("run-current-cell", "tenant-a")).resolves.toEqual(initialRun);
   });
 
@@ -1249,15 +1295,15 @@ describe("run commands", () => {
     const module = await import(modulePath) as typeof import("../src/application/run-commands.js");
     const repository = module.createInMemoryRunRepository();
     const hero = { instanceId: "hero-owned", heroId: "H01", cost: 1 };
-    const initialRun = { id: "run-invalid-move", tenantId: "tenant-a", contentVersion: "alpha-0.3.0", state: "PREPARE" as const, revision: 0, gold: 8, commandResponses: {}, bench: [hero], board: Array(12).fill(null) };
+    const initialRun = { id: "run-invalid-move", tenantId: "tenant-a", contentVersion: "alpha-0.3.0", state: "PREPARE" as const, revision: 0, gold: 8, commandResponses: {}, bench: [hero], board: Array(16).fill(null) };
     await repository.save(initialRun);
 
-    await expect(module.applyRunCommand({ actorId: "actor-a", tenantId: "tenant-a", runId: "run-invalid-move", commandId: "cmd-invalid-destination", expectedRevision: 0, type: "MOVE_HERO", heroInstanceId: hero.instanceId, destination: 11 }, repository)).rejects.toThrow("GAME_RULE_VIOLATION");
-    await expect(module.applyRunCommand({ actorId: "actor-a", tenantId: "tenant-a", runId: "run-invalid-move", commandId: "cmd-not-owned", expectedRevision: 0, type: "MOVE_HERO", heroInstanceId: "hero-not-owned", destination: 12 }, repository)).rejects.toThrow("GAME_RULE_VIOLATION");
+    await expect(applyTestCommand(module, { actorId: "actor-a", tenantId: "tenant-a", runId: "run-invalid-move", commandId: "cmd-invalid-destination", expectedRevision: 0, type: "MOVE_HERO", heroInstanceId: hero.instanceId, destination: 15 }, repository)).rejects.toThrow("GAME_RULE_VIOLATION");
+    await expect(applyTestCommand(module, { actorId: "actor-a", tenantId: "tenant-a", runId: "run-invalid-move", commandId: "cmd-not-owned", expectedRevision: 0, type: "MOVE_HERO", heroInstanceId: "hero-not-owned", destination: 16 }, repository)).rejects.toThrow("GAME_RULE_VIOLATION");
     await expect(repository.get("run-invalid-move", "tenant-a")).resolves.toEqual(initialRun);
   });
 
-  it("persists the four initial shop slots supplied by the content port", async () => {
+  it("persists the five initial shop slots supplied by the content port", async () => {
     const module = await import(modulePath) as typeof import("../src/application/run-commands.js");
     const repository = module.createInMemoryRunRepository();
     const shopGenerator = {
@@ -1266,19 +1312,20 @@ describe("run commands", () => {
         { heroId: "H02", cost: 2 },
         { heroId: "H03", cost: 1 },
         { heroId: "H04", cost: 3 },
+        { heroId: "H05", cost: 1 },
       ],
     };
 
-    await expect(module.createRun({ id: "run-shop", tenantId: "tenant-a", contentVersion: "alpha-0.3.0" }, repository, shopGenerator))
-      .resolves.toMatchObject({ shop: [{ heroId: "H01", cost: 1 }, { heroId: "H02", cost: 2 }, { heroId: "H03", cost: 1 }, { heroId: "H04", cost: 3 }] });
+    await expect(createTestRun(module, { id: "run-shop", tenantId: "tenant-a", contentVersion: "alpha-0.3.0" }, repository, shopGenerator))
+      .resolves.toMatchObject({ shop: [{ heroId: "H01", cost: 1 }, { heroId: "H02", cost: 2 }, { heroId: "H03", cost: 1 }, { heroId: "H04", cost: 3 }, { heroId: "H05", cost: 1 }] });
   });
 
   it("accepts a valid five-cost shop slot", async () => {
     const module = await import(modulePath) as typeof import("../src/application/run-commands.js");
     const repository = module.createInMemoryRunRepository();
-    const shopGenerator = { initialShop: () => [{ heroId: "H01", cost: 1 }, { heroId: "H02", cost: 5 }, { heroId: "H03", cost: 3 }, { heroId: "H04", cost: 2 }] };
+    const shopGenerator = { initialShop: () => [{ heroId: "H01", cost: 1 }, { heroId: "H02", cost: 5 }, { heroId: "H03", cost: 3 }, { heroId: "H04", cost: 2 }, { heroId: "H05", cost: 1 }] };
 
-    await expect(module.createRun({ id: "run-high-tier-shop", tenantId: "tenant-a", contentVersion: "alpha-0.3.0" }, repository, shopGenerator)).resolves.toMatchObject({ shop: expect.arrayContaining([{ heroId: "H02", cost: 5 }]) });
+    await expect(createTestRun(module, { id: "run-high-tier-shop", tenantId: "tenant-a", contentVersion: "alpha-0.3.0" }, repository, shopGenerator)).resolves.toMatchObject({ shop: expect.arrayContaining([{ heroId: "H02", cost: 5 }]) });
   });
 
   it("persists the five-slot pool and conserves a bought then sold hero across a free refresh", async () => {
@@ -1287,11 +1334,11 @@ describe("run commands", () => {
     const repository = module.createInMemoryRunRepository();
     const content = { heroesById: new Map([["H01", { id: "H01", cost: 1, rarity: 1 as const, is_unique_hero: false }]]) };
     const shopGenerator = {
-      createPool: ({ runSeed }: { runSeed: string }) => poolModule.createShopPool(content as never, runSeed),
-      rollShop: (pool: import("../src/application/shop-pool.js").ShopPool, input: { round: number; refreshNumber: number; level: number }) => poolModule.rollShop(pool, input.level, `shop:${input.round}:${input.refreshNumber}`),
+      createPool: ({ runSeed }: { runSeed: string }) => poolModule.createShopPool(content as never, runSeed, productionRules.shop),
+      rollShop: (pool: import("../src/application/shop-pool.js").ShopPool, input: { round: number; refreshNumber: number; level: number }) => poolModule.rollShop(pool, input.level, `shop:${input.round}:${input.refreshNumber}`, productionRules.shop),
     };
 
-    const created = await module.createRun(
+    const created = await createTestRun(module,
       { id: "run-pooled-shop", tenantId: "tenant-a", contentVersion: "alpha-0.3.0" },
       repository,
       shopGenerator as never,
@@ -1300,16 +1347,16 @@ describe("run commands", () => {
     expect(created.shop).toHaveLength(5);
     expect(created.shopPool?.heroes.H01?.remainingCopies).toBe(24);
 
-    await module.applyRunCommand({ actorId: "actor-a", tenantId: "tenant-a", runId: created.id, commandId: "cmd-pooled-buy", expectedRevision: 0, type: "BUY_SHOP_HERO", shopSlotIndex: 0 }, repository, shopGenerator as never);
+    await applyTestCommand(module, { actorId: "actor-a", tenantId: "tenant-a", runId: created.id, commandId: "cmd-pooled-buy", expectedRevision: 0, type: "BUY_SHOP_HERO", shopSlotIndex: 0 }, repository, shopGenerator as never);
     const afterBuy = await repository.get(created.id, "tenant-a");
     expect(afterBuy?.shopPool?.heroes.H01?.remainingCopies).toBe(24);
     const heroInstanceId = afterBuy?.bench?.[0]?.instanceId;
     expect(heroInstanceId).toBeDefined();
     if (heroInstanceId === undefined) throw new Error("expected bought hero instance");
 
-    await module.applyRunCommand({ actorId: "actor-a", tenantId: "tenant-a", runId: created.id, commandId: "cmd-pooled-sell", expectedRevision: 1, type: "SELL_HERO", heroInstanceId }, repository, shopGenerator as never);
+    await applyTestCommand(module, { actorId: "actor-a", tenantId: "tenant-a", runId: created.id, commandId: "cmd-pooled-sell", expectedRevision: 1, type: "SELL_HERO", heroInstanceId }, repository, shopGenerator as never);
     await repository.save({ ...(await repository.get(created.id, "tenant-a"))!, freeRefreshes: 1 });
-    await module.applyRunCommand({ actorId: "actor-a", tenantId: "tenant-a", runId: created.id, commandId: "cmd-pooled-free-refresh", expectedRevision: 2, type: "REFRESH_SHOP" }, repository, shopGenerator as never);
+    await applyTestCommand(module, { actorId: "actor-a", tenantId: "tenant-a", runId: created.id, commandId: "cmd-pooled-free-refresh", expectedRevision: 2, type: "REFRESH_SHOP" }, repository, shopGenerator as never);
 
     await expect(repository.get(created.id, "tenant-a")).resolves.toMatchObject({
       gold: 8,
@@ -1325,7 +1372,7 @@ describe("run commands", () => {
     const repository = module.createInMemoryRunRepository();
     const shopGenerator = { initialShop: () => shop };
 
-    await expect(module.createRun({ id: "run-invalid-initial", tenantId: "tenant-a", contentVersion: "alpha-0.3.0" }, repository, shopGenerator))
+    await expect(createTestRun(module, { id: "run-invalid-initial", tenantId: "tenant-a", contentVersion: "alpha-0.3.0" }, repository, shopGenerator))
       .rejects.toThrow("GAME_RULE_VIOLATION");
     await expect(repository.get("run-invalid-initial", "tenant-a")).resolves.toBeUndefined();
   });
@@ -1333,9 +1380,9 @@ describe("run commands", () => {
   it("rejects a second active run for the same tenant", async () => {
     const module = await import(modulePath) as typeof import("../src/application/run-commands.js");
     const repository = module.createInMemoryRunRepository();
-    await module.createRun({ id: "run-active-1", tenantId: "tenant-a", contentVersion: "alpha-0.3.0" }, repository);
+    await createTestRun(module, { id: "run-active-1", tenantId: "tenant-a", contentVersion: "alpha-0.3.0" }, repository);
 
-    await expect(module.createRun({ id: "run-active-2", tenantId: "tenant-a", contentVersion: "alpha-0.3.0" }, repository))
+    await expect(createTestRun(module, { id: "run-active-2", tenantId: "tenant-a", contentVersion: "alpha-0.3.0" }, repository))
       .rejects.toThrow("ACTIVE_RUN_EXISTS");
   });
 
@@ -1343,7 +1390,7 @@ describe("run commands", () => {
     const module = await import(modulePath) as typeof import("../src/application/run-commands.js");
     const repository = module.createInMemoryRunRepository();
     await repository.save({ id: "run-buy", tenantId: "tenant-a", contentVersion: "alpha-0.3.0", state: "PREPARE", revision: 0, gold: 8, commandResponses: {}, shop: [{ heroId: "H01", cost: 1 }], bench: [] });
-    await expect(module.applyRunCommand({ actorId: "actor-a", tenantId: "tenant-a", runId: "run-buy", commandId: "cmd-buy", expectedRevision: 0, type: "BUY_SHOP_HERO", shopSlotIndex: 0 }, repository)).resolves.toEqual({ runRevision: 1, status: "APPLIED" });
+    await expect(applyTestCommand(module, { actorId: "actor-a", tenantId: "tenant-a", runId: "run-buy", commandId: "cmd-buy", expectedRevision: 0, type: "BUY_SHOP_HERO", shopSlotIndex: 0 }, repository)).resolves.toEqual({ runRevision: 1, status: "APPLIED" });
     expect(await repository.get("run-buy", "tenant-a")).toMatchObject({ gold: 7, bench: [{ heroId: "H01" }], shop: [null] });
   });
 
@@ -1361,7 +1408,7 @@ describe("run commands", () => {
       bench: [{ instanceId: "hero-run-sell-1", heroId: "H02", cost: 2 }],
     });
 
-    await expect(module.applyRunCommand({ actorId: "actor-a", tenantId: "tenant-a", runId: "run-sell", commandId: "cmd-sell", expectedRevision: 0, type: "SELL_HERO", heroInstanceId: "hero-run-sell-1" }, repository))
+    await expect(applyTestCommand(module, { actorId: "actor-a", tenantId: "tenant-a", runId: "run-sell", commandId: "cmd-sell", expectedRevision: 0, type: "SELL_HERO", heroInstanceId: "hero-run-sell-1" }, repository))
       .resolves.toEqual({ runRevision: 1, status: "APPLIED" });
     expect(await repository.get("run-sell", "tenant-a")).toMatchObject({ gold: 8, revision: 1, bench: [] });
   });
@@ -1372,9 +1419,9 @@ describe("run commands", () => {
     const hero = { instanceId: "hero-sell-equipped", heroId: "H02", cost: 2 };
     const normalItem = { instanceId: "item-sell-normal", itemId: "I01", kind: "normal" as const, equippedHeroInstanceId: hero.instanceId, futureMarker: "preserve-me" };
     const uniqueItem = { instanceId: "item-sell-unique", itemId: "U01", kind: "unique" as const, equippedHeroInstanceId: hero.instanceId };
-    await repository.save({ id: "run-sell-equipped", tenantId: "tenant-a", contentVersion: "alpha-0.3.0", state: "PREPARE", revision: 0, gold: 6, commandResponses: {}, bench: [hero], board: Array(12).fill(null), items: [normalItem, uniqueItem] });
+    await repository.save({ id: "run-sell-equipped", tenantId: "tenant-a", contentVersion: "alpha-0.3.0", state: "PREPARE", revision: 0, gold: 6, commandResponses: {}, bench: [hero], board: Array(16).fill(null), items: [normalItem, uniqueItem] });
 
-    await module.applyRunCommand({ actorId: "actor-a", tenantId: "tenant-a", runId: "run-sell-equipped", commandId: "cmd-sell-equipped", expectedRevision: 0, type: "SELL_HERO", heroInstanceId: hero.instanceId }, repository);
+    await applyTestCommand(module, { actorId: "actor-a", tenantId: "tenant-a", runId: "run-sell-equipped", commandId: "cmd-sell-equipped", expectedRevision: 0, type: "SELL_HERO", heroInstanceId: hero.instanceId }, repository);
 
     const updatedRun = await repository.get("run-sell-equipped", "tenant-a");
     expect(updatedRun).toMatchObject({ gold: 8, bench: [] });
@@ -1389,12 +1436,12 @@ describe("run commands", () => {
     const repository = module.createInMemoryRunRepository();
     const hero = { instanceId: "hero-sell-board", heroId: "H03", cost: 3 };
     const item = { instanceId: "item-sell-board", itemId: "I02", kind: "normal" as const, equippedHeroInstanceId: hero.instanceId };
-    await repository.save({ id: "run-sell-board", tenantId: "tenant-a", contentVersion: "alpha-0.3.0", state: "PREPARE", revision: 0, gold: 5, commandResponses: {}, bench: [], board: [hero, ...Array(11).fill(null)], items: [item] });
+    await repository.save({ id: "run-sell-board", tenantId: "tenant-a", contentVersion: "alpha-0.3.0", state: "PREPARE", revision: 0, gold: 5, commandResponses: {}, bench: [], board: [hero, ...Array(15).fill(null)], items: [item] });
 
-    await module.applyRunCommand({ actorId: "actor-a", tenantId: "tenant-a", runId: "run-sell-board", commandId: "cmd-sell-board", expectedRevision: 0, type: "SELL_HERO", heroInstanceId: hero.instanceId }, repository);
+    await applyTestCommand(module, { actorId: "actor-a", tenantId: "tenant-a", runId: "run-sell-board", commandId: "cmd-sell-board", expectedRevision: 0, type: "SELL_HERO", heroInstanceId: hero.instanceId }, repository);
 
     const updatedRun = await repository.get("run-sell-board", "tenant-a");
-    expect(updatedRun).toMatchObject({ gold: 8, board: Array(12).fill(null) });
+    expect(updatedRun).toMatchObject({ gold: 8, board: Array(16).fill(null) });
     expect(updatedRun?.items).toEqual([{ instanceId: item.instanceId, itemId: "I02", kind: "normal" }]);
   });
 
@@ -1405,9 +1452,9 @@ describe("run commands", () => {
     const otherHero = { instanceId: "hero-sell-other", heroId: "H02", cost: 2 };
     const soldItem = { instanceId: "item-sell-target", itemId: "I01", kind: "normal" as const, equippedHeroInstanceId: soldHero.instanceId };
     const otherItem = { instanceId: "item-sell-other", itemId: "I02", kind: "normal" as const, equippedHeroInstanceId: otherHero.instanceId };
-    await repository.save({ id: "run-sell-unrelated-item", tenantId: "tenant-a", contentVersion: "alpha-0.3.0", state: "PREPARE", revision: 0, gold: 8, commandResponses: {}, bench: [soldHero, otherHero], board: Array(12).fill(null), items: [soldItem, otherItem] });
+    await repository.save({ id: "run-sell-unrelated-item", tenantId: "tenant-a", contentVersion: "alpha-0.3.0", state: "PREPARE", revision: 0, gold: 8, commandResponses: {}, bench: [soldHero, otherHero], board: Array(16).fill(null), items: [soldItem, otherItem] });
 
-    await module.applyRunCommand({ actorId: "actor-a", tenantId: "tenant-a", runId: "run-sell-unrelated-item", commandId: "cmd-sell-unrelated-item", expectedRevision: 0, type: "SELL_HERO", heroInstanceId: soldHero.instanceId }, repository);
+    await applyTestCommand(module, { actorId: "actor-a", tenantId: "tenant-a", runId: "run-sell-unrelated-item", commandId: "cmd-sell-unrelated-item", expectedRevision: 0, type: "SELL_HERO", heroInstanceId: soldHero.instanceId }, repository);
 
     expect((await repository.get("run-sell-unrelated-item", "tenant-a"))?.items).toEqual([
       { instanceId: soldItem.instanceId, itemId: "I01", kind: "normal" },
@@ -1419,10 +1466,10 @@ describe("run commands", () => {
     const module = await import(modulePath) as typeof import("../src/application/run-commands.js");
     const repository = module.createInMemoryRunRepository();
     const hero = { instanceId: "hero-sell-rejected", heroId: "H01", cost: 1 };
-    const initialRun = { id: "run-sell-rejected", tenantId: "tenant-a", contentVersion: "alpha-0.3.0", state: "PREPARE" as const, revision: 0, gold: 8, commandResponses: {}, bench: [hero], board: Array(12).fill(null), items: [{ instanceId: "item-sell-rejected", itemId: "I01", kind: "normal" as const, equippedHeroInstanceId: hero.instanceId }] };
+    const initialRun = { id: "run-sell-rejected", tenantId: "tenant-a", contentVersion: "alpha-0.3.0", state: "PREPARE" as const, revision: 0, gold: 8, commandResponses: {}, bench: [hero], board: Array(16).fill(null), items: [{ instanceId: "item-sell-rejected", itemId: "I01", kind: "normal" as const, equippedHeroInstanceId: hero.instanceId }] };
     await repository.save(initialRun);
 
-    await expect(module.applyRunCommand({ actorId: "actor-a", tenantId: "tenant-a", runId: "run-sell-rejected", commandId: "cmd-sell-rejected", expectedRevision: 0, type: "SELL_HERO", heroInstanceId: "hero-missing" }, repository)).rejects.toThrow("GAME_RULE_VIOLATION");
+    await expect(applyTestCommand(module, { actorId: "actor-a", tenantId: "tenant-a", runId: "run-sell-rejected", commandId: "cmd-sell-rejected", expectedRevision: 0, type: "SELL_HERO", heroInstanceId: "hero-missing" }, repository)).rejects.toThrow("GAME_RULE_VIOLATION");
 
     await expect(repository.get("run-sell-rejected", "tenant-a")).resolves.toEqual(initialRun);
   });
@@ -1432,11 +1479,11 @@ describe("run commands", () => {
     const repository = module.createInMemoryRunRepository();
     const hero = { instanceId: "hero-sell-replay", heroId: "H03", cost: 3 };
     const item = { instanceId: "item-sell-replay", itemId: "I03", kind: "normal" as const, equippedHeroInstanceId: hero.instanceId };
-    await repository.save({ id: "run-sell-replay", tenantId: "tenant-a", contentVersion: "alpha-0.3.0", state: "PREPARE", revision: 0, gold: 5, commandResponses: {}, bench: [hero], board: Array(12).fill(null), items: [item] });
+    await repository.save({ id: "run-sell-replay", tenantId: "tenant-a", contentVersion: "alpha-0.3.0", state: "PREPARE", revision: 0, gold: 5, commandResponses: {}, bench: [hero], board: Array(16).fill(null), items: [item] });
     const input = { actorId: "actor-a", tenantId: "tenant-a", runId: "run-sell-replay", commandId: "cmd-sell-replay", expectedRevision: 0, type: "SELL_HERO" as const, heroInstanceId: hero.instanceId };
 
-    await expect(module.applyRunCommand(input, repository)).resolves.toEqual({ runRevision: 1, status: "APPLIED" });
-    await expect(module.applyRunCommand(input, repository)).resolves.toEqual({ runRevision: 1, status: "APPLIED" });
+    await expect(applyTestCommand(module, input, repository)).resolves.toEqual({ runRevision: 1, status: "APPLIED" });
+    await expect(applyTestCommand(module, input, repository)).resolves.toEqual({ runRevision: 1, status: "APPLIED" });
     const updatedRun = await repository.get("run-sell-replay", "tenant-a");
     expect(updatedRun).toMatchObject({ gold: 8, bench: [] });
     expect(updatedRun?.items).toEqual([{ instanceId: item.instanceId, itemId: "I03", kind: "normal" }]);
@@ -1450,12 +1497,12 @@ describe("run commands", () => {
     const module = await import(modulePath) as typeof import("../src/application/run-commands.js");
     const shopPool = await import("../src/application/shop-pool.js") as typeof import("../src/application/shop-pool.js");
     const repository = module.createInMemoryRunRepository();
-    const pool = shopPool.createShopPool({ heroesById: new Map([["H01", { id: "H01", cost: 1, rarity: 1 as const, is_unique_hero: false }]]) } as never, "000102030405060708090a0b0c0d0e0f");
+    const pool = shopPool.createShopPool({ heroesById: new Map([["H01", { id: "H01", cost: 1, rarity: 1 as const, is_unique_hero: false }]]) } as never, "000102030405060708090a0b0c0d0e0f", productionRules.shop);
     pool.heroes.H01!.remainingCopies = remainingCopies;
     const hero = { instanceId: `hero-sell-${stars}`, heroId: "H01", cost: 1, stars, poolCopies };
     await repository.save({ id: `run-sell-${stars}`, tenantId: "tenant-a", contentVersion: "alpha-0.3.0", state: "PREPARE", revision: 0, gold: 6, commandResponses: {}, shopPool: pool, bench: [hero] });
 
-    await module.applyRunCommand({ actorId: "actor-a", tenantId: "tenant-a", runId: `run-sell-${stars}`, commandId: `cmd-sell-${stars}`, expectedRevision: 0, type: "SELL_HERO", heroInstanceId: hero.instanceId }, repository);
+    await applyTestCommand(module, { actorId: "actor-a", tenantId: "tenant-a", runId: `run-sell-${stars}`, commandId: `cmd-sell-${stars}`, expectedRevision: 0, type: "SELL_HERO", heroInstanceId: hero.instanceId }, repository);
 
     await expect(repository.get(`run-sell-${stars}`, "tenant-a")).resolves.toMatchObject({ shopPool: { heroes: { H01: { remainingCopies: expectedCopies } } } });
   });
@@ -1464,12 +1511,12 @@ describe("run commands", () => {
     const module = await import(modulePath) as typeof import("../src/application/run-commands.js");
     const shopPool = await import("../src/application/shop-pool.js") as typeof import("../src/application/shop-pool.js");
     const repository = module.createInMemoryRunRepository();
-    const pool = shopPool.createShopPool({ heroesById: new Map([["H01", { id: "H01", cost: 1, rarity: 1 as const, is_unique_hero: false }]]) } as never, "000102030405060708090a0b0c0d0e0f");
+    const pool = shopPool.createShopPool({ heroesById: new Map([["H01", { id: "H01", cost: 1, rarity: 1 as const, is_unique_hero: false }]]) } as never, "000102030405060708090a0b0c0d0e0f", productionRules.shop);
     pool.heroes.H01!.remainingCopies = 20;
     const initialRun = { id: "run-invalid-star-sale", tenantId: "tenant-a", contentVersion: "alpha-0.3.0", state: "PREPARE" as const, revision: 0, gold: 6, commandResponses: {}, shopPool: pool, bench: [{ instanceId: "hero-invalid-star", heroId: "H01", cost: 1, stars: 4, poolCopies: 3 }] };
     await repository.save(initialRun as never);
 
-    await expect(module.applyRunCommand({ actorId: "actor-a", tenantId: "tenant-a", runId: initialRun.id, commandId: "cmd-invalid-star-sale", expectedRevision: 0, type: "SELL_HERO", heroInstanceId: "hero-invalid-star" }, repository)).rejects.toThrow("GAME_RULE_VIOLATION");
+    await expect(applyTestCommand(module, { actorId: "actor-a", tenantId: "tenant-a", runId: initialRun.id, commandId: "cmd-invalid-star-sale", expectedRevision: 0, type: "SELL_HERO", heroInstanceId: "hero-invalid-star" }, repository)).rejects.toThrow("GAME_RULE_VIOLATION");
     await expect(repository.get(initialRun.id, "tenant-a")).resolves.toEqual(initialRun);
   });
 
@@ -1483,16 +1530,17 @@ describe("run commands", () => {
         { heroId: "H06", cost: 1 },
         { heroId: "H07", cost: 2 },
         { heroId: "H08", cost: 2 },
+        { heroId: "H09", cost: 3 },
       ],
     };
-    await repository.save({ id: "run-refresh", tenantId: "tenant-a", contentVersion: "alpha-0.3.0", state: "PREPARE", revision: 0, gold: 8, commandResponses: {}, shop: [{ heroId: "H01", cost: 1 }, { heroId: "H02", cost: 2 }, { heroId: "H03", cost: 1 }, { heroId: "H04", cost: 3 }] });
+    await repository.save({ id: "run-refresh", tenantId: "tenant-a", contentVersion: "alpha-0.3.0", state: "PREPARE", revision: 0, gold: 8, commandResponses: {}, shop: [{ heroId: "H01", cost: 1 }, { heroId: "H02", cost: 2 }, { heroId: "H03", cost: 1 }, { heroId: "H04", cost: 3 }, { heroId: "H05", cost: 1 }] });
 
-    await expect(module.applyRunCommand({ actorId: "actor-a", tenantId: "tenant-a", runId: "run-refresh", commandId: "cmd-refresh", expectedRevision: 0, type: "REFRESH_SHOP" }, repository, shopGenerator))
+    await expect(applyTestCommand(module, { actorId: "actor-a", tenantId: "tenant-a", runId: "run-refresh", commandId: "cmd-refresh", expectedRevision: 0, type: "REFRESH_SHOP" }, repository, shopGenerator))
       .resolves.toEqual({ runRevision: 1, status: "APPLIED" });
     expect(await repository.get("run-refresh", "tenant-a")).toMatchObject({
       gold: 6,
       shopRefreshes: 1,
-      shop: [{ heroId: "H05", cost: 2 }, { heroId: "H06", cost: 1 }, { heroId: "H07", cost: 2 }, { heroId: "H08", cost: 2 }],
+      shop: [{ heroId: "H05", cost: 2 }, { heroId: "H06", cost: 1 }, { heroId: "H07", cost: 2 }, { heroId: "H08", cost: 2 }, { heroId: "H09", cost: 3 }],
     });
   });
 
@@ -1501,14 +1549,14 @@ describe("run commands", () => {
     const repository = module.createInMemoryRunRepository();
     await repository.save({
       id: "run-free-refresh", tenantId: "tenant-a", contentVersion: "alpha-0.3.0", state: "PREPARE", revision: 0, gold: 1, freeRefreshes: 1,
-      commandResponses: {}, shop: [{ heroId: "H01", cost: 1 }, { heroId: "H02", cost: 2 }, { heroId: "H03", cost: 1 }, { heroId: "H04", cost: 3 }],
+      commandResponses: {}, shop: [{ heroId: "H01", cost: 1 }, { heroId: "H02", cost: 2 }, { heroId: "H03", cost: 1 }, { heroId: "H04", cost: 3 }, { heroId: "H05", cost: 1 }],
     });
     const shopGenerator = {
-      initialShop: () => [{ heroId: "H01", cost: 1 }, { heroId: "H02", cost: 2 }, { heroId: "H03", cost: 1 }, { heroId: "H04", cost: 3 }],
-      refreshShop: () => [{ heroId: "H05", cost: 2 }, { heroId: "H06", cost: 1 }, { heroId: "H07", cost: 2 }, { heroId: "H08", cost: 2 }],
+      initialShop: () => [{ heroId: "H01", cost: 1 }, { heroId: "H02", cost: 2 }, { heroId: "H03", cost: 1 }, { heroId: "H04", cost: 3 }, { heroId: "H05", cost: 1 }],
+      refreshShop: () => [{ heroId: "H05", cost: 2 }, { heroId: "H06", cost: 1 }, { heroId: "H07", cost: 2 }, { heroId: "H08", cost: 2 }, { heroId: "H09", cost: 3 }],
     };
 
-    await expect(module.applyRunCommand({ actorId: "actor-a", tenantId: "tenant-a", runId: "run-free-refresh", commandId: "cmd-free-refresh", expectedRevision: 0, type: "REFRESH_SHOP" }, repository, shopGenerator))
+    await expect(applyTestCommand(module, { actorId: "actor-a", tenantId: "tenant-a", runId: "run-free-refresh", commandId: "cmd-free-refresh", expectedRevision: 0, type: "REFRESH_SHOP" }, repository, shopGenerator))
       .resolves.toEqual({ runRevision: 1, status: "APPLIED" });
     await expect(repository.get("run-free-refresh", "tenant-a")).resolves.toMatchObject({ gold: 1, freeRefreshes: 0, shopRefreshes: 1 });
   });
@@ -1525,11 +1573,11 @@ describe("run commands", () => {
       revision: 0,
       gold: 8,
       commandResponses: {},
-      shop: [{ heroId: "H01", cost: 1 }, { heroId: "H02", cost: 2 }, { heroId: "H03", cost: 1 }, { heroId: "H04", cost: 3 }],
+      shop: [{ heroId: "H01", cost: 1 }, { heroId: "H02", cost: 2 }, { heroId: "H03", cost: 1 }, { heroId: "H04", cost: 3 }, { heroId: "H05", cost: 1 }],
     };
     await repository.save(initialRun);
 
-    await expect(module.applyRunCommand({ actorId: "actor-a", tenantId: "tenant-a", runId: "run-invalid-refresh", commandId: "cmd-invalid-refresh", expectedRevision: 0, type: "REFRESH_SHOP" }, repository, shopGenerator))
+    await expect(applyTestCommand(module, { actorId: "actor-a", tenantId: "tenant-a", runId: "run-invalid-refresh", commandId: "cmd-invalid-refresh", expectedRevision: 0, type: "REFRESH_SHOP" }, repository, shopGenerator))
       .rejects.toThrow("GAME_RULE_VIOLATION");
     await expect(repository.get("run-invalid-refresh", "tenant-a")).resolves.toEqual(initialRun);
   });
@@ -1546,8 +1594,8 @@ describe("run commands", () => {
     await repository.save({ id: "run-1", tenantId: "tenant-a", state: "PREPARE", revision: 0, gold: 8, commandResponses: {} });
     const input = { actorId: "actor-a", tenantId: "tenant-a", runId: "run-1", commandId: "cmd-1", expectedRevision: 0, type: "REFRESH_SHOP" };
 
-    expect(await module.applyRunCommand(input, repository)).toEqual({ runRevision: 1, status: "APPLIED" });
-    expect(await module.applyRunCommand(input, repository)).toEqual({ runRevision: 1, status: "APPLIED" });
+    expect(await applyTestCommand(module, input, repository)).toEqual({ runRevision: 1, status: "APPLIED" });
+    expect(await applyTestCommand(module, input, repository)).toEqual({ runRevision: 1, status: "APPLIED" });
     expect(await repository.get("run-1", "tenant-a")).toMatchObject({ gold: 6, revision: 1 });
   });
 
@@ -1564,8 +1612,8 @@ describe("run commands", () => {
     const second = { ...first, commandId: "cmd-refresh-second" };
 
     const results = await Promise.allSettled([
-      module.applyRunCommand(first, repository),
-      module.applyRunCommand(second, repository),
+      applyTestCommand(module, first, repository),
+      applyTestCommand(module, second, repository),
     ]);
 
     expect(results.filter((result) => result.status === "fulfilled")).toHaveLength(1);
@@ -1577,9 +1625,9 @@ describe("run commands", () => {
     const module = await import(modulePath) as typeof import("../src/application/run-commands.js");
     const repository = module.createInMemoryRunRepository();
     await repository.save({ id: "run-2", tenantId: "tenant-a", contentVersion: "alpha-0.3.0", state: "PREPARE", revision: 0, gold: 8, commandResponses: {} });
-    await module.applyRunCommand({ actorId: "actor-a", tenantId: "tenant-a", runId: "run-2", commandId: "cmd-reused", expectedRevision: 0, type: "REFRESH_SHOP" }, repository);
+    await applyTestCommand(module, { actorId: "actor-a", tenantId: "tenant-a", runId: "run-2", commandId: "cmd-reused", expectedRevision: 0, type: "REFRESH_SHOP" }, repository);
 
-    await expect(module.applyRunCommand({ actorId: "actor-a", tenantId: "tenant-a", runId: "run-2", commandId: "cmd-reused", expectedRevision: 1, type: "REFRESH_SHOP" }, repository))
+    await expect(applyTestCommand(module, { actorId: "actor-a", tenantId: "tenant-a", runId: "run-2", commandId: "cmd-reused", expectedRevision: 1, type: "REFRESH_SHOP" }, repository))
       .rejects.toThrow("IDEMPOTENCY_KEY_REUSED");
   });
 
@@ -1587,20 +1635,20 @@ describe("run commands", () => {
     const module = await import(modulePath) as typeof import("../src/application/run-commands.js");
     const repository = module.createInMemoryRunRepository();
     const hero = { instanceId: "hero-idempotent", heroId: "H01", cost: 1 };
-    await repository.save({ id: "run-move-idempotent", tenantId: "tenant-a", contentVersion: "alpha-0.3.0", state: "PREPARE", revision: 0, gold: 8, commandResponses: {}, bench: [hero], board: Array(12).fill(null) });
-    await module.applyRunCommand({ actorId: "actor-a", tenantId: "tenant-a", runId: "run-move-idempotent", commandId: "cmd-move-idempotent", expectedRevision: 0, type: "MOVE_HERO", heroInstanceId: hero.instanceId, destination: 12 }, repository);
+    await repository.save({ id: "run-move-idempotent", tenantId: "tenant-a", contentVersion: "alpha-0.3.0", state: "PREPARE", revision: 0, gold: 8, commandResponses: {}, bench: [hero], board: Array(16).fill(null) });
+    await applyTestCommand(module, { actorId: "actor-a", tenantId: "tenant-a", runId: "run-move-idempotent", commandId: "cmd-move-idempotent", expectedRevision: 0, type: "MOVE_HERO", heroInstanceId: hero.instanceId, destination: 16 }, repository);
 
-    await expect(module.applyRunCommand({ actorId: "actor-a", tenantId: "tenant-a", runId: "run-move-idempotent", commandId: "cmd-move-idempotent", expectedRevision: 1, type: "MOVE_HERO", heroInstanceId: hero.instanceId, destination: 13 }, repository))
+    await expect(applyTestCommand(module, { actorId: "actor-a", tenantId: "tenant-a", runId: "run-move-idempotent", commandId: "cmd-move-idempotent", expectedRevision: 1, type: "MOVE_HERO", heroInstanceId: hero.instanceId, destination: 17 }, repository))
       .rejects.toThrow("IDEMPOTENCY_KEY_REUSED");
   });
 
   it("rejects starting a round with an empty board without mutating the run", async () => {
     const module = await import(modulePath) as typeof import("../src/application/run-commands.js");
     const repository = module.createInMemoryRunRepository();
-    const initialRun = { id: "run-start-empty", tenantId: "tenant-a", contentVersion: "alpha-0.3.0", state: "PREPARE" as const, round: 1, revision: 0, gold: 8, commandResponses: {}, bench: [{ instanceId: "hero-bench", heroId: "H01", cost: 1 }], board: Array(12).fill(null) };
+    const initialRun = { id: "run-start-empty", tenantId: "tenant-a", contentVersion: "alpha-0.3.0", state: "PREPARE" as const, round: 1, revision: 0, gold: 8, commandResponses: {}, bench: [{ instanceId: "hero-bench", heroId: "H01", cost: 1 }], board: Array(16).fill(null) };
     await repository.save(initialRun);
 
-    await expect(module.applyRunCommand({ actorId: "actor-a", tenantId: "tenant-a", runId: "run-start-empty", commandId: "cmd-start-empty", expectedRevision: 0, type: "START_ROUND" }, repository))
+    await expect(applyTestCommand(module, { actorId: "actor-a", tenantId: "tenant-a", runId: "run-start-empty", commandId: "cmd-start-empty", expectedRevision: 0, type: "START_ROUND" }, repository))
       .rejects.toThrow("GAME_RULE_VIOLATION");
     await expect(repository.get("run-start-empty", "tenant-a")).resolves.toEqual(initialRun);
   });
@@ -1611,16 +1659,16 @@ describe("run commands", () => {
     const boardHero = { instanceId: "hero-board", heroId: "H01", cost: 1 };
     const benchHero = { instanceId: "hero-bench", heroId: "H02", cost: 2 };
     const equippedItem = { instanceId: "item-board", itemId: "I01", kind: "normal" as const, equippedHeroInstanceId: boardHero.instanceId };
-    await repository.save({ id: "run-start-snapshot", tenantId: "tenant-a", contentVersion: "alpha-0.3.0", state: "PREPARE", round: 1, revision: 0, gold: 8, commandResponses: {}, bench: [benchHero], board: [null, boardHero, ...Array(10).fill(null)], items: [equippedItem] });
+    await repository.save({ id: "run-start-snapshot", tenantId: "tenant-a", contentVersion: "alpha-0.3.0", state: "PREPARE", round: 1, revision: 0, gold: 8, commandResponses: {}, bench: [benchHero], board: [null, boardHero, ...Array(14).fill(null)], items: [equippedItem] });
 
-    await expect(module.applyRunCommand({ actorId: "actor-a", tenantId: "tenant-a", runId: "run-start-snapshot", commandId: "cmd-start-snapshot", expectedRevision: 0, type: "START_ROUND" }, repository))
+    await expect(applyTestCommand(module, { actorId: "actor-a", tenantId: "tenant-a", runId: "run-start-snapshot", commandId: "cmd-start-snapshot", expectedRevision: 0, type: "START_ROUND" }, repository))
       .resolves.toEqual({ runRevision: 1, status: "APPLIED" });
     const run = await repository.get("run-start-snapshot", "tenant-a");
-    expect(run).toMatchObject({ state: "COMBAT", revision: 1, lockedSnapshot: { runId: "run-start-snapshot", contentVersion: "alpha-0.3.0", round: 1, board: [null, boardHero, ...Array(10).fill(null)] } });
+    expect(run).toMatchObject({ state: "COMBAT", revision: 1, lockedSnapshot: { runId: "run-start-snapshot", contentVersion: "alpha-0.3.0", round: 1, board: [null, boardHero, ...Array(14).fill(null)] } });
     expect(run?.lockedSnapshot).toMatchObject({
       combatId: "combat:run-start-snapshot:1",
       combatSeed: expect.stringMatching(/^[0-9a-f]{32}$/),
-      rulesetVersion: "alpha-rules-0.3.0",
+      rulesetVersion: productionRules.version,
     });
     expect(run?.lockedSnapshot).not.toHaveProperty("bench");
     expect(run?.lockedSnapshot).not.toHaveProperty("commandResponses");
@@ -1640,14 +1688,14 @@ describe("run commands", () => {
     const module = await import(modulePath) as typeof import("../src/application/run-commands.js");
     const repository = module.createInMemoryRunRepository();
     const boardHero = { instanceId: "hero-lock", heroId: "H01", cost: 1 };
-    await repository.save({ id: "run-start-lock", tenantId: "tenant-a", contentVersion: "alpha-0.3.0", state: "PREPARE", round: 1, revision: 0, gold: 8, commandResponses: {}, shop: [{ heroId: "H02", cost: 2 }], bench: [], board: [boardHero, ...Array(11).fill(null)] });
+    await repository.save({ id: "run-start-lock", tenantId: "tenant-a", contentVersion: "alpha-0.3.0", state: "PREPARE", round: 1, revision: 0, gold: 8, commandResponses: {}, shop: [{ heroId: "H02", cost: 2 }], bench: [], board: [boardHero, ...Array(15).fill(null)] });
     const start = { actorId: "actor-a", tenantId: "tenant-a", runId: "run-start-lock", commandId: "cmd-start-lock", expectedRevision: 0, type: "START_ROUND" as const };
 
-    await expect(module.applyRunCommand(start, repository)).resolves.toEqual({ runRevision: 1, status: "APPLIED" });
-    await expect(module.applyRunCommand(start, repository)).resolves.toEqual({ runRevision: 1, status: "APPLIED" });
-    await expect(module.applyRunCommand({ actorId: "actor-a", tenantId: "tenant-a", runId: "run-start-lock", commandId: "cmd-buy-locked", expectedRevision: 1, type: "BUY_SHOP_HERO", shopSlotIndex: 0 }, repository))
+    await expect(applyTestCommand(module, start, repository)).resolves.toEqual({ runRevision: 1, status: "APPLIED" });
+    await expect(applyTestCommand(module, start, repository)).resolves.toEqual({ runRevision: 1, status: "APPLIED" });
+    await expect(applyTestCommand(module, { actorId: "actor-a", tenantId: "tenant-a", runId: "run-start-lock", commandId: "cmd-buy-locked", expectedRevision: 1, type: "BUY_SHOP_HERO", shopSlotIndex: 0 }, repository))
       .rejects.toThrow("COMMAND_NOT_ALLOWED");
-    await expect(module.applyRunCommand({ actorId: "actor-a", tenantId: "tenant-a", runId: "run-start-lock", commandId: "cmd-start-again", expectedRevision: 1, type: "START_ROUND" }, repository))
+    await expect(applyTestCommand(module, { actorId: "actor-a", tenantId: "tenant-a", runId: "run-start-lock", commandId: "cmd-start-again", expectedRevision: 1, type: "START_ROUND" }, repository))
       .rejects.toThrow("COMMAND_NOT_ALLOWED");
     await expect(repository.get("run-start-lock", "tenant-a")).resolves.toMatchObject({ state: "COMBAT", revision: 1 });
   });
@@ -1660,12 +1708,12 @@ describe("run commands", () => {
       { instanceId: "hero-two", heroId: "H02", cost: 1 },
       { instanceId: "hero-three", heroId: "H03", cost: 1 },
       { instanceId: "hero-four", heroId: "H04", cost: 1 },
-      ...Array(8).fill(null),
+      ...Array(12).fill(null),
     ];
     const initialRun = { id: "run-start-cap", tenantId: "tenant-a", contentVersion: "alpha-0.3.0", state: "PREPARE" as const, round: 1, revision: 0, gold: 8, commandResponses: {}, bench: [], board };
     await repository.save(initialRun);
 
-    await expect(module.applyRunCommand({ actorId: "actor-a", tenantId: "tenant-a", runId: "run-start-cap", commandId: "cmd-start-cap", expectedRevision: 0, type: "START_ROUND" }, repository))
+    await expect(applyTestCommand(module, { actorId: "actor-a", tenantId: "tenant-a", runId: "run-start-cap", commandId: "cmd-start-cap", expectedRevision: 0, type: "START_ROUND" }, repository))
       .rejects.toThrow("GAME_RULE_VIOLATION");
     await expect(repository.get("run-start-cap", "tenant-a")).resolves.toEqual(initialRun);
   });
@@ -1677,21 +1725,21 @@ describe("run commands", () => {
     const second = { instanceId: "hero-merge-second", heroId: "H01", cost: 1, stars: 1 as const };
     await repository.save({
       id: "run-star-merge", tenantId: "tenant-a", contentVersion: "alpha-0.3.0", state: "PREPARE", round: 1, revision: 0, gold: 8, commandResponses: {},
-      bench: [first, second], board: Array(12).fill(null),
-      shop: [{ heroId: "H01", cost: 1 }, { heroId: "H02", cost: 2 }, { heroId: "H03", cost: 1 }, { heroId: "H04", cost: 3 }],
+      bench: [first, second], board: Array(16).fill(null),
+      shop: [{ heroId: "H01", cost: 1 }, { heroId: "H02", cost: 2 }, { heroId: "H03", cost: 1 }, { heroId: "H04", cost: 3 }, { heroId: "H05", cost: 1 }],
       items: [
         { instanceId: "item-merge-normal", itemId: "I01", kind: "normal" as const, equippedHeroInstanceId: first.instanceId },
         { instanceId: "item-merge-unique", itemId: "U01", kind: "unique" as const, equippedHeroInstanceId: second.instanceId },
       ],
     });
 
-    await expect(module.applyRunCommand({ actorId: "actor-a", tenantId: "tenant-a", runId: "run-star-merge", commandId: "cmd-star-merge", expectedRevision: 0, type: "BUY_SHOP_HERO", shopSlotIndex: 0 }, repository))
+    await expect(applyTestCommand(module, { actorId: "actor-a", tenantId: "tenant-a", runId: "run-star-merge", commandId: "cmd-star-merge", expectedRevision: 0, type: "BUY_SHOP_HERO", shopSlotIndex: 0 }, repository))
       .resolves.toEqual({ runRevision: 1, status: "APPLIED" });
 
     await expect(repository.get("run-star-merge", "tenant-a")).resolves.toMatchObject({
       gold: 7,
       bench: [{ instanceId: first.instanceId, heroId: "H01", cost: 1, stars: 2 }],
-      board: Array(12).fill(null),
+      board: Array(16).fill(null),
       items: [
         { instanceId: "item-merge-normal", itemId: "I01", kind: "normal" },
         { instanceId: "item-merge-unique", itemId: "U01", kind: "unique" },
@@ -1703,7 +1751,7 @@ describe("run commands", () => {
     const module = await import(modulePath) as typeof import("../src/application/run-commands.js");
     const repository = module.createInMemoryRunRepository();
     await repository.save({ id: "run-3", tenantId: "tenant-a", contentVersion: "alpha-0.3.0", state: "PREPARE", revision: 0, gold: 8, commandResponses: {} });
-    await expect(module.applyRunCommand({ actorId: "actor-a", tenantId: "tenant-a", runId: "run-3", commandId: "cmd-abandon", expectedRevision: 0, type: "ABANDON_RUN" }, repository))
+    await expect(applyTestCommand(module, { actorId: "actor-a", tenantId: "tenant-a", runId: "run-3", commandId: "cmd-abandon", expectedRevision: 0, type: "ABANDON_RUN" }, repository))
       .resolves.toEqual({ runRevision: 1, status: "APPLIED" });
     expect(await repository.get("run-3", "tenant-a")).toMatchObject({ state: "COMPLETE", revision: 1 });
   });
@@ -1713,13 +1761,13 @@ describe("run commands", () => {
     const repository = module.createInMemoryRunRepository();
     const hero = { instanceId: "hero-equip", heroId: "H01", cost: 1 };
     const item = { instanceId: "item-normal", itemId: "I01", kind: "normal" as const };
-    await repository.save({ id: "run-equip", tenantId: "tenant-a", contentVersion: "alpha-0.3.0", state: "PREPARE", revision: 0, gold: 8, commandResponses: {}, bench: [hero], board: Array(12).fill(null), items: [item] });
+    await repository.save({ id: "run-equip", tenantId: "tenant-a", contentVersion: "alpha-0.3.0", state: "PREPARE", revision: 0, gold: 8, commandResponses: {}, bench: [hero], board: Array(16).fill(null), items: [item] });
 
-    await expect(module.applyRunCommand({ actorId: "actor-a", tenantId: "tenant-a", runId: "run-equip", commandId: "cmd-equip", expectedRevision: 0, type: "EQUIP_ITEM", itemInstanceId: item.instanceId, heroInstanceId: hero.instanceId }, repository))
+    await expect(applyTestCommand(module, { actorId: "actor-a", tenantId: "tenant-a", runId: "run-equip", commandId: "cmd-equip", expectedRevision: 0, type: "EQUIP_ITEM", itemInstanceId: item.instanceId, heroInstanceId: hero.instanceId }, repository))
       .resolves.toEqual({ runRevision: 1, status: "APPLIED" });
     await expect(repository.get("run-equip", "tenant-a")).resolves.toMatchObject({ revision: 1, items: [{ ...item, equippedHeroInstanceId: hero.instanceId }] });
 
-    await expect(module.applyRunCommand({ actorId: "actor-a", tenantId: "tenant-a", runId: "run-equip", commandId: "cmd-unequip", expectedRevision: 1, type: "UNEQUIP_ITEM", itemInstanceId: item.instanceId }, repository))
+    await expect(applyTestCommand(module, { actorId: "actor-a", tenantId: "tenant-a", runId: "run-equip", commandId: "cmd-unequip", expectedRevision: 1, type: "UNEQUIP_ITEM", itemInstanceId: item.instanceId }, repository))
       .resolves.toEqual({ runRevision: 2, status: "APPLIED" });
     await expect(repository.get("run-equip", "tenant-a")).resolves.toMatchObject({ revision: 2, items: [item] });
   });
@@ -1728,14 +1776,14 @@ describe("run commands", () => {
     const module = await import(modulePath) as typeof import("../src/application/run-commands.js");
     const repository = module.createInMemoryRunRepository();
     const hero = { instanceId: "hero-full", heroId: "H01", cost: 1 };
-    const initialRun = { id: "run-third-item", tenantId: "tenant-a", contentVersion: "alpha-0.3.0", state: "PREPARE" as const, revision: 0, gold: 8, commandResponses: {}, bench: [hero], board: Array(12).fill(null), items: [
+    const initialRun = { id: "run-third-item", tenantId: "tenant-a", contentVersion: "alpha-0.3.0", state: "PREPARE" as const, revision: 0, gold: 8, commandResponses: {}, bench: [hero], board: Array(16).fill(null), items: [
       { instanceId: "item-one", itemId: "I01", kind: "normal" as const, equippedHeroInstanceId: hero.instanceId },
       { instanceId: "item-two", itemId: "I02", kind: "normal" as const, equippedHeroInstanceId: hero.instanceId },
       { instanceId: "item-three", itemId: "I03", kind: "normal" as const },
     ] };
     await repository.save(initialRun);
 
-    await expect(module.applyRunCommand({ actorId: "actor-a", tenantId: "tenant-a", runId: "run-third-item", commandId: "cmd-third", expectedRevision: 0, type: "EQUIP_ITEM", itemInstanceId: "item-three", heroInstanceId: hero.instanceId }, repository)).rejects.toThrow("GAME_RULE_VIOLATION");
+    await expect(applyTestCommand(module, { actorId: "actor-a", tenantId: "tenant-a", runId: "run-third-item", commandId: "cmd-third", expectedRevision: 0, type: "EQUIP_ITEM", itemInstanceId: "item-three", heroInstanceId: hero.instanceId }, repository)).rejects.toThrow("GAME_RULE_VIOLATION");
     await expect(repository.get("run-third-item", "tenant-a")).resolves.toEqual(initialRun);
   });
 
@@ -1743,13 +1791,13 @@ describe("run commands", () => {
     const module = await import(modulePath) as typeof import("../src/application/run-commands.js");
     const repository = module.createInMemoryRunRepository();
     const hero = { instanceId: "hero-unique", heroId: "H01", cost: 1 };
-    const initialRun = { id: "run-unique", tenantId: "tenant-a", contentVersion: "alpha-0.3.0", state: "PREPARE" as const, revision: 0, gold: 8, commandResponses: {}, bench: [hero], board: Array(12).fill(null), items: [
+    const initialRun = { id: "run-unique", tenantId: "tenant-a", contentVersion: "alpha-0.3.0", state: "PREPARE" as const, revision: 0, gold: 8, commandResponses: {}, bench: [hero], board: Array(16).fill(null), items: [
       { instanceId: "unique-equipped", itemId: "U01", kind: "unique" as const, equippedHeroInstanceId: hero.instanceId },
       { instanceId: "unique-other", itemId: "U02", kind: "unique" as const },
     ] };
     await repository.save(initialRun);
 
-    await expect(module.applyRunCommand({ actorId: "actor-a", tenantId: "tenant-a", runId: "run-unique", commandId: "cmd-second-unique", expectedRevision: 0, type: "EQUIP_ITEM", itemInstanceId: "unique-other", heroInstanceId: hero.instanceId }, repository)).rejects.toThrow("GAME_RULE_VIOLATION");
+    await expect(applyTestCommand(module, { actorId: "actor-a", tenantId: "tenant-a", runId: "run-unique", commandId: "cmd-second-unique", expectedRevision: 0, type: "EQUIP_ITEM", itemInstanceId: "unique-other", heroInstanceId: hero.instanceId }, repository)).rejects.toThrow("GAME_RULE_VIOLATION");
     await expect(repository.get("run-unique", "tenant-a")).resolves.toEqual(initialRun);
   });
 
@@ -1757,11 +1805,11 @@ describe("run commands", () => {
     const module = await import(modulePath) as typeof import("../src/application/run-commands.js");
     const repository = module.createInMemoryRunRepository();
     const hero = { instanceId: "hero-owned", heroId: "H01", cost: 1 };
-    const initialRun = { id: "run-item-ownership", tenantId: "tenant-a", contentVersion: "alpha-0.3.0", state: "PREPARE" as const, revision: 0, gold: 8, commandResponses: {}, bench: [hero], board: Array(12).fill(null), items: [{ instanceId: "item-equipped", itemId: "I01", kind: "normal" as const, equippedHeroInstanceId: hero.instanceId }] };
+    const initialRun = { id: "run-item-ownership", tenantId: "tenant-a", contentVersion: "alpha-0.3.0", state: "PREPARE" as const, revision: 0, gold: 8, commandResponses: {}, bench: [hero], board: Array(16).fill(null), items: [{ instanceId: "item-equipped", itemId: "I01", kind: "normal" as const, equippedHeroInstanceId: hero.instanceId }] };
     await repository.save(initialRun);
 
-    await expect(module.applyRunCommand({ actorId: "actor-a", tenantId: "tenant-a", runId: "run-item-ownership", commandId: "cmd-not-owned", expectedRevision: 0, type: "EQUIP_ITEM", itemInstanceId: "missing-item", heroInstanceId: hero.instanceId }, repository)).rejects.toThrow("GAME_RULE_VIOLATION");
-    await expect(module.applyRunCommand({ actorId: "actor-a", tenantId: "tenant-a", runId: "run-item-ownership", commandId: "cmd-equipped", expectedRevision: 0, type: "EQUIP_ITEM", itemInstanceId: "item-equipped", heroInstanceId: hero.instanceId }, repository)).rejects.toThrow("GAME_RULE_VIOLATION");
+    await expect(applyTestCommand(module, { actorId: "actor-a", tenantId: "tenant-a", runId: "run-item-ownership", commandId: "cmd-not-owned", expectedRevision: 0, type: "EQUIP_ITEM", itemInstanceId: "missing-item", heroInstanceId: hero.instanceId }, repository)).rejects.toThrow("GAME_RULE_VIOLATION");
+    await expect(applyTestCommand(module, { actorId: "actor-a", tenantId: "tenant-a", runId: "run-item-ownership", commandId: "cmd-equipped", expectedRevision: 0, type: "EQUIP_ITEM", itemInstanceId: "item-equipped", heroInstanceId: hero.instanceId }, repository)).rejects.toThrow("GAME_RULE_VIOLATION");
     await expect(repository.get("run-item-ownership", "tenant-a")).resolves.toEqual(initialRun);
   });
 
@@ -1769,9 +1817,9 @@ describe("run commands", () => {
     const module = await import(modulePath) as typeof import("../src/application/run-commands.js");
     const repository = module.createInMemoryRunRepository();
     const hero = { instanceId: "hero-idempotent-item", heroId: "H01", cost: 1 };
-    await repository.save({ id: "run-item-idempotency", tenantId: "tenant-a", contentVersion: "alpha-0.3.0", state: "PREPARE", revision: 0, gold: 8, commandResponses: {}, bench: [hero], board: Array(12).fill(null), items: [{ instanceId: "item-first", itemId: "I01", kind: "normal" }, { instanceId: "item-second", itemId: "I02", kind: "normal" }] });
-    await module.applyRunCommand({ actorId: "actor-a", tenantId: "tenant-a", runId: "run-item-idempotency", commandId: "cmd-item-reused", expectedRevision: 0, type: "EQUIP_ITEM", itemInstanceId: "item-first", heroInstanceId: hero.instanceId }, repository);
+    await repository.save({ id: "run-item-idempotency", tenantId: "tenant-a", contentVersion: "alpha-0.3.0", state: "PREPARE", revision: 0, gold: 8, commandResponses: {}, bench: [hero], board: Array(16).fill(null), items: [{ instanceId: "item-first", itemId: "I01", kind: "normal" }, { instanceId: "item-second", itemId: "I02", kind: "normal" }] });
+    await applyTestCommand(module, { actorId: "actor-a", tenantId: "tenant-a", runId: "run-item-idempotency", commandId: "cmd-item-reused", expectedRevision: 0, type: "EQUIP_ITEM", itemInstanceId: "item-first", heroInstanceId: hero.instanceId }, repository);
 
-    await expect(module.applyRunCommand({ actorId: "actor-a", tenantId: "tenant-a", runId: "run-item-idempotency", commandId: "cmd-item-reused", expectedRevision: 0, type: "EQUIP_ITEM", itemInstanceId: "item-second", heroInstanceId: hero.instanceId }, repository)).rejects.toThrow("IDEMPOTENCY_KEY_REUSED");
+    await expect(applyTestCommand(module, { actorId: "actor-a", tenantId: "tenant-a", runId: "run-item-idempotency", commandId: "cmd-item-reused", expectedRevision: 0, type: "EQUIP_ITEM", itemInstanceId: "item-second", heroInstanceId: hero.instanceId }, repository)).rejects.toThrow("IDEMPOTENCY_KEY_REUSED");
   });
 });
