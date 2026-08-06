@@ -40,6 +40,28 @@ export {
   type ReleaseCompatibilityInput,
   type VersionedArtifactRef,
 } from "./compatibility/release.js";
+export {
+  assertAdventureRoster,
+  createEmptyAdventureRoster,
+  deployedHeroCount,
+  freezeAdventureRoster,
+  locateAdventureHero,
+  mergeAdventureRoster,
+  moveAdventureHero,
+} from "./adventure/roster.js";
+export type {
+  AdventureHeroInstance,
+  AdventureItemInstance,
+  AdventureItemKind,
+  AdventurePhase,
+  AdventureRoster,
+  AdventureRunState,
+  AdventureShopSlot,
+  HeroStars,
+  LocatedHero,
+  RosterDestination,
+  RosterLocationKind,
+} from "./adventure/types.js";
 export { compileRuleset } from "./rules/compiler.js";
 export {
   assertGlobalPosition,
