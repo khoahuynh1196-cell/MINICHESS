@@ -146,7 +146,6 @@ export function moveAdventureHero(
   const sourceArray = source.kind === "board" ? board : bench;
   const targetArray = destinationArray(board, bench, destination);
   const displaced = targetArray[destination.index] ?? null;
-
   sourceArray[source.index] = displaced;
   targetArray[destination.index] = source.hero;
 
@@ -165,6 +164,11 @@ function mergeCandidateOrder(left: LocatedHero, right: LocatedHero): number {
     || left.hero.instanceId.localeCompare(right.hero.instanceId)
     || left.kind.localeCompare(right.kind)
     || left.index - right.index;
+}
+
+function mergeSurvivorOrder(left: LocatedHero, right: LocatedHero): number {
+  const locationDelta = (left.kind === "board" ? 0 : 1) - (right.kind === "board" ? 0 : 1);
+  return locationDelta || mergeCandidateOrder(left, right);
 }
 
 function locatedHeroes(board: readonly (AdventureHeroInstance | null)[], bench: readonly (AdventureHeroInstance | null)[]): LocatedHero[] {
@@ -199,7 +203,7 @@ export function mergeAdventureRoster(
       const selected = uniqueHolder === undefined
         ? group.slice(0, 3)
         : [uniqueHolder, ...group.filter((entry) => entry.hero.instanceId !== uniqueHolder.hero.instanceId).slice(0, 2)];
-      const survivor = uniqueHolder ?? selected[0]!;
+      const survivor = [...selected].sort(mergeSurvivorOrder)[0]!;
       const selectedIds = new Set(selected.map((entry) => entry.hero.instanceId));
       const mergedHero: AdventureHeroInstance = Object.freeze({
         ...survivor.hero,
