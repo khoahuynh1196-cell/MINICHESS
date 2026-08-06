@@ -60,4 +60,6 @@ export interface AdventureRunState extends AdventureRoster {
   readonly shop: readonly (AdventureShopSlot | null)[];
   readonly shopLocked: boolean;
   readonly freeRefreshes: number;
+  /** Hero rewards wait here until the player makes bench space during PREPARE. */
+  readonly rewardHeroes: readonly AdventureHeroInstance[];
 }
