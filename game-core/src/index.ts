@@ -56,6 +56,17 @@ export {
   type CreateAdventureGameInput,
 } from "./adventure/reducer.js";
 export {
+  buildAdventureRewardPlan,
+  validateAdventureRewardSelections,
+  type AdventureRewardOffer,
+  type AdventureRewardOfferKind,
+  type AdventureRewardOption,
+  type AdventureRewardOptionKind,
+  type AdventureRewardPlan,
+  type AdventureRewardSelection,
+  type BuildAdventureRewardPlanInput,
+} from "./adventure/rewards.js";
+export {
   assertAdventureRoster,
   createEmptyAdventureRoster,
   deployedHeroCount,
