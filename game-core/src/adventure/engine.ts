@@ -5,6 +5,7 @@ import {
   type AdventureCombatOutcome,
   type AdventureCombatResolutionCommand,
 } from "./lifecycle.js";
+import { buildAdventureCombatSnapshot, type AdventureCombatSnapshot } from "./snapshot.js";
 import {
   replayAdventureMutation,
   type AdventureGameState,
@@ -12,7 +13,7 @@ import {
 } from "./state.js";
 
 export interface AdventureCombatEngineRequest {
-  readonly state: AdventureGameState;
+  readonly snapshot: AdventureCombatSnapshot;
   readonly rules: CompiledRuleset;
   readonly content: CompiledContentBundle;
 }
@@ -23,7 +24,7 @@ export interface AdventureCombatEngine {
 
 /**
  * Resolves one combat through an injected engine. A repeated command is served
- * from the authoritative receipt before the engine is called again.
+ * from the authoritative receipt before the engine or snapshot builder runs.
  */
 export async function resolveAdventureCombat(
   state: AdventureGameState,
@@ -34,6 +35,8 @@ export async function resolveAdventureCombat(
 ): Promise<AdventureMutationResult> {
   const replay = replayAdventureMutation(state, command);
   if (replay !== undefined) return replay;
-  const outcome = await engine.resolve(Object.freeze({ state, rules, content }));
+  const snapshot = buildAdventureCombatSnapshot(state, rules, content);
+  const outcome = await engine.resolve(Object.freeze({ snapshot, rules, content }));
+  if (outcome.round !== snapshot.round) throw new Error("ADVENTURE_ENGINE_ROUND_MISMATCH");
   return recordAdventureCombatResult(state, command, outcome, rules, content);
 }
