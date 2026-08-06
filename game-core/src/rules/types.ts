@@ -46,12 +46,19 @@ export interface ProgressionRules {
   readonly levels: readonly ProgressionLevelRule[];
 }
 
+export interface AdventureLossDamageRules {
+  readonly base: number;
+  readonly perSurvivor: number;
+  readonly cap: number;
+}
+
 export interface AdventureRules {
   readonly initialHealth: number;
   readonly initialGold: number;
   readonly baseRoundIncome: number;
   readonly roundCount: number;
   readonly uniqueRevealRound: number;
+  readonly lossDamage: AdventureLossDamageRules;
 }
 
 export interface StreakBonusRule {
