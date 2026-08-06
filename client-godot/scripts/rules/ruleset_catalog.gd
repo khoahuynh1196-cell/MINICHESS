@@ -63,4 +63,15 @@ static func _is_valid_ruleset(rules: Dictionary) -> bool:
 	if int(adventure.get("round_count", 0)) <= 0 or int(adventure.get("unique_reveal_round", 0)) <= 0:
 		push_error("Ruleset Adventure values are invalid")
 		return false
+	var loss_value = adventure.get("loss_damage", null)
+	if typeof(loss_value) != TYPE_DICTIONARY:
+		push_error("Ruleset Adventure loss damage is missing")
+		return false
+	var loss: Dictionary = loss_value
+	var loss_base := int(loss.get("base", -1))
+	var loss_per_survivor := int(loss.get("per_survivor", -1))
+	var loss_cap := int(loss.get("cap", -1))
+	if loss_base < 0 or loss_per_survivor < 0 or loss_cap < loss_base:
+		push_error("Ruleset Adventure loss damage is invalid")
+		return false
 	return true
