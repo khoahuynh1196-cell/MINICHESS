@@ -137,6 +137,7 @@ export {
   type ProgressionState,
 } from "./rules/progression.js";
 export type {
+  AdventureLossDamageRules,
   AdventureRules,
   BoardRules,
   CombatRules,
