@@ -46,6 +46,16 @@ export {
   unequipAdventureItem,
 } from "./adventure/items.js";
 export {
+  applyAdventureCommand,
+  createAdventureGame,
+  type AdventureCommand,
+  type AdventureCommandBase,
+  type AdventureCommandReceipt,
+  type AdventureCommandResult,
+  type AdventureGameState,
+  type CreateAdventureGameInput,
+} from "./adventure/reducer.js";
+export {
   assertAdventureRoster,
   createEmptyAdventureRoster,
   deployedHeroCount,
@@ -54,6 +64,10 @@ export {
   mergeAdventureRoster,
   moveAdventureHero,
 } from "./adventure/roster.js";
+export {
+  sellAdventureHero,
+  type SellAdventureHeroResult,
+} from "./adventure/sell.js";
 export {
   adventureShopRemainingCopies,
   buyAdventureShopSlot,
