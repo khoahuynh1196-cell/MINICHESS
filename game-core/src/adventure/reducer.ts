@@ -1,24 +1,28 @@
 import type { CompiledContentBundle } from "../content/types.js";
 import type { CompiledRuleset } from "../rules/types.js";
-import { stableStringify } from "../serialization/canonical-json.js";
 import { buyExperience, initialProgressionState, progressionState } from "../rules/progression.js";
 import { equipAdventureItem, unequipAdventureItem } from "./items.js";
 import { deployedHeroCount, freezeAdventureRoster, mergeAdventureRoster, moveAdventureHero } from "./roster.js";
 import { sellAdventureHero } from "./sell.js";
+import {
+  commitAdventureMutation,
+  freezeAdventureGameState,
+  replayAdventureMutation,
+  type AdventureCommandReceipt,
+  type AdventureGameState,
+  type AdventureMutationBase,
+  type AdventureMutationResult,
+} from "./state.js";
 import {
   buyAdventureShopSlot,
   createAdventureShopPool,
   refreshAdventureShop,
   returnAdventureHeroCopies,
   rollAdventureShop,
-  type AdventureShopPool,
 } from "./shop.js";
 import type { AdventureRoster, AdventureRunState, RosterDestination } from "./types.js";
 
-export interface AdventureCommandBase {
-  readonly commandId: string;
-  readonly expectedRevision: number;
-}
+export type AdventureCommandBase = AdventureMutationBase;
 
 export type AdventureCommand =
   | (AdventureCommandBase & { readonly type: "REFRESH_SHOP" })
@@ -29,51 +33,17 @@ export type AdventureCommand =
   | (AdventureCommandBase & { readonly type: "SELL_HERO"; readonly heroInstanceId: string })
   | (AdventureCommandBase & { readonly type: "EQUIP_ITEM"; readonly itemInstanceId: string; readonly heroInstanceId: string })
   | (AdventureCommandBase & { readonly type: "UNEQUIP_ITEM"; readonly itemInstanceId: string })
+  | (AdventureCommandBase & { readonly type: "CLAIM_REWARD_HERO"; readonly heroInstanceId: string })
   | (AdventureCommandBase & { readonly type: "START_ROUND" });
 
-export interface AdventureCommandReceipt {
-  readonly fingerprint: string;
-  readonly revision: number;
-}
-
-export interface AdventureGameState {
-  readonly run: AdventureRunState;
-  readonly shopPool: AdventureShopPool;
-  readonly refreshNumber: number;
-  readonly acquisitionCounter: number;
-  readonly commandHistory: Readonly<Record<string, AdventureCommandReceipt>>;
-}
-
-export interface AdventureCommandResult {
-  readonly state: AdventureGameState;
-  readonly revision: number;
-  readonly replayed: boolean;
-}
+export type AdventureCommandResult = AdventureMutationResult;
+export type { AdventureCommandReceipt, AdventureGameState };
 
 export interface CreateAdventureGameInput {
   readonly id: string;
   readonly seed: string;
   readonly content: CompiledContentBundle;
   readonly rules: CompiledRuleset;
-}
-
-function freezeRun(run: AdventureRunState): AdventureRunState {
-  const roster = freezeAdventureRoster(run);
-  return Object.freeze({
-    ...run,
-    ...roster,
-    shop: Object.freeze(run.shop.map((slot) => slot === null ? null : Object.freeze({ ...slot }))),
-  });
-}
-
-function freezeState(state: AdventureGameState): AdventureGameState {
-  return Object.freeze({
-    ...state,
-    run: freezeRun(state.run),
-    commandHistory: Object.freeze(Object.fromEntries(Object.entries(state.commandHistory)
-      .sort(([left], [right]) => left.localeCompare(right))
-      .map(([commandId, receipt]) => [commandId, Object.freeze({ ...receipt })]))),
-  });
 }
 
 function rosterFromRun(run: AdventureRunState): AdventureRoster {
@@ -88,13 +58,6 @@ function requireNonEmpty(value: string, label: string): void {
   if (value.trim().length === 0) throw new Error(`${label} must not be empty`);
 }
 
-function requireCommand(command: AdventureCommand): void {
-  requireNonEmpty(command.commandId, "commandId");
-  if (!Number.isSafeInteger(command.expectedRevision) || command.expectedRevision < 0) {
-    throw new Error("expectedRevision must be a safe integer >= 0");
-  }
-}
-
 export function createAdventureGame(input: CreateAdventureGameInput): AdventureGameState {
   requireNonEmpty(input.id, "Adventure game id");
   requireNonEmpty(input.seed, "Adventure game seed");
@@ -106,7 +69,8 @@ export function createAdventureGame(input: CreateAdventureGameInput): AdventureG
   });
   const initialPool = createAdventureShopPool(input.content, input.rules, input.seed);
   const initialRoll = rollAdventureShop(initialPool, input.rules, progression.level, "round:1:refresh:0");
-  return freezeState({
+  return freezeAdventureGameState({
+    seed: input.seed,
     run: {
       id: input.id,
       revision: 0,
@@ -124,6 +88,7 @@ export function createAdventureGame(input: CreateAdventureGameInput): AdventureG
       shop: initialRoll.slots,
       shopLocked: false,
       freeRefreshes: 0,
+      rewardHeroes: [],
     },
     shopPool: initialRoll.pool,
     refreshNumber: 0,
@@ -137,14 +102,8 @@ export function applyAdventureCommand(
   command: AdventureCommand,
   rules: CompiledRuleset,
 ): AdventureCommandResult {
-  requireCommand(command);
-  const fingerprint = stableStringify(command);
-  const existing = state.commandHistory[command.commandId];
-  if (existing !== undefined) {
-    if (existing.fingerprint !== fingerprint) throw new Error("ADVENTURE_COMMAND_ID_REUSED");
-    return Object.freeze({ state, revision: existing.revision, replayed: true });
-  }
-  if (command.expectedRevision !== state.run.revision) throw new Error("ADVENTURE_REVISION_CONFLICT");
+  const replay = replayAdventureMutation(state, command);
+  if (replay !== undefined) return replay;
   if (state.run.phase !== "PREPARE") throw new Error("ADVENTURE_COMMAND_NOT_ALLOWED");
   if (state.run.rulesetVersion !== rules.version) throw new Error("ADVENTURE_RULESET_MISMATCH");
 
@@ -251,23 +210,38 @@ export function applyAdventureCommand(
         command.itemInstanceId,
       ));
       break;
+    case "CLAIM_REWARD_HERO": {
+      const reward = run.rewardHeroes.find((hero) => hero.instanceId === command.heroInstanceId);
+      if (reward === undefined) throw new Error(`Adventure reward hero not found: ${command.heroInstanceId}`);
+      const emptyBenchIndex = run.bench.findIndex((hero) => hero === null);
+      if (emptyBenchIndex < 0) throw new Error("ADVENTURE_BENCH_FULL");
+      const bench = [...run.bench];
+      bench[emptyBenchIndex] = reward;
+      const claimedRoster = mergeAdventureRoster(rules, {
+        board: run.board,
+        bench,
+        items: run.items,
+      }, currentProgression.boardCap);
+      run = withRoster({
+        ...run,
+        rewardHeroes: run.rewardHeroes.filter((hero) => hero.instanceId !== command.heroInstanceId),
+      }, claimedRoster);
+      break;
+    }
     case "START_ROUND":
+      if (run.rewardHeroes.length > 0) throw new Error("ADVENTURE_PENDING_HERO_REWARD");
       if (deployedHeroCount(run) === 0) throw new Error("ADVENTURE_BOARD_EMPTY");
       run = { ...run, phase: "COMBAT" };
       break;
   }
 
-  const revision = state.run.revision + 1;
-  run = { ...run, revision };
-  const next = freezeState({
+  return commitAdventureMutation(state, command, {
+    seed: state.seed,
     run,
     shopPool,
     refreshNumber,
     acquisitionCounter,
-    commandHistory: {
-      ...state.commandHistory,
-      [command.commandId]: Object.freeze({ fingerprint, revision }),
-    },
+    ...(state.pendingReward === undefined ? {} : { pendingReward: state.pendingReward }),
+    ...(state.lastCombat === undefined ? {} : { lastCombat: state.lastCombat }),
   });
-  return Object.freeze({ state: next, revision, replayed: false });
 }
