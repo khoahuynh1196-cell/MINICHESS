@@ -90,7 +90,12 @@
     "initial_gold": 8,
     "base_round_income": 5,
     "round_count": 8,
-    "unique_reveal_round": 4
+    "unique_reveal_round": 4,
+    "loss_damage": {
+      "base": 4,
+      "per_survivor": 2,
+      "cap": 12
+    }
   },
   "standard": {
     "initial_health": 100,
