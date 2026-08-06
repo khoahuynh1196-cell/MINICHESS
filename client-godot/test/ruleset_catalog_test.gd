@@ -13,11 +13,14 @@ func _init() -> void:
 	var roster: Dictionary = rules.get("roster", {})
 	var shop: Dictionary = rules.get("shop", {})
 	var progression: Dictionary = rules.get("progression", {})
+	var adventure: Dictionary = rules.get("adventure", {})
+	var loss: Dictionary = adventure.get("loss_damage", {})
 	_expect(int(combat.get("tick_rate", 0)) == 20 and int(combat.get("max_ticks", 0)) == 700, "combat timing must come from the generated ruleset")
 	_expect(int(board.get("columns", 0)) == 4 and int(board.get("rows", 0)) == 8, "Godot must load the canonical 4x8 board")
 	_expect(int(roster.get("bench_slots", 0)) == 8, "bench capacity must come from rules")
 	_expect(int(shop.get("slot_count", 0)) == 5, "shop size must come from rules")
 	_expect(int(progression.get("initial_level", 0)) == 3 and int(progression.get("max_level", 0)) == 9, "progression levels must come from rules")
+	_expect(int(loss.get("base", -1)) == 4 and int(loss.get("per_survivor", -1)) == 2 and int(loss.get("cap", -1)) == 12, "Adventure loss damage must come from rules")
 	_finish()
 
 func _expect(condition: bool, message: String) -> void:
