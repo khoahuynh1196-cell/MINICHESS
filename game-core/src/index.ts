@@ -41,6 +41,11 @@ export {
   type VersionedArtifactRef,
 } from "./compatibility/release.js";
 export {
+  equipAdventureItem,
+  grantAdventureItem,
+  unequipAdventureItem,
+} from "./adventure/items.js";
+export {
   assertAdventureRoster,
   createEmptyAdventureRoster,
   deployedHeroCount,
