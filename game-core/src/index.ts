@@ -40,6 +40,7 @@ export {
   type ReleaseCompatibilityInput,
   type VersionedArtifactRef,
 } from "./compatibility/release.js";
+export { sha256Hex, stableStringify } from "./serialization/canonical-json.js";
 export {
   equipAdventureItem,
   grantAdventureItem,
@@ -82,6 +83,14 @@ export {
   moveAdventureHero,
 } from "./adventure/roster.js";
 export {
+  ADVENTURE_SAVE_SCHEMA,
+  decodeAdventureSave,
+  encodeAdventureSave,
+  type AdventureSaveContext,
+  type AdventureSaveEnvelope,
+  type AdventureSavePayload,
+} from "./adventure/save.js";
+export {
   sellAdventureHero,
   type SellAdventureHeroResult,
 } from "./adventure/sell.js";
@@ -119,6 +128,7 @@ export type {
   RosterDestination,
   RosterLocationKind,
 } from "./adventure/types.js";
+export { assertAdventureGameState } from "./adventure/validation.js";
 export { compileRuleset } from "./rules/compiler.js";
 export {
   assertGlobalPosition,
