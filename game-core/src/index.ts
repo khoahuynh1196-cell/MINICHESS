@@ -43,6 +43,14 @@ export {
   orthogonalNeighbors,
   playerBoardCellCount,
 } from "./rules/board.js";
+export {
+  buyExperience,
+  canBuyExperience,
+  initialProgressionState,
+  progressionState,
+  shopOddsAtLevel,
+  type ProgressionState,
+} from "./rules/progression.js";
 export type {
   AdventureRules,
   BoardRules,
