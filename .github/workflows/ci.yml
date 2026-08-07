@@ -2,7 +2,10 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches:
+      - main
+      - feature/auto-battler-alpha
+      - "codex/**"
   pull_request:
 
 permissions:
