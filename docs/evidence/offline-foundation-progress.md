@@ -457,3 +457,101 @@ rg -n '"H0[1-9]"|"H1[0-9]"|"H20"' game-core/src/simulation/production-kernel.ts
 rg -n 'from ["'"'"'].*simulation/kernel' game-core/src/adventure
   no matches (production paths never import the legacy kernel)
 ```
+
+## Mission 4 — Resumable Adventure combat playback phase (2026-08-07)
+
+**Branch:** `antigravity/offline-foundation-hardening`.
+
+### Target phase model, implemented
+
+`PREPARE → COMBAT → PLAYBACK → REWARD/COMPLETE → PREPARE/COMPLETE`. Combat
+resolution (win or lose) now always lands in `PLAYBACK` first; only an
+explicit `ACK_PLAYBACK_COMPLETE` command advances to `REWARD` (win) or
+`COMPLETE` (lost to zero health).
+
+### Added / changed
+
+- `game-core/src/adventure/types.ts`: `AdventurePhase` gained `"PLAYBACK"`.
+- `game-core/src/adventure/lifecycle.ts`: `recordAdventureCombatResult` now
+  sets `phase: "PLAYBACK"` unconditionally (the reward plan is still
+  computed eagerly here, same as before — only its *exposure* moved). Added
+  `AdventurePlaybackAckCommand` (`ACK_PLAYBACK_COMPLETE`) and
+  `ackAdventurePlaybackComplete()`, which requires `phase === "PLAYBACK"`
+  and transitions to `REWARD` or `COMPLETE` based on `run.health === 0`
+  (no extra state needed — health was already committed by the combat
+  result). Idempotent via commandId presence, consistent with
+  `checkCombatResultReplay`.
+- `game-core/src/adventure/session.ts`: added `ackPlaybackComplete()`,
+  mirroring `claimReward()`.
+- `game-core/src/adventure/protocol.ts`: `AdventureRuntimeRequest` gained
+  `ACK_PLAYBACK_COMPLETE`; `handleAdventureRuntimeRequest` dispatches it to
+  `session.ackPlaybackComplete()`.
+- `game-core/src/adventure/view.ts`: `pendingReward` is now only included
+  in `AdventureView` when `phase === "REWARD"` — during `PLAYBACK` it is
+  withheld even though it has already been computed, so a client cannot
+  see (or spoil) the reward before acknowledging the combat presentation.
+  `lastCombat` (including `lastCombat.playback`) remains visible in every
+  phase, since a client restoring mid-`PLAYBACK` needs it to resume the
+  presentation without rerunning combat.
+- `game-core/src/adventure/validation.ts`: replaced the old strict
+  `(phase === "REWARD") === (pendingReward !== undefined)` invariant, which
+  is no longer true (a won combat has `pendingReward` set while still in
+  `PLAYBACK`), with two directional checks: `REWARD` phase requires a
+  pending reward, and a pending reward is only valid during `PLAYBACK` or
+  `REWARD`.
+- **No changes were needed** to `claimAdventureRoundReward`'s
+  `phase !== "REWARD"` guard, `AdventureCombatSnapshot`'s
+  `phase !== "COMBAT"` guard, or `AdventureCombatSummary`/persistence
+  (`state.lastCombat.playback`, added in Mission 1, already is the
+  resumable playback record this mission needed — no new save-schema
+  changes were required).
+- `tools/run-adventure-domain-smoke.mjs`: inserted an `ackPlaybackComplete`
+  call between `resolveCombat` and `claimReward` on every round (any real
+  caller now needs this — the smoke tool is exactly the kind of consumer
+  that would have silently broken without this update).
+
+### Tests added/updated
+
+- `lifecycle.test.ts`: split the old single-step "combat → REWARD" test
+  into an explicit `PLAYBACK` assertion followed by `ACK` (checking both
+  idempotent replay of the combat result and of the ACK itself), a new
+  test proving `ACK_PLAYBACK_COMPLETE` is rejected outside `PLAYBACK`, and
+  updated every downstream reward test to ACK before claiming.
+- `session.test.ts`: new test `"resumes PLAYBACK after a restore without
+  re-simulating combat"` — resolves combat, restores into a *second*
+  session instance sharing the same store and the same injected engine
+  (so the call counter is observable across both), asserts the restored
+  state is still `PLAYBACK` with the identical `eventLogHash`, retries the
+  original `RESOLVE_COMBAT` command against the restored session and
+  confirms the engine is not called again, then ACKs and reaches `REWARD`.
+  This is the concrete "save during PLAYBACK; restore; assert engine call
+  count unchanged and playback hash identical" evidence the mission asked
+  for.
+- `view.test.ts`: rewrote the reward-visibility test to check both phases
+  explicitly — `pendingReward` absent during `PLAYBACK`, present after ACK.
+- `protocol.test.ts`: added parsing coverage for `ACK_PLAYBACK_COMPLETE`
+  and an end-to-end runtime test (`RESOLVE_COMBAT` → view shows `PLAYBACK`
+  with playback attached and no reward → `ACK_PLAYBACK_COMPLETE` → view
+  shows `REWARD` with the reward now visible and no playback field).
+- `conservation.test.ts`: inserted the ACK step into the combat → reward →
+  next-round-shop conservation stress test.
+
+### Verification
+
+```
+pnpm run check
+  rules:check PASS, typecheck PASS, game-core 29 files/241 tests PASS,
+  server 10 files/142 tests PASS
+node tools/run-adventure-domain-smoke.mjs
+  {"status":"PASS", rounds:8, revision:37, saves:38, ...}
+  (revision/saves rose from Mission 3's 29/30 to 37/38 — one extra
+  ACK_PLAYBACK_COMPLETE command per round, as expected)
+git diff --check   clean
+```
+
+### Deliberately not touched in this mission
+
+- Godot side (`client-godot/scripts/adventure/*.gd`): the runtime port and
+  controller do not yet know about the `PLAYBACK` phase or emit/consume
+  `ACK_PLAYBACK_COMPLETE`. That is Mission 6 scope (Godot Adventure
+  runtime boundary).

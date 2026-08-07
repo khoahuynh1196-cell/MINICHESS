@@ -36,8 +36,11 @@ export function assertAdventureGameState(
   const progression = progressionState(rules, state.run.level, state.run.experience);
   assertAdventureRoster(rules, state.run, progression.boardCap);
   if (state.run.shop.length !== rules.shop.slotCount) throw new Error("Adventure shop length does not match rules");
-  if ((state.run.phase === "REWARD") !== (state.pendingReward !== undefined)) {
-    throw new Error("Adventure reward phase and pending reward must agree");
+  if (state.run.phase === "REWARD" && state.pendingReward === undefined) {
+    throw new Error("Adventure reward phase requires a pending reward");
+  }
+  if (state.pendingReward !== undefined && state.run.phase !== "PLAYBACK" && state.run.phase !== "REWARD") {
+    throw new Error("Adventure pending reward is only valid during PLAYBACK or REWARD");
   }
   if (state.pendingReward !== undefined) {
     if (state.pendingReward.round !== state.run.round) throw new Error("Adventure pending reward round mismatch");

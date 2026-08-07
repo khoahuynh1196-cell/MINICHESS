@@ -129,6 +129,12 @@ for (let expectedRound = 1; expectedRound <= rules.adventure.roundCount; expecte
     expectedRevision: session.state.run.revision,
     type: "RESOLVE_COMBAT",
   });
+  if (session.state.run.phase !== "PLAYBACK") throw new Error(`DOMAIN_SMOKE_NOT_IN_PLAYBACK:${expectedRound}`);
+  await session.ackPlaybackComplete({
+    commandId: commandId("ack-playback"),
+    expectedRevision: session.state.run.revision,
+    type: "ACK_PLAYBACK_COMPLETE",
+  });
   const reward = session.state.pendingReward;
   if (reward === undefined) throw new Error(`DOMAIN_SMOKE_REWARD_MISSING:${expectedRound}`);
   await session.claimReward({

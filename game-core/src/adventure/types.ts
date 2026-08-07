@@ -38,7 +38,7 @@ export interface LocatedHero {
   readonly hero: AdventureHeroInstance;
 }
 
-export type AdventurePhase = "PREPARE" | "COMBAT" | "REWARD" | "COMPLETE";
+export type AdventurePhase = "PREPARE" | "COMBAT" | "PLAYBACK" | "REWARD" | "COMPLETE";
 
 export interface AdventureShopSlot {
   readonly heroId: string;

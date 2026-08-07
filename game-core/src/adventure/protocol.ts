@@ -1,6 +1,7 @@
 import type { AdventureCommand } from "./reducer.js";
 import type {
   AdventureCombatResolutionCommand,
+  AdventurePlaybackAckCommand,
   AdventureRewardClaimCommand,
 } from "./lifecycle.js";
 import type { AdventureCombatPlayback } from "./playback.js";
@@ -10,6 +11,7 @@ import type { AdventureView } from "./view.js";
 export type AdventureRuntimeRequest =
   | AdventureCommand
   | AdventureCombatResolutionCommand
+  | AdventurePlaybackAckCommand
   | AdventureRewardClaimCommand;
 
 export interface AdventureRuntimeResponse {
@@ -85,6 +87,7 @@ export function parseAdventureRuntimeRequest(value: unknown): AdventureRuntimeRe
     case "BUY_XP":
     case "START_ROUND":
     case "RESOLVE_COMBAT":
+    case "ACK_PLAYBACK_COMPLETE":
       exactKeys(raw, ["commandId", "expectedRevision", "type"], type);
       return Object.freeze({ ...common, type });
     case "BUY_SHOP_HERO":
@@ -137,7 +140,9 @@ export async function handleAdventureRuntimeRequest(
   }
   const result = request.type === "CLAIM_ROUND_REWARD"
     ? await session.claimReward(request)
-    : await session.dispatch(request);
+    : request.type === "ACK_PLAYBACK_COMPLETE"
+      ? await session.ackPlaybackComplete(request)
+      : await session.dispatch(request);
   return Object.freeze({
     revision: result.revision,
     replayed: result.replayed,

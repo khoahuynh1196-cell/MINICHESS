@@ -62,11 +62,13 @@ export {
   unequipAdventureItem,
 } from "./adventure/items.js";
 export {
+  ackAdventurePlaybackComplete,
   claimAdventureRoundReward,
   recordAdventureCombatResult,
   type AdventureCombatOutcome,
   type AdventureCombatResolutionCommand,
   type AdventureCombatResultCommand,
+  type AdventurePlaybackAckCommand,
   type AdventureRewardClaimCommand,
 } from "./adventure/lifecycle.js";
 export {

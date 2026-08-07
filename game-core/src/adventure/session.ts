@@ -7,8 +7,10 @@ import {
   type AdventureCombatResolutionResult,
 } from "./engine.js";
 import {
+  ackAdventurePlaybackComplete,
   claimAdventureRoundReward,
   type AdventureCombatResolutionCommand,
+  type AdventurePlaybackAckCommand,
   type AdventureRewardClaimCommand,
 } from "./lifecycle.js";
 import {
@@ -123,6 +125,17 @@ export class AdventureSession {
 
   async claimReward(command: AdventureRewardClaimCommand): Promise<AdventureMutationResult> {
     const result = claimAdventureRoundReward(
+      this.state,
+      command,
+      this.#dependencies.rules,
+      this.#dependencies.content,
+    );
+    await this.#accept(result);
+    return result;
+  }
+
+  async ackPlaybackComplete(command: AdventurePlaybackAckCommand): Promise<AdventureMutationResult> {
+    const result = ackAdventurePlaybackComplete(
       this.state,
       command,
       this.#dependencies.rules,

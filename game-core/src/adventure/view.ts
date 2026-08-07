@@ -112,7 +112,12 @@ export function buildAdventureView(
     items: state.run.items,
     rewardHeroes: state.run.rewardHeroes,
     traits: traitViews(state, content),
-    ...(state.pendingReward === undefined ? {} : { pendingReward: state.pendingReward }),
+    // The reward plan is computed as soon as combat resolves (during
+    // PLAYBACK), but must not be visible to the client until the player has
+    // acknowledged the combat presentation and the run has actually
+    // advanced to REWARD — otherwise the reward would spoil before the
+    // fight replay finishes.
+    ...(state.pendingReward === undefined || state.run.phase !== "REWARD" ? {} : { pendingReward: state.pendingReward }),
     ...(state.lastCombat === undefined ? {} : { lastCombat: state.lastCombat }),
   });
 }

@@ -81,6 +81,16 @@ describe("strict Adventure runtime protocol", () => {
       type: "CLAIM_ROUND_REWARD",
       selections: [{ offerId: "offer", optionId: "option" }],
     });
+
+    expect(parseAdventureRuntimeRequest({
+      commandId: "ack",
+      expectedRevision: 5,
+      type: "ACK_PLAYBACK_COMPLETE",
+    })).toEqual({
+      commandId: "ack",
+      expectedRevision: 5,
+      type: "ACK_PLAYBACK_COMPLETE",
+    });
   });
 
   it("rejects unknown commands, extra fields, invalid destinations, and malformed selections", () => {
@@ -120,6 +130,27 @@ describe("strict Adventure runtime protocol", () => {
     expect(serialized).not.toContain("private-protocol-seed");
     expect(serialized).not.toContain("shopPool");
     expect(serialized).not.toContain("commandHistory");
+  });
+
+  it("carries playback through RESOLVE_COMBAT and withholds the reward until ACK_PLAYBACK_COMPLETE", async () => {
+    const runtime = session();
+    await runtime.start({ id: "protocol-playback", seed: "protocol-playback-seed" });
+    await handleAdventureRuntimeRequest(runtime, { commandId: "buy", expectedRevision: 0, type: "BUY_SHOP_HERO", shopSlotIndex: 0 });
+    await handleAdventureRuntimeRequest(runtime, {
+      commandId: "move", expectedRevision: 1, type: "MOVE_HERO",
+      heroInstanceId: "hero:protocol-playback:buy", destination: { kind: "board", index: 0 },
+    });
+    await handleAdventureRuntimeRequest(runtime, { commandId: "start", expectedRevision: 2, type: "START_ROUND" });
+
+    const resolved = await handleAdventureRuntimeRequest(runtime, { commandId: "resolve", expectedRevision: 3, type: "RESOLVE_COMBAT" });
+    expect(resolved.view.phase).toBe("PLAYBACK");
+    expect(resolved.view.pendingReward).toBeUndefined();
+    expect(resolved.playback?.combatId).toBeDefined();
+
+    const acked = await handleAdventureRuntimeRequest(runtime, { commandId: "ack", expectedRevision: 4, type: "ACK_PLAYBACK_COMPLETE" });
+    expect(acked.view.phase).toBe("REWARD");
+    expect(acked.view.pendingReward?.round).toBe(1);
+    expect(acked.playback).toBeUndefined();
   });
 
   it("preserves idempotent replay semantics through the runtime boundary", async () => {

@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import {
+  ackAdventurePlaybackComplete,
   applyAdventureCommand,
   buildAdventureView,
   compileContentBundle,
@@ -67,7 +68,7 @@ describe("presentation-safe Adventure view", () => {
     }
   });
 
-  it("exposes pending reward and last-combat summaries only after resolution", () => {
+  it("exposes lastCombat during PLAYBACK but withholds pendingReward until ACK", () => {
     const { state } = preparedWithHero();
     const started = applyAdventureCommand(state, {
       commandId: "start", expectedRevision: 2, type: "START_ROUND",
@@ -81,14 +82,22 @@ describe("presentation-safe Adventure view", () => {
       finalTick: 100,
       reason: "elimination",
     }, rules, content).state;
-    const view = buildAdventureView(resolved, rules, content);
+    const playbackView = buildAdventureView(resolved, rules, content);
 
-    expect(view.phase).toBe("REWARD");
-    expect(view.pendingReward?.round).toBe(1);
-    expect(view.lastCombat).toEqual(expect.objectContaining({
+    expect(playbackView.phase).toBe("PLAYBACK");
+    expect(playbackView.pendingReward).toBeUndefined();
+    expect(playbackView.lastCombat).toEqual(expect.objectContaining({
       round: 1,
       winner: "player",
       resultHash: "view-result",
     }));
+
+    const acked = ackAdventurePlaybackComplete(resolved, {
+      commandId: "ack", expectedRevision: 4, type: "ACK_PLAYBACK_COMPLETE",
+    }, rules, content).state;
+    const rewardView = buildAdventureView(acked, rules, content);
+
+    expect(rewardView.phase).toBe("REWARD");
+    expect(rewardView.pendingReward?.round).toBe(1);
   });
 });

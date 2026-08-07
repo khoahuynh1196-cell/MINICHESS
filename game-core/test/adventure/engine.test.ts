@@ -78,7 +78,7 @@ describe("Adventure combat engine port", () => {
     const result = await resolveAdventureCombat(combatReady(), command, engine, rules, content);
 
     expect(calls).toBe(1);
-    expect(result.state.run.phase).toBe("REWARD");
+    expect(result.state.run.phase).toBe("PLAYBACK");
     expect(result.state.lastCombat?.resultHash).toBe("engine-result");
     expect(result.playback.combatId).toBe(result.state.lastCombat?.playback?.combatId);
   });

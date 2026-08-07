@@ -121,7 +121,10 @@ export function recordAdventureCombatResult(
   const run: AdventureRunState = {
     ...state.run,
     health,
-    phase: health === 0 ? "COMPLETE" : "REWARD",
+    // Combat always transitions to PLAYBACK first, win or lose, so a client
+    // can play the authoritative combat presentation before the run reacts
+    // to the outcome. ACK_PLAYBACK_COMPLETE (below) advances to REWARD/COMPLETE.
+    phase: "PLAYBACK",
   };
 
   return commitAdventureMutation(state, command, {
@@ -132,6 +135,40 @@ export function recordAdventureCombatResult(
     acquisitionCounter: state.acquisitionCounter,
     ...(pendingReward === undefined ? {} : { pendingReward }),
     lastCombat,
+  });
+}
+
+export interface AdventurePlaybackAckCommand extends AdventureMutationBase {
+  readonly type: "ACK_PLAYBACK_COMPLETE";
+}
+
+/**
+ * Advances PLAYBACK -> REWARD (won, reward already computed by
+ * recordAdventureCombatResult) or PLAYBACK -> COMPLETE (lost to zero
+ * health). Idempotent like every other mutation: a repeated ACK for the
+ * same commandId returns the original receipt without mutating state again.
+ */
+export function ackAdventurePlaybackComplete(
+  state: AdventureGameState,
+  command: AdventurePlaybackAckCommand,
+  rules: CompiledRuleset,
+  content: CompiledContentBundle,
+): AdventureMutationResult {
+  const replay = replayAdventureMutation(state, command);
+  if (replay !== undefined) return replay;
+  assertVersions(state, rules, content);
+  if (state.run.phase !== "PLAYBACK") throw new Error("ADVENTURE_COMMAND_NOT_ALLOWED");
+
+  const run: AdventureRunState = { ...state.run, phase: state.run.health === 0 ? "COMPLETE" : "REWARD" };
+
+  return commitAdventureMutation(state, command, {
+    seed: state.seed,
+    run,
+    shopPool: state.shopPool,
+    refreshNumber: state.refreshNumber,
+    acquisitionCounter: state.acquisitionCounter,
+    ...(state.pendingReward === undefined ? {} : { pendingReward: state.pendingReward }),
+    ...(state.lastCombat === undefined ? {} : { lastCombat: state.lastCombat }),
   });
 }
 
