@@ -165,12 +165,20 @@ function starKeyFor(stars: 1 | 2 | 3): "one" | "two" | "three" {
   return stars === 3 ? "three" : stars === 2 ? "two" : "one";
 }
 
+// Armor/magic resist use the standard diminishing-returns mitigation curve
+// (mitigation = resist / (100 + resist), in real, unscaled terms — e.g. 20
+// armor mitigates 20/120 = ~16.7%). Content stores armor/magic_resist in the
+// same SCALE=1000 fixed-point space as every other stat (20 real armor is
+// authored as 20000), so the "100" constant is scaled to 100*SCALE to stay
+// in that same space rather than converting to a real number first.
+const MITIGATION_CONSTANT = 100 * SCALE;
+
 function resolveMitigatedDamage(rawDamage: number, damageType: DamageType, armor: number, magicResist: number): number {
   if (damageType === "true") return Math.max(0, Math.round(rawDamage));
   const resist = damageType === "physical" ? armor : magicResist;
   const mitigated = resist >= 0
-    ? (rawDamage * SCALE) / (SCALE + resist)
-    : rawDamage * (SCALE + Math.abs(resist)) / SCALE;
+    ? (rawDamage * MITIGATION_CONSTANT) / (MITIGATION_CONSTANT + resist)
+    : (rawDamage * (MITIGATION_CONSTANT + Math.abs(resist))) / MITIGATION_CONSTANT;
   return Math.max(0, Math.round(mitigated));
 }
 
@@ -188,6 +196,7 @@ export function runProductionCombat(request: AdventureCombatEngineRequest): Adve
   const geometry = geometryFromRules(snapshot);
   const rng = createSeededRng(snapshot.combatSeed);
   const maxTicks = snapshot.maxTicks;
+  const tickRate = snapshot.tickRate;
   const events: AdventurePlaybackEvent[] = [];
   let sequence = 0;
 
@@ -712,7 +721,7 @@ export function runProductionCombat(request: AdventureCombatEngineRequest): Adve
           fireTrigger("on_cast_resolve", currentTick + castTicks, unit, target, actionId);
         } else {
           const attackSpeed = Math.max(1, statValue(unit, "attack_speed"));
-          const attackInterval = Math.max(BASIC_ATTACK_MIN_INTERVAL_TICKS, Math.round((100 * SCALE) / attackSpeed));
+          const attackInterval = Math.max(BASIC_ATTACK_MIN_INTERVAL_TICKS, Math.round((tickRate * SCALE) / attackSpeed));
           unit.nextActionTick = currentTick + attackInterval;
           unit.basicAttackCount += 1;
           const critChance = statValue(unit, "crit_chance");
@@ -741,7 +750,7 @@ export function runProductionCombat(request: AdventureCombatEngineRequest): Adve
             return distanceDelta !== 0 ? distanceDelta : left - right;
           })[0]!;
           const moveSpeed = Math.max(1, statValue(unit, "move_speed"));
-          const moveTicks = Math.max(BASIC_ATTACK_MIN_INTERVAL_TICKS, Math.round((100 * SCALE) / moveSpeed));
+          const moveTicks = Math.max(BASIC_ATTACK_MIN_INTERVAL_TICKS, Math.round((tickRate * SCALE) / moveSpeed));
           const from = unit.position;
           unit.position = nextCell;
           unit.nextActionTick = currentTick + moveTicks;
