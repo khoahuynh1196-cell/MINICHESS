@@ -273,3 +273,75 @@ coverage in this mission) passes.
   still only has the legacy `kernel.ts` + `seeded-rng.ts`); this playback
   contract is proven against fake/scripted engines only. Mission 2/3 build
   the real production kernel that will exercise this contract for real.
+
+## Mission 2 — Explicit production 4×8 simulation geometry (2026-08-07)
+
+**Branch:** `antigravity/offline-foundation-hardening`.
+
+### What already existed
+
+`game-core/src/rules/board.ts` already implements rules-driven,
+4×8-correct geometry (`boardRow`, `boardColumn`, `manhattanDistance`,
+`orthogonalNeighbors`, `localPlayerIndexToGlobal`, ...) parameterized by
+`CompiledRuleset.board.columns/rows` — none of it hardcodes 3 columns.
+Checkpoint A1's "[x] Add 4×8 board geometry helpers" in the execution
+plan is accurate on this branch. This mission did not need to fix that
+layer.
+
+### What was missing
+
+The simulation layer had no geometry abstraction of its own: the only
+combat kernel (`game-core/src/simulation/kernel.ts`, legacy/Alpha) hardcodes
+`BOARD_CELL_COUNT = 24` and `/ 3`, `% 3`, `± 3` arithmetic throughout
+(pathing, neighbor-finding, dash/retreat/knockback row-crossing checks).
+Nothing yet forces a future production combat kernel (Mission 3) to take
+board shape as an explicit dependency instead of copying that pattern.
+
+### Added
+
+- `game-core/src/simulation/geometry.ts`: `CombatGeometry {columns, rows,
+  cellCount}`, `PRODUCTION_4X8_GEOMETRY`, `LEGACY_ALPHA_GEOMETRY`,
+  `geometryFromRules()` (derives geometry from any `{board:{columns,rows}}`
+  shape — both `CompiledRuleset` and `AdventureCombatSnapshot` satisfy
+  this structurally), plus `rowOf`/`columnOf`/`cellAt`/`manhattanDistance`/
+  `orthogonalNeighbors`/`horizontalDirection`/`verticalDirection`/`displace`.
+  `displace()` is the dash/retreat/knockback primitive: it moves N cells in
+  a straight line, clamped at the board edge, and is structurally
+  incapable of crossing into an adjacent row/column (it operates on
+  `rowOf`/`columnOf` derived from `geometry.columns`, not a hardcoded
+  divisor).
+- `game-core/test/simulation/production-geometry.test.ts`: corner/interior/
+  last-cell neighbor cases (`0→[1,4]`, `5→[1,4,6,9]`, `31→[27,30]`),
+  Manhattan distance `0→31 == 10`, player local cell `0` → global `16`
+  cross-checked against the compiled production ruleset, a worked example
+  showing cell 7 resolves differently under 4-column vs. naive 3-column
+  math, knockback/dash/retreat clamping at all four board edges, direction
+  helpers, and out-of-bounds rejection. 9 tests, all new.
+
+### Deliberately not touched in this mission
+
+- `simulation/kernel.ts` (legacy 3×8 kernel) — left as-is; it is not
+  called from any production path (`engine.ts` only defines the
+  `AdventureCombatEngine` port and takes an injected engine — there is no
+  built-in production kernel yet). Rewriting it now would be premature:
+  Mission 3 introduces the production kernel that actually needs geometry
+  injected, and the plan requires parity evidence before altering/deleting
+  legacy behavior.
+- `adventure/engine.ts`, `adventure/snapshot.ts` — the plan lists these as
+  mission files because a production kernel wiring into them normally
+  needs geometry: on this branch neither yet has anything to wire (no
+  production kernel exists). Left for Mission 3.
+
+### Verification
+
+```
+pnpm --filter @auto-battler/game-core run test -- test/simulation
+  2 files / 78 tests PASS (includes the pre-existing kernel.test.ts)
+pnpm --filter @auto-battler/game-core run test
+  28 files / 220 tests PASS
+pnpm --filter @auto-battler/game-core run typecheck   PASS
+rg -n 'BOARD_CELL_COUNT\s*=\s*24|/\s*3\b|%\s*3\b|\+\s*3\b|-\s*3\b' game-core/src
+  every hit is inside simulation/kernel.ts (the named legacy module) or a
+  descriptive comment in geometry.ts referencing what it replaces —
+  no production path match.
+```
