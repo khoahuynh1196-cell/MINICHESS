@@ -345,3 +345,115 @@ rg -n 'BOARD_CELL_COUNT\s*=\s*24|/\s*3\b|%\s*3\b|\+\s*3\b|-\s*3\b' game-core/src
   descriptive comment in geometry.ts referencing what it replaces —
   no production path match.
 ```
+
+## Mission 3 — Production deterministic combat parity (2026-08-07)
+
+**Branch:** `antigravity/offline-foundation-hardening`.
+
+### What this closes
+
+The audit that started this branch's work found the most severe gap in the
+prior (abandoned) attempt at this plan: a "production kernel" that only ever
+executed a hardcoded flat magic-damage nuke on skill cast, regardless of the
+skill's actual authored effects, and a coverage test that checked primitive
+*names* against a string allowlist without checking any primitive actually
+executed. `content/alpha-0.3.0/bundle.json` authors 15 distinct effect
+primitives across skills, traits, and items (`heal`×5, `shield`×11,
+`stun`×2, `dash`×2, `knockback`×1, `summon`×2, `apply_dot`×1, `cleanse`×2,
+`slow`×2, `buff_stat`×29, `debuff_stat`×1, `restore_mana`×3,
+`damage_reduction`×7, plus `deal_damage`); none of them beyond flat magic
+damage executed under the prior attempt.
+
+### Added
+
+- `game-core/src/simulation/production-kernel.ts`: `runProductionCombat()`,
+  implementing the full `AdventureCombatEngine` port contract
+  (`AdventureCombatEngineRequest → AdventureCombatEngineResult`). Real
+  per-tick simulation: target selection for all 11 `EffectTarget` kinds
+  (`self`, `locked_target`, `nearest_other_enemy`, `lowest_hp_ally`,
+  `adjacent_allies`, `rear_ally`, `nearest_trait_ally`,
+  `adjacent_trait_allies`, `all_trait_allies`, `adjacent_enemies`,
+  `all_enemies`), movement/pathing on the injected `CombatGeometry`, basic
+  attack with crit and physical/magic/true damage mitigation, cast
+  start/resolution driven by each hero's *actual compiled skill effects*
+  (via the newly exported `compileCombatEffect()`, not a hardcoded nuke),
+  and real executors for all 15 effect primitives. Passive triggers
+  (`CombatTriggerKind`, all 11 kinds) fire from player-side trait
+  breakpoints and equipped items, with `oncePerCombat` /
+  `oncePerOwnerPerCombat` / `cooldownTicks` / `holderHeroIds` /
+  `thresholdPercent` / `attackCount` runtime state tracked per owner per
+  trigger.
+- `game-core/src/content/compiler.ts`: exported `compileCombatEffect()`
+  (previously private `normalizeEffect()`). Skills are stored uncompiled in
+  `CompiledContentBundle.skillsById` (snake_case raw fields) — unlike
+  trait/item triggers, which are already normalized during compilation —
+  so combat simulation must normalize a skill's effects itself.
+- `game-core/test/simulation/production-kernel.test.ts`: 18 tests —
+  snapshot/outcome/playback shape, 1,000-repeat determinism, event
+  sequence/timing invariants, winner-always-valid across all 8 rounds, a
+  static primitive/trigger inventory check, and **one behavioral test per
+  primitive** that pits the one real hero whose signature skill uses that
+  primitive against a harmless target and asserts the specific observable
+  playback event that primitive must produce (e.g. `shield` →
+  `SHIELD_APPLIED`, `stun` → `STATUS_APPLIED{kind:"stun"}`, `summon` → a
+  `UNIT_SPAWNED{summon:true}` that is later followed by a matching
+  `UNIT_DIED` on expiry). `restore_mana` and `retreat` are trait-only in
+  this content version, so those two are proven via dedicated 4-hero
+  rosters that meet the exact breakpoint count needed
+  (`C_MAGE`: H04/H09/H13/H19; `R_RABBIT`: H11/H12/H13/H14). This is
+  deliberately stronger than checking that a primitive name is a
+  recognized string — a primitive with no executor would fail one of
+  these regardless of what its name looks like.
+
+### Numeric interpretation decisions (documented for Mission 9 balance review)
+
+No design doc specifies exact `CombatEffect.baseValue` semantics. Inferred
+from the real content and documented in a code comment at the top of
+`production-kernel.ts`:
+- Everything (stats, hp, damage, heal, shield, mana) stays in the existing
+  SCALE=1000 fixed-point space already used by hero `base_stats` and
+  `effects/definitions.ts` — never converted to a "display" number
+  internally.
+- `deal_damage`/`heal`/`shield`/`restore_mana`/`apply_dot` without a
+  `scalesWith*` flag: `baseValue` is an absolute SCALE=1000 amount.
+- With a `scalesWith*` flag: `baseValue`/SCALE is a coefficient multiplied
+  by the referenced stat (e.g. 50% of attack damage).
+- `buff_stat`/`debuff_stat` "flat" mode: `baseValue` added directly to the
+  stat's own SCALE=1000 value.
+- `buff_stat`/`debuff_stat` "percent", `slow`, `damage_reduction`:
+  `baseValue`/SCALE is a fraction applied multiplicatively.
+- Hero star scaling uses the authored `star_multipliers.two/three` map
+  (only `max_hp`/`attack_damage` are present in this content version) —
+  not a hardcoded ×2/×4, which is what the abandoned attempt used.
+
+These are architecture-level interpretation choices, not balance tuning;
+Mission 9's balance simulation is where the resulting numbers get judged.
+
+### Deliberately not touched in this mission
+
+- `simulation/kernel.ts` (legacy 3×8 kernel) — untouched, not on any
+  production path.
+- No production kernel is wired as any `AdventureSession`'s *default*
+  `combatEngine` yet — `AdventureCombatEngine` is an injected port by
+  design, and `runProductionCombat` now fully implements that port and is
+  exported from `game-core/src/index.ts` for a caller to inject. Mission 5
+  is where `tools/run-adventure-domain-smoke.mjs`'s scripted fake engine
+  gets replaced with this real one.
+- Enemy-side trait/item triggers: `AdventureCombatEnemyRef` carries no
+  `itemIds` and encounters have no team-composition concept, so only
+  player-side units accumulate trait/item triggers, matching the snapshot
+  contract as authored.
+
+### Verification
+
+```
+pnpm --filter @auto-battler/game-core run test -- test/simulation/production-kernel.test.ts
+  18/18 PASS (includes a 1,000-repeat determinism loop)
+pnpm run check
+  rules:check PASS, typecheck PASS, game-core 29 files/238 tests PASS,
+  server 10 files/142 tests PASS
+rg -n '"H0[1-9]"|"H1[0-9]"|"H20"' game-core/src/simulation/production-kernel.ts
+  no matches (no hero-ID branching)
+rg -n 'from ["'"'"'].*simulation/kernel' game-core/src/adventure
+  no matches (production paths never import the legacy kernel)
+```

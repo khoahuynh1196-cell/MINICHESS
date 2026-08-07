@@ -16,6 +16,14 @@ export {
 } from "./simulation/kernel.js";
 export { createSeededRng, type SeededRng } from "./simulation/seeded-rng.js";
 export {
+  LEGACY_ALPHA_GEOMETRY,
+  PRODUCTION_4X8_GEOMETRY,
+  geometryFromRules,
+  type CombatDirection,
+  type CombatGeometry,
+} from "./simulation/geometry.js";
+export { runProductionCombat } from "./simulation/production-kernel.js";
+export {
   validateEffectDefinition,
   type CombatEffect,
   type CombatStat,
@@ -24,7 +32,7 @@ export {
   type EffectTarget,
   type SummonDefinition,
 } from "./effects/definitions.js";
-export { compileContentBundle } from "./content/compiler.js";
+export { compileCombatEffect, compileContentBundle } from "./content/compiler.js";
 export type { CompiledCombatTrigger, CompiledContentBundle, CompiledItem, CompiledUniqueItem, ContentManifest, RawContentBundle, RawEncounter, RawEncounterReward, RawUniqueItem } from "./content/types.js";
 export {
   assertContentRulesetCompatibility,
