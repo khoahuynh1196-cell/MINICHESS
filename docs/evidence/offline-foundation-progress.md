@@ -727,3 +727,131 @@ git diff --check   clean
   Mission 7 scope.
 - `battle_controller.gd` and the old server-based `run_api_client.gd` /
   `run_state.gd` path — still present, untouched; Mission 7 retires them.
+
+## Mission 7 — Godot scenes/presenters (scoped) (2026-08-07)
+
+**Branch:** `antigravity/offline-foundation-hardening`.
+
+### Scope decision (discussed with the user before starting)
+
+Investigating Mission 7 surfaced a much larger problem than "reorganize
+`battle_controller.gd` into scenes": the *entire* existing Godot UI
+(`battle_controller.gd`, 1419 lines, plus `scripts/ui/prepare_screen.gd`
+at 472 lines, `reward_screen.gd`, `shop_panel.gd`, etc. — ~3700 lines
+total) is wired to `run_api_client.gd`, which makes HTTP calls to
+`http://127.0.0.1:3000`. That is the exact "localhost/server" dependency
+CONTEXT.md §8/Mission 6 says offline Adventure must not require, and
+every one of those screens reads the *old* server view schema
+(`state` not `phase`, `roundRewardPlan` not `pendingReward`) on a board
+laid out as `BOARD_COLUMNS=4, BOARD_ROWS=6` (24 cells) against a
+`combat-board-3x8-atlas-v2.png` asset — the legacy 3×8/24-cell geometry,
+not the locked 4×8/16-local-cell contract. None of Missions 1–6's
+offline `AdventureSession`/`AdventureController` work is wired into the
+running game at all yet; nothing outside `scripts/adventure/*` and its
+own tests references it.
+
+Given the size of a full rewrite (every screen's field mapping, board
+geometry, and the removal of the HTTP dependency), the user chose to
+scope this mission to **the architectural skeleton**: build
+`AppController` + `AdventurePresenter` + one fully real, tested
+screen (Prepare) proving the pattern end to end, and leave the remaining
+screens as clearly-labeled placeholders rather than attempt a rushed,
+unverifiable full UI migration in one pass. Full migration of
+`prepare_screen.gd`/`reward_screen.gd`/etc. to the 4×8 contract, and
+retiring `battle_controller.gd`, remain open follow-up work — see
+"Remaining debt" below.
+
+### A separate open question surfaced, not resolved here
+
+`AdventureRuntimePort.submit()` only emits `request_submitted(request)` —
+something external must answer it via `accept_response()`. Every test in
+this whole session (Missions 6 and 7) supplies that answer directly from
+GDScript, exactly like a real bridge would. But **no such bridge exists
+anywhere in this repo**: no embedded JS runtime, no WASM build of
+game-core, no IPC layer. How a shipped Android build will actually get a
+Dictionary command from Godot to game-core's TypeScript and back is an
+unresolved cross-language execution question that this mission does not
+answer — it is a project-level infrastructure decision, not something to
+guess at while building the presentation layer. Flagged explicitly for
+the project owner; `AppRoot`'s doc comment records this too.
+
+### Added
+
+- `client-godot/scripts/adventure/adventure_presenter.gd`: routes
+  `AdventureController` view updates to one signal per player-facing
+  phase (`prepare_presented`, `combat_presented` — also used for
+  `PLAYBACK`, since it is the same "watch the fight" presentation now
+  driven by a recorded event log instead of a live simulation —
+  `reward_presented`, `complete_presented`), plus `playback_ready` and
+  `presentation_error`. This is the file `adventure_presenter_test.gd`
+  already existed for and could never load (Mission 0 baseline: parse
+  error) — it now passes for real, plus a new assertion for `PLAYBACK`
+  routing this mission added.
+- `client-godot/scripts/app/app_controller.gd`: owns screen navigation
+  only (which registered screen is visible), driven entirely by the
+  presenter's phase signals. Computes nothing about gameplay.
+- `client-godot/scripts/presenters/prepare_presenter.gd`: adapts one
+  PREPARE view for the Prepare screen and relays player intent
+  (`request_buy_shop_hero`, `request_move_hero`, `request_start_round`,
+  ...) back through the attached `AdventureController` — never decides
+  whether a command succeeds itself, only reads the domain-provided
+  `actions` contract (Mission 6).
+- `client-godot/scripts/screens/match/prepare_screen.gd`: a minimal,
+  correctness-first Prepare screen — real header (phase/round/level/gold/
+  health), a 16-cell board grid, 5 shop-slot buttons gated by
+  `actions.buyShopSlots[i]`, a Start Round button gated by
+  `actions.startRound` — with no board art, drag-drop, or tabs (that is
+  the follow-up work the old, geometry-incompatible
+  `scripts/ui/prepare_screen.gd` cannot safely absorb without its own
+  dedicated rework).
+- `client-godot/scripts/screens/placeholder_screen.gd`: a stand-in for
+  home/combat/reward/result/collection/settings that still renders real
+  domain data (phase/round/gold/health), so the navigation skeleton is
+  verifiably driven by the actual Adventure view rather than faked.
+- `client-godot/scripts/app/app_root.gd` +
+  `client-godot/scenes/app/app_root.tscn`: the composition root wiring
+  RuntimePort → AdventureController → AdventurePresenter → AppController
+  → screens. Coexists with `main.tscn`/`battle_controller.gd`; does not
+  replace it yet (old controller kept as the compatibility path per the
+  mission's own instruction, until the remaining screens reach parity).
+- Tests: `app_controller_test.gd` (navigation only, synthetic screens),
+  `match_prepare_screen_test.gd` (the real Prepare screen renders live
+  data and dispatches a real `BUY_SHOP_HERO` command when an enabled shop
+  slot is tapped, and does nothing when a disabled one is tapped),
+  `app_root_scene_test.gd` (loads the actual `.tscn` — not a hand-built
+  stand-in — and drives it through PREPARE → COMBAT → REWARD → COMPLETE,
+  asserting the real Prepare screen instance renders the live view). This
+  is the "scene smoke test before migration" the mission asks for.
+
+### Verification
+
+```
+Godot headless suite: 30/39 PASS (was 26/39) — adventure_presenter_test
+  moved from FAIL (parse error, file didn't exist) to PASS; 3 new tests
+  added and passing (app_controller_test, match_prepare_screen_test,
+  app_root_scene_test); the same 12 pre-existing failures remain
+  (Mission 10 asset-pipeline scope), zero new regressions.
+pnpm run check — unaffected, still green (no game-core changes this mission)
+git diff --check   clean
+```
+
+### Remaining debt (explicitly not done here)
+
+- `scripts/ui/prepare_screen.gd`, `reward_screen.gd`, `shop_panel.gd`,
+  `formation_controller.gd`, and the rest of the ~3700-line existing UI
+  layer still assume the old server schema and 3×8/24-cell board; they
+  are not wired into the new architecture and need dedicated field-mapping
+  and geometry rework, not a mechanical rename.
+- `battle_controller.gd` and `run_api_client.gd`/`run_state.gd` (the
+  localhost HTTP path) are untouched and still what `main.tscn` boots
+  into. Retiring them requires the above screens to reach parity first,
+  per the mission's own "keep old controller as compatibility adapter
+  until parity tests pass" instruction.
+- Formation drag-drop (only tap-to-buy is implemented for Prepare;
+  move/sell/equip are wired in `PreparePresenter` but have no UI
+  controls yet on the minimal Prepare screen).
+- The cross-language execution bridge for `AdventureRuntimePort` (see
+  above) is unresolved and blocks ever wiring a real device build.
+- Home/Combat/Reward/Result/Collection/Settings screens are text
+  placeholders, not the real presentation Mission 7's target structure
+  describes; Combat's real presentation is Mission 8's scope regardless.

@@ -14,10 +14,12 @@ func _init() -> void:
 	var port = RuntimePortScript.new()
 	var routed: Array = []
 	var errors: Array = []
+	var playbacks: Array = []
 	presenter.prepare_presented.connect(func(view: Dictionary) -> void: routed.append(["prepare", view]))
 	presenter.combat_presented.connect(func(view: Dictionary) -> void: routed.append(["combat", view]))
 	presenter.reward_presented.connect(func(view: Dictionary) -> void: routed.append(["reward", view]))
 	presenter.complete_presented.connect(func(view: Dictionary) -> void: routed.append(["complete", view]))
+	presenter.playback_ready.connect(func(playback: Dictionary) -> void: playbacks.append(playback))
 	presenter.presentation_error.connect(func(message: String) -> void: errors.append(message))
 	controller.attach_runtime_port(port)
 	presenter.attach_controller(controller)
@@ -26,13 +28,20 @@ func _init() -> void:
 	_expect(routed.back()[0] == "prepare" and String(routed.back()[1].get("phase", "")) == "PREPARE", "prepare view must route to prepare presenter")
 	_expect(port.accept_response(_response(1, "COMBAT")), "combat response must be accepted")
 	_expect(routed.back()[0] == "combat", "combat view must route to combat presenter")
-	_expect(port.accept_response(_response(2, "REWARD")), "reward response must be accepted")
+
+	var playback_response := _response(2, "PLAYBACK")
+	playback_response["playback"] = { "combatId": "combat:presenter-run:1:0", "events": [{ "sequence": 0, "tick": 0, "type": "COMBAT_STARTED" }] }
+	_expect(port.accept_response(playback_response), "playback response must be accepted")
+	_expect(routed.back()[0] == "combat" and String(routed.back()[1].get("phase", "")) == "PLAYBACK", "PLAYBACK must reuse the combat presenter route")
+	_expect(playbacks.size() == 1 and playbacks[0].get("combatId", "") == "combat:presenter-run:1:0", "playback response must emit playback_ready")
+
+	_expect(port.accept_response(_response(3, "REWARD")), "reward response must be accepted")
 	_expect(routed.back()[0] == "reward", "reward view must route to reward presenter")
-	_expect(port.accept_response(_response(3, "COMPLETE")), "complete response must be accepted")
+	_expect(port.accept_response(_response(4, "COMPLETE")), "complete response must be accepted")
 	_expect(routed.back()[0] == "complete", "complete view must route to result presenter")
 	_expect(String(presenter.current_model().get("phase", "")) == "COMPLETE", "presenter must retain the latest typed model")
 
-	var invalid := _response(4, "PREPARE")
+	var invalid := _response(5, "PREPARE")
 	invalid["view"]["board"] = []
 	_expect(port.accept_response(invalid), "runtime port accepts structurally public views")
 	_expect(errors.back() == "Adventure view is incompatible with the active ruleset", "presenter must reject rules-incompatible collection sizes")
