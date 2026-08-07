@@ -26,7 +26,12 @@ function applyIfLegal(state: AdventureGameState, command: Parameters<typeof appl
     return applyAdventureCommand(state, command, rules).state;
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    if (!message.startsWith("ADVENTURE_") && !message.includes("capacity") && !message.includes("destination")) throw error;
+    const isExpectedRejection = message.startsWith("ADVENTURE_")
+      || message.includes("capacity")
+      || message.includes("destination")
+      || message.includes("is empty")
+      || message.includes("not found");
+    if (!isExpectedRejection) throw error;
     return state;
   }
 }
@@ -94,8 +99,7 @@ describe("Adventure conservation stress", () => {
       commandId: "start", expectedRevision: 2, type: "START_ROUND",
     }, rules).state;
     state = recordAdventureCombatResult(state, {
-      commandId: "resolve", expectedRevision: 3, type: "RESOLVE_COMBAT",
-    }, {
+      commandId: "resolve", expectedRevision: 3, type: "RECORD_COMBAT_RESULT",
       round: 1,
       winner: "player",
       survivingEnemyUnits: 0,

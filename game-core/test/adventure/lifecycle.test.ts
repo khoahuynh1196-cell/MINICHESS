@@ -202,13 +202,17 @@ describe("Adventure combat and reward lifecycle", () => {
   });
 
   it("requires legal selections and rejects mismatched rounds", () => {
-    const rewarded = recordWin(combatReady()).state;
+    // Round 3 is used here (rather than the default round 1) because round 1's
+    // encounter grants only gold/shop_refresh, which produce zero reward
+    // offers; an empty selections array is trivially valid against zero
+    // offers and would not exercise this rejection path.
+    const rewarded = recordWin(combatReady(3)).state;
     expect(() => claimAdventureRoundReward(rewarded, {
       commandId: "invalid-claim",
       expectedRevision: 4,
       type: "CLAIM_ROUND_REWARD",
       selections: [],
-    }, rules, content)).toThrow();
+    }, rules, content)).toThrow("ADVENTURE_REWARD_SELECTION_REQUIRED");
 
     expect(() => recordAdventureCombatResult(combatReady(), {
       commandId: "wrong-round",

@@ -5,6 +5,7 @@ import {
   compileContentBundle,
   compileOfflineRelease,
   compileRuleset,
+  createAdventureCombatPlayback,
 } from "../game-core/dist/src/index.js";
 
 function readJson(path) {
@@ -45,7 +46,7 @@ const session = new AdventureSession({
     resolve({ snapshot }) {
       // This smoke exercises the run lifecycle only. Production combat is a
       // separately injected engine and is not claimed by this scripted outcome.
-      return {
+      const outcome = {
         round: snapshot.round,
         winner: "player",
         survivingEnemyUnits: 0,
@@ -53,6 +54,11 @@ const session = new AdventureSession({
         finalTick: 1,
         reason: "elimination",
       };
+      const playback = createAdventureCombatPlayback(snapshot, [
+        { sequence: 0, tick: 0, type: "COMBAT_STARTED", payload: {} },
+        { sequence: 1, tick: outcome.finalTick, type: "COMBAT_ENDED", payload: { winner: outcome.winner } },
+      ]);
+      return { outcome, playback };
     },
   },
 });

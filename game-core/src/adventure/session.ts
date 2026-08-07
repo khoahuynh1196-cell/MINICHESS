@@ -4,6 +4,7 @@ import type { CompiledRuleset } from "../rules/types.js";
 import {
   resolveAdventureCombat,
   type AdventureCombatEngine,
+  type AdventureCombatResolutionResult,
 } from "./engine.js";
 import {
   claimAdventureRoundReward,
@@ -24,6 +25,7 @@ import type {
   AdventureGameState,
   AdventureMutationResult,
 } from "./state.js";
+import { buildAdventureView, type AdventureView } from "./view.js";
 
 export interface AdventureStateStore {
   load(): string | undefined | Promise<string | undefined>;
@@ -61,6 +63,10 @@ export class AdventureSession {
 
   get hasState(): boolean {
     return this.#state !== undefined;
+  }
+
+  get view(): AdventureView {
+    return buildAdventureView(this.state, this.#dependencies.rules, this.#dependencies.content);
   }
 
   #saveContext(): AdventureSaveContext {
@@ -103,7 +109,7 @@ export class AdventureSession {
     return result;
   }
 
-  async resolveCombat(command: AdventureCombatResolutionCommand): Promise<AdventureMutationResult> {
+  async resolveCombat(command: AdventureCombatResolutionCommand): Promise<AdventureCombatResolutionResult> {
     const result = await resolveAdventureCombat(
       this.state,
       command,

@@ -3,6 +3,7 @@ extends RefCounted
 
 signal request_submitted(request: Dictionary)
 signal view_changed(view: Dictionary)
+signal combat_playback_ready(playback: Dictionary)
 signal protocol_error(message: String)
 
 const PRIVATE_VIEW_FIELDS := [
@@ -41,8 +42,22 @@ func accept_response(response: Dictionary) -> bool:
 	for field in PRIVATE_VIEW_FIELDS:
 		if _contains_key_recursive(view, field):
 			return _fail("Adventure runtime response leaked private field: %s" % field)
+	var playback_value = response.get("playback", null)
+	var playback: Dictionary = {}
+	var has_playback := false
+	if playback_value != null:
+		if typeof(playback_value) != TYPE_DICTIONARY:
+			return _fail("Adventure runtime response playback is invalid")
+		playback = playback_value
+		if String(playback.get("combatId", "")).strip_edges().is_empty():
+			return _fail("Adventure runtime playback combatId is missing")
+		if typeof(playback.get("events", null)) != TYPE_ARRAY:
+			return _fail("Adventure runtime playback events are invalid")
+		has_playback = true
 	_view = view.duplicate(true)
 	view_changed.emit(_view.duplicate(true))
+	if has_playback:
+		combat_playback_ready.emit(playback.duplicate(true))
 	return true
 
 func clear() -> void:

@@ -6,6 +6,7 @@ import {
   compileContentBundle,
   compileOfflineRelease,
   compileRuleset,
+  createAdventureCombatPlayback,
   handleAdventureRuntimeRequest,
   parseAdventureRuntimeRequest,
   type AdventureStateStore,
@@ -35,7 +36,7 @@ function session() {
     store: new MemoryStore(),
     combatEngine: {
       resolve({ snapshot }) {
-        return {
+        const outcome = {
           round: snapshot.round,
           winner: "player" as const,
           survivingEnemyUnits: 0,
@@ -43,6 +44,11 @@ function session() {
           finalTick: 1,
           reason: "elimination" as const,
         };
+        const playback = createAdventureCombatPlayback(snapshot, [
+          { sequence: 0, tick: 0, type: "COMBAT_STARTED" as const, payload: {} },
+          { sequence: 1, tick: outcome.finalTick, type: "COMBAT_ENDED" as const, payload: { winner: outcome.winner } },
+        ]);
+        return { outcome, playback };
       },
     },
   });

@@ -5,15 +5,29 @@ import {
   applyAdventureCommand,
   compileContentBundle,
   compileRuleset,
+  createAdventureCombatPlayback,
   createAdventureGame,
   resolveAdventureCombat,
   type AdventureCombatEngine,
+  type AdventureCombatEngineResult,
+  type AdventureCombatSnapshot,
 } from "../../src/index.js";
 
 const contentPath = fileURLToPath(new URL("../../../content/alpha-0.3.0/bundle.json", import.meta.url));
 const rulesPath = fileURLToPath(new URL("../../../rules/production-0.1.0/ruleset.json", import.meta.url));
 const content = compileContentBundle(JSON.parse(readFileSync(contentPath, "utf8")));
 const rules = compileRuleset(JSON.parse(readFileSync(rulesPath, "utf8")));
+
+function minimalResult(
+  snapshot: AdventureCombatSnapshot,
+  outcome: { round: number; winner: "player" | "enemy"; survivingEnemyUnits: number; resultHash: string; finalTick: number; reason: "elimination" | "timeout" },
+): AdventureCombatEngineResult {
+  const playback = createAdventureCombatPlayback(snapshot, [
+    { sequence: 0, tick: 0, type: "COMBAT_STARTED", payload: {} },
+    { sequence: 1, tick: outcome.finalTick, type: "COMBAT_ENDED", payload: { winner: outcome.winner } },
+  ]);
+  return { outcome, playback };
+}
 
 function combatReady() {
   const initial = createAdventureGame({ id: "engine-run", seed: "engine-seed", content, rules });
@@ -50,14 +64,14 @@ describe("Adventure combat engine port", () => {
         expect(Object.isFrozen(request.snapshot)).toBe(true);
         expect(request.rules).toBe(rules);
         expect(request.content).toBe(content);
-        return {
+        return minimalResult(request.snapshot, {
           round: request.snapshot.round,
           winner: "player",
           survivingEnemyUnits: 0,
           resultHash: "engine-result",
           finalTick: 100,
           reason: "elimination",
-        };
+        });
       },
     };
     const command = { commandId: "resolve", expectedRevision: 3, type: "RESOLVE_COMBAT" as const };
@@ -66,6 +80,7 @@ describe("Adventure combat engine port", () => {
     expect(calls).toBe(1);
     expect(result.state.run.phase).toBe("REWARD");
     expect(result.state.lastCombat?.resultHash).toBe("engine-result");
+    expect(result.playback.combatId).toBe(result.state.lastCombat?.playback?.combatId);
   });
 
   it("does not build a snapshot or call the engine again for an idempotent retry", async () => {
@@ -73,14 +88,14 @@ describe("Adventure combat engine port", () => {
     const engine: AdventureCombatEngine = {
       async resolve(request) {
         calls += 1;
-        return {
+        return minimalResult(request.snapshot, {
           round: request.snapshot.round,
           winner: "player",
           survivingEnemyUnits: 0,
           resultHash: "engine-result",
           finalTick: 100,
           reason: "elimination",
-        };
+        });
       },
     };
     const command = { commandId: "resolve", expectedRevision: 3, type: "RESOLVE_COMBAT" as const };
@@ -88,7 +103,49 @@ describe("Adventure combat engine port", () => {
     const replay = await resolveAdventureCombat(first.state, command, engine, rules, content);
 
     expect(calls).toBe(1);
-    expect(replay).toEqual({ state: first.state, revision: 4, replayed: true });
+    expect(replay).toEqual({ state: first.state, revision: 4, replayed: true, playback: first.playback });
+  });
+
+  it("rejects a playback with a tampered event-log hash before committing", async () => {
+    const engine: AdventureCombatEngine = {
+      resolve(request) {
+        const result = minimalResult(request.snapshot, {
+          round: request.snapshot.round,
+          winner: "player",
+          survivingEnemyUnits: 0,
+          resultHash: "tampered-result",
+          finalTick: 100,
+          reason: "elimination",
+        });
+        return { ...result, playback: { ...result.playback, eventLogHash: "f".repeat(64) } };
+      },
+    };
+    const state = combatReady();
+
+    await expect(resolveAdventureCombat(state, {
+      commandId: "resolve-tampered", expectedRevision: 3, type: "RESOLVE_COMBAT",
+    }, engine, rules, content)).rejects.toThrow("ADVENTURE_PLAYBACK_HASH_MISMATCH");
+    expect(state.commandHistory["resolve-tampered"]).toBeUndefined();
+  });
+
+  it("rejects a playback whose final event disagrees with the authoritative winner", async () => {
+    const engine: AdventureCombatEngine = {
+      resolve(request) {
+        const result = minimalResult(request.snapshot, {
+          round: request.snapshot.round,
+          winner: "enemy",
+          survivingEnemyUnits: 1,
+          resultHash: "winner-mismatch",
+          finalTick: 100,
+          reason: "elimination",
+        });
+        return { outcome: { ...result.outcome, winner: "player" }, playback: result.playback };
+      },
+    };
+
+    await expect(resolveAdventureCombat(combatReady(), {
+      commandId: "resolve-winner-mismatch", expectedRevision: 3, type: "RESOLVE_COMBAT",
+    }, engine, rules, content)).rejects.toThrow("ADVENTURE_PLAYBACK_WINNER_MISMATCH");
   });
 
   it("propagates engine failures without committing a receipt", async () => {
@@ -108,15 +165,15 @@ describe("Adventure combat engine port", () => {
 
   it("rejects an engine outcome for another round", async () => {
     const engine: AdventureCombatEngine = {
-      resolve() {
-        return {
+      resolve(request) {
+        return minimalResult(request.snapshot, {
           round: 2,
           winner: "player",
           survivingEnemyUnits: 0,
           resultHash: "wrong-round",
           finalTick: 1,
           reason: "elimination",
-        };
+        });
       },
     };
 

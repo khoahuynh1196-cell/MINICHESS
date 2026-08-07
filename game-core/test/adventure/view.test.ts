@@ -73,8 +73,7 @@ describe("presentation-safe Adventure view", () => {
       commandId: "start", expectedRevision: 2, type: "START_ROUND",
     }, rules).state;
     const resolved = recordAdventureCombatResult(started, {
-      commandId: "resolve", expectedRevision: 3, type: "RESOLVE_COMBAT",
-    }, {
+      commandId: "resolve", expectedRevision: 3, type: "RECORD_COMBAT_RESULT",
       round: 1,
       winner: "player",
       survivingEnemyUnits: 0,

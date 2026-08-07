@@ -153,3 +153,123 @@ new behavior is added, because the playback contract's consuming code
 compile against its own test suite. The Godot God-object compile failures
 are Mission 7 scope and are not blocking for Missions 1–5 (pure
 TypeScript domain work).
+
+## Mission 1 — Combat playback contract end-to-end (2026-08-07)
+
+**Branch:** `antigravity/offline-foundation-hardening`.
+
+### Wiring gap closed
+
+- `game-core/src/adventure/view.ts`: fixed `progression.experienceToNext`
+  (property does not exist on `ProgressionState`) to read the actual field
+  `progression.xpToNext`.
+- `game-core/src/index.ts`: added the missing barrel exports for
+  `playback.ts`, `snapshot.ts` (`buildAdventureCombatSnapshot` + types),
+  `view.ts` (`buildAdventureView` + types), and `protocol.ts`
+  (`handleAdventureRuntimeRequest`, `parseAdventureRuntimeRequest`).
+- `game-core/src/adventure/session.ts`: added the `view` getter
+  `AdventureSession` was missing (`protocol.ts` already called
+  `session.view`).
+- `game-core/src/adventure/lifecycle.ts`: added `AdventureCombatResultCommand`
+  (`RECORD_COMBAT_RESULT`, extends `AdventureCombatOutcome`) and changed
+  `recordAdventureCombatResult` from a 5-argument
+  `(state, command, outcome, rules, content)` shape to the 4-argument
+  `(state, command, rules, content)` shape the test suite already assumed,
+  reading outcome fields directly off the command.
+
+### New behavior (Mission 1 gate)
+
+- `AdventureCombatEngine.resolve()` now returns
+  `AdventureCombatEngineResult { outcome, playback }` instead of a bare
+  outcome (`game-core/src/adventure/engine.ts`).
+- `resolveAdventureCombat()` returns `AdventureCombatResolutionResult`
+  (`AdventureMutationResult & { playback }`), validates the returned
+  playback with `assertAdventureCombatPlayback()` against the exact
+  snapshot before any mutation commits, and additionally checks that the
+  playback's final event's `payload.winner` and `tick` agree with the
+  authoritative `outcome.winner`/`outcome.finalTick`
+  (`ADVENTURE_PLAYBACK_WINNER_MISMATCH` / `ADVENTURE_PLAYBACK_TICK_MISMATCH`).
+- `AdventureCombatSummary` (`state.lastCombat`) now carries an optional
+  `playback` field, so a resolved combat's playback survives in state and
+  a retried `RESOLVE_COMBAT` command can return the same playback without
+  re-running the engine.
+- Retry/idempotency design note: the public `RESOLVE_COMBAT` command
+  carries no outcome data, while the persisted `RECORD_COMBAT_RESULT`
+  command (derived from the engine's result) does. Both share the same
+  `commandId`, so a strict fingerprint-based replay check (as
+  `replayAdventureMutation` uses for every other command) would spuriously
+  throw `ADVENTURE_COMMAND_ID_REUSED` on a real retry, because the two
+  command shapes never stringify identically. `engine.ts`'s
+  `checkResolveReplay()` and `lifecycle.ts`'s `checkCombatResultReplay()`
+  both use commandId-presence-only checks instead of full-fingerprint
+  checks for this reason. Documented as a deliberate, narrow exception —
+  every other command family keeps the strict fingerprint check.
+- `game-core/src/adventure/protocol.ts`: `AdventureRuntimeResponse` gained
+  an optional `playback` field, populated only when the request was
+  `RESOLVE_COMBAT`.
+- `client-godot/scripts/adventure/adventure_runtime_port.gd`: added a
+  `combat_playback_ready(playback: Dictionary)` signal, emitted from
+  `accept_response()` when the response carries a valid `playback` object
+  (non-empty `combatId`, `events` array); validated before `_view` is
+  mutated so a malformed playback rejects the whole response.
+- `tools/run-adventure-domain-smoke.mjs`: the scripted fake combat engine
+  now returns `{ outcome, playback }` using `createAdventureCombatPlayback`
+  instead of a bare outcome object (this script is not currently wired
+  into `pnpm run check` — it has no `smoke:domain` script entry in
+  `package.json` yet — but was still fixed because it is a real consumer
+  of `AdventureCombatEngine` and would otherwise throw the moment it is
+  wired up or run manually). Verified manually:
+  `node tools/run-adventure-domain-smoke.mjs` → `{"status":"PASS", ...,
+  "rounds":8,"revision":29,"saves":30}`.
+
+### Pre-existing bugs fixed incidentally (discovered once the suite could run)
+
+Both were latent because the whole `game-core` test suite could not
+compile at baseline, so neither had ever actually been executed:
+
+- `game-core/test/adventure/conservation.test.ts`: the 500-mutation stress
+  test's `applyIfLegal` only tolerated rejection messages starting with
+  `ADVENTURE_` or containing `capacity`/`destination`. `buyAdventureShopSlot`
+  throws the plain-English `"Adventure shop slot is empty"` for a legal
+  random rejection (buying an empty shop slot), which is not an
+  `ADVENTURE_`-prefixed error by `shop.ts`'s own convention (confirmed: no
+  error in `shop.ts` uses that prefix, and `shop.test.ts` already asserts
+  on the literal message, so the message itself was not changed). Widened
+  the test's tolerance list instead of changing production error text.
+- `game-core/test/adventure/lifecycle.test.ts`: `"requires legal selections
+  and rejects mismatched rounds"` asserted that `selections: []` is
+  rejected, using round 1. Round 1's encounter (`PVE_01`) grants only
+  `gold`/`shop_refresh`, which produce zero reward offers, so an empty
+  selections array trivially satisfies `selections.length ===
+  plan.offers.length` (0 === 0) and never threw. Changed the test to use
+  round 3 (`PVE_03`, `normal_item_choice`, one offer) and assert the
+  specific `ADVENTURE_REWARD_SELECTION_REQUIRED` error.
+
+### Verification
+
+```
+pnpm run check
+  rules:check   PASS
+  typecheck     PASS (game-core, server)
+  game-core test  27 files / 211 tests PASS
+  server test     10 files / 142 tests PASS
+git diff --check   clean (no whitespace errors)
+```
+
+Godot headless suite: 26/39 PASS, 13 FAIL — identical file list to the
+Mission 0 baseline (all Mission 7/10 asset-pipeline scope: missing
+`vfx-atlas-v1.png`, `battle_controller.gd` compile failures, parse
+errors in presenter/interaction test scripts). No regression, no new
+failure. `adventure_runtime_port_test.gd` (extended with playback
+coverage in this mission) passes.
+
+### Remaining debt / explicitly out of scope for Mission 1
+
+- The 13 pre-existing Godot failures above (Mission 7/10 scope).
+- `tools/run-adventure-domain-smoke.mjs` has no `smoke:domain` npm script
+  wiring it into `pnpm run check` yet (Mission 5 scope per the execution
+  plan's Checkpoint C/E).
+- No production 4×8 combat kernel exists yet (`game-core/src/simulation/`
+  still only has the legacy `kernel.ts` + `seeded-rng.ts`); this playback
+  contract is proven against fake/scripted engines only. Mission 2/3 build
+  the real production kernel that will exercise this contract for real.

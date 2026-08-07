@@ -45,6 +45,8 @@ export {
   resolveAdventureCombat,
   type AdventureCombatEngine,
   type AdventureCombatEngineRequest,
+  type AdventureCombatEngineResult,
+  type AdventureCombatResolutionResult,
 } from "./adventure/engine.js";
 export {
   equipAdventureItem,
@@ -59,6 +61,32 @@ export {
   type AdventureCombatResultCommand,
   type AdventureRewardClaimCommand,
 } from "./adventure/lifecycle.js";
+export {
+  assertAdventureCombatPlayback,
+  createAdventureCombatPlayback,
+  validateAdventurePlaybackEvents,
+  type AdventureCombatPlayback,
+  type AdventurePlaybackEvent,
+  type AdventurePlaybackEventType,
+} from "./adventure/playback.js";
+export {
+  handleAdventureRuntimeRequest,
+  parseAdventureRuntimeRequest,
+  type AdventureRuntimeRequest,
+  type AdventureRuntimeResponse,
+} from "./adventure/protocol.js";
+export {
+  buildAdventureCombatSnapshot,
+  type AdventureCombatBoardContract,
+  type AdventureCombatEnemyRef,
+  type AdventureCombatHeroRef,
+  type AdventureCombatSnapshot,
+} from "./adventure/snapshot.js";
+export {
+  buildAdventureView,
+  type AdventureTraitView,
+  type AdventureView,
+} from "./adventure/view.js";
 export {
   applyAdventureCommand,
   createAdventureGame,

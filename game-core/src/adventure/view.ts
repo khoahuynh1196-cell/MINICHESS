@@ -101,7 +101,7 @@ export function buildAdventureView(
     health: state.run.health,
     level: progression.level,
     experience: progression.experience,
-    experienceToNext: progression.experienceToNext,
+    experienceToNext: progression.xpToNext,
     boardCap: progression.boardCap,
     shopOdds: shopOddsAtLevel(rules, progression.level),
     shop: state.run.shop,

@@ -6,7 +6,10 @@ import {
   compileContentBundle,
   compileOfflineRelease,
   compileRuleset,
+  createAdventureCombatPlayback,
   type AdventureCombatEngine,
+  type AdventureCombatEngineResult,
+  type AdventureCombatSnapshot,
   type AdventureStateStore,
 } from "../../src/index.js";
 
@@ -37,6 +40,17 @@ class MemoryStore implements AdventureStateStore {
   }
 }
 
+function minimalResult(
+  snapshot: AdventureCombatSnapshot,
+  outcome: { round: number; winner: "player" | "enemy"; survivingEnemyUnits: number; resultHash: string; finalTick: number; reason: "elimination" | "timeout" },
+): AdventureCombatEngineResult {
+  const playback = createAdventureCombatPlayback(snapshot, [
+    { sequence: 0, tick: 0, type: "COMBAT_STARTED", payload: {} },
+    { sequence: 1, tick: outcome.finalTick, type: "COMBAT_ENDED", payload: { winner: outcome.winner } },
+  ]);
+  return { outcome, playback };
+}
+
 function dependencies(store: MemoryStore, engine?: AdventureCombatEngine) {
   return {
     release,
@@ -46,14 +60,14 @@ function dependencies(store: MemoryStore, engine?: AdventureCombatEngine) {
     clientSchema: 1,
     combatEngine: engine ?? {
       resolve(request) {
-        return {
-          round: request.state.run.round,
-          winner: "player" as const,
+        return minimalResult(request.snapshot, {
+          round: request.snapshot.round,
+          winner: "player",
           survivingEnemyUnits: 0,
-          resultHash: `session-result-${request.state.run.round}`,
+          resultHash: `session-result-${request.snapshot.round}`,
           finalTick: 100,
-          reason: "elimination" as const,
-        };
+          reason: "elimination",
+        });
       },
     },
     store,
@@ -126,14 +140,14 @@ describe("offline Adventure session", () => {
     const engine: AdventureCombatEngine = {
       resolve(request) {
         engineCalls += 1;
-        return {
-          round: request.state.run.round,
+        return minimalResult(request.snapshot, {
+          round: request.snapshot.round,
           winner: "player",
           survivingEnemyUnits: 0,
           resultHash: "one-result",
           finalTick: 1,
           reason: "elimination",
-        };
+        });
       },
     };
     const session = new AdventureSession(dependencies(store, engine));

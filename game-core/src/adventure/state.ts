@@ -1,4 +1,5 @@
 import { stableStringify } from "../serialization/canonical-json.js";
+import type { AdventureCombatPlayback } from "./playback.js";
 import type { AdventureRewardPlan } from "./rewards.js";
 import { freezeAdventureRoster } from "./roster.js";
 import type { AdventureShopPool } from "./shop.js";
@@ -21,6 +22,7 @@ export interface AdventureCombatSummary {
   readonly resultHash: string;
   readonly finalTick: number;
   readonly reason: "elimination" | "timeout";
+  readonly playback?: AdventureCombatPlayback;
 }
 
 export interface AdventureGameState {
