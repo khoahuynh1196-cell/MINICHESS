@@ -94,6 +94,8 @@ export {
 } from "./adventure/snapshot.js";
 export {
   buildAdventureView,
+  type AdventureActionAvailability,
+  type AdventureActions,
   type AdventureTraitView,
   type AdventureView,
 } from "./adventure/view.js";

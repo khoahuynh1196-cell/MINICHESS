@@ -12,6 +12,7 @@ func _init() -> void:
 	_expect(CommandFactoryScript.buy_xp("xp", 5).type == "BUY_XP", "XP payload must match the runtime protocol")
 	_expect(CommandFactoryScript.start_round("start", 6).type == "START_ROUND", "start payload must match the runtime protocol")
 	_expect(CommandFactoryScript.resolve_combat("resolve", 7).type == "RESOLVE_COMBAT", "resolve payload must match the runtime protocol")
+	_expect(CommandFactoryScript.ack_playback_complete("ack", 7).type == "ACK_PLAYBACK_COMPLETE", "ack payload must match the runtime protocol")
 	_expect(CommandFactoryScript.buy_shop_hero("buy", 8, 2) == {
 		"commandId": "buy", "expectedRevision": 8, "type": "BUY_SHOP_HERO", "shopSlotIndex": 2,
 	}, "buy payload must contain the selected shop slot")

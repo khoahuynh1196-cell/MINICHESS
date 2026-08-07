@@ -34,6 +34,10 @@ func _init() -> void:
 	var wrong_rules := _view()
 	wrong_rules["rulesetVersion"] = "old-rules"
 	_expect(not model.apply_view(wrong_rules, rules), "ruleset mismatch must be rejected")
+
+	var playback_view := _view()
+	playback_view["phase"] = "PLAYBACK"
+	_expect(model.apply_view(playback_view, rules) and model.phase == "PLAYBACK", "PLAYBACK must be a valid phase")
 	_finish()
 
 func _view() -> Dictionary:
@@ -77,8 +81,13 @@ func _view() -> Dictionary:
 			"refreshShop": { "allowed": true },
 			"lockShop": { "allowed": true },
 			"buyXp": { "allowed": false, "reason": "NOT_ENOUGH_GOLD" },
+			"moveHero": { "allowed": true },
+			"sellHero": { "allowed": true },
+			"equipItem": { "allowed": true },
+			"unequipItem": { "allowed": true },
 			"startRound": { "allowed": true },
 			"resolveCombat": { "allowed": false, "reason": "WRONG_PHASE" },
+			"ackPlaybackComplete": { "allowed": false, "reason": "WRONG_PHASE" },
 			"claimRoundReward": { "allowed": false, "reason": "WRONG_PHASE" },
 			"claimRewardHero": { "allowed": false, "reason": "NO_PENDING_HERO_REWARD" },
 			"buyShopSlots": [{ "allowed": true }, { "allowed": false, "reason": "SLOT_EMPTY" }, { "allowed": false, "reason": "SLOT_EMPTY" }, { "allowed": false, "reason": "SLOT_EMPTY" }, { "allowed": false, "reason": "SLOT_EMPTY" }],

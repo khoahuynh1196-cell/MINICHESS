@@ -637,3 +637,93 @@ git diff --check   clean
   `.github/workflows/ci.yml` as a separate named step; it runs as part of
   the existing `pnpm run check` CI step, so it is covered, just not
   separately labeled in CI output.
+
+## Mission 6 — Godot Adventure runtime boundary (2026-08-07)
+
+**Branch:** `antigravity/offline-foundation-hardening`.
+
+### Pre-existing gap found
+
+`client-godot/scripts/adventure/adventure_controller.gd` and
+`adventure_view_model.gd` were already written to consume a
+`view.actions.{actionName}.{allowed,reason}` availability contract
+(including a `buyShopSlots` array) — but `game-core/src/adventure/view.ts`
+never produced an `actions` field at all. Every existing Godot test for
+this boundary hand-crafted a mock view containing a fabricated `actions`
+object, so the gap was invisible: the real domain view would have failed
+`AdventureViewModel._valid_view()`'s required-field check the moment a
+real Godot client tried to use it. Confirmed by checking `game-core/src/adventure/view.ts`
+had zero references to `actions` before this mission.
+
+Separately, `adventure_controller.gd`'s `request_move_hero` /
+`request_sell_hero` / `request_equip_item` / `request_unequip_item` each
+hardcoded `phase == "PREPARE"` as their own local rule instead of asking
+the domain — exactly the "Godot-side rule computation that duplicates
+TypeScript availability/phase logic" Mission 6 says to remove.
+
+Also found: `client-godot/test/adventure_presenter_test.gd` references
+`res://scripts/adventure/adventure_presenter.gd`, which does not exist on
+this branch. Left untouched — that file is Mission 7's
+`AdventurePresenter` (scenes/presenters), not Mission 6's command/view
+boundary. This was already a known baseline failure (Mission 0 recorded
+it as a parse error) and is not a regression from this mission.
+
+### Added / changed
+
+- `game-core/src/adventure/view.ts`: added `AdventureActions` /
+  `AdventureActionAvailability` and `computeAdventureActions()`, wired
+  into `AdventureView.actions`. For each command
+  (`refreshShop`, `lockShop`, `buyXp`, `moveHero`, `sellHero`,
+  `equipItem`, `unequipItem`, `claimRewardHero`, `startRound`,
+  `resolveCombat`, `ackPlaybackComplete`, `claimRoundReward`, and a
+  `buyShopSlots` array) it predicts, from the exact current state, whether
+  dispatching that command right now would be accepted and — if not — a
+  short stable reason code (`WRONG_PHASE`, `NOT_ENOUGH_GOLD`,
+  `EMPTY_BOARD`, `PENDING_HERO_REWARD`, `NO_PENDING_HERO_REWARD`,
+  `BENCH_FULL`, `SLOT_EMPTY`, `SHOP_LOCKED`, `MAX_LEVEL`). This is a
+  read-only projection computed by the same authoritative domain code
+  that will actually validate the command when dispatched — it changes
+  nothing about what is authoritative, it only lets a client disable/
+  explain controls without re-deriving any rule itself. Reason codes are
+  a small stable presentation vocabulary, deliberately distinct from the
+  internal `ADVENTURE_*` error codes the reducer/lifecycle throw.
+- `game-core/test/adventure/view.test.ts`: two new tests covering every
+  action's PREPARE-phase reasons and its transition across
+  COMBAT → PLAYBACK → REWARD.
+- `client-godot/scripts/adventure/adventure_controller.gd`: `moveHero`/
+  `sellHero`/`equipItem`/`unequipItem` now gate through `_action()` (the
+  domain-provided contract) instead of a hardcoded phase check; added
+  `request_ack_playback_complete()`; added a `playback_ready(playback)`
+  signal that re-emits the runtime port's `combat_playback_ready`, plus a
+  cold-attach path: if `attach_runtime_port()` is called against a port
+  that already holds a restored `PLAYBACK`-phase view (no live
+  `combat_playback_ready` will ever fire for that), the controller reads
+  `view.lastCombat.playback` (persisted since Mission 1/4) and emits
+  `playback_ready` from it directly, so resuming a save mid-combat does
+  not lose the replay.
+- `client-godot/scripts/adventure/adventure_command_factory.gd`: added
+  `ack_playback_complete()`.
+- `client-godot/scripts/adventure/adventure_view_model.gd`: `PLAYBACK`
+  added to the valid-phase list.
+- Updated `adventure_command_factory_test.gd`, `adventure_view_model_test.gd`,
+  `adventure_controller_test.gd` to exercise the real action set
+  (including the new cold-attach-into-PLAYBACK scenario) instead of a
+  partial hand-picked one.
+
+### Verification
+
+```
+pnpm run check   — unchanged: rules:check/typecheck PASS, game-core
+                   29 files/243 tests PASS, server 10/142 PASS, smoke:domain PASS
+Godot headless suite: 26/39 PASS — identical baseline file list, no
+  regression, no new failure (adventure_presenter_test remains a known
+  Mission 7 gap, not touched here)
+git diff --check   clean
+```
+
+### Deliberately not touched in this mission
+
+- `adventure_presenter.gd` (does not exist) and the scene/screen layer —
+  Mission 7 scope.
+- `battle_controller.gd` and the old server-based `run_api_client.gd` /
+  `run_state.gd` path — still present, untouched; Mission 7 retires them.
