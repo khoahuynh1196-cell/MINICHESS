@@ -855,3 +855,110 @@ git diff --check   clean
 - Home/Combat/Reward/Result/Collection/Settings screens are text
   placeholders, not the real presentation Mission 7's target structure
   describes; Combat's real presentation is Mission 8's scope regardless.
+
+## Mission 8 — Deterministic combat presentation in Godot (scoped) (2026-08-07)
+
+**Branch:** `antigravity/offline-foundation-hardening`.
+
+### Scope decision
+
+Built the deterministic *sequencing engine* Mission 8's gate actually
+requires ("given a recorded playback, Godot produces the same semantic
+sequence every replay and never displays state before its authoritative
+event") plus a real, tested Combat screen wired into the Mission 7
+skeleton. Did not build `ProjectilePool`/`VfxPool`/`FloatingNumberPool`/
+`StatusPresenter`/`CombatCameraDirector` as separate visual components,
+or a playback-speed/Reduced-Motion UI control — those are visual/UX
+polish that Mission 10 (asset pipeline) needs to inform anyway (there is
+no art yet to pool), and none of it is verifiable without a rendered
+device/emulator pass. Building it now, unverified, would risk exactly
+the "claim visual completeness without evidence" failure mode this whole
+branch exists to avoid.
+
+### Added
+
+- `client-godot/scripts/presentation/combat_timeline.gd`: maps a real
+  `AdventureCombatPlayback` (`tickRate`/`maxTicks`/`events`, not a
+  hardcoded tick rate the way the old `replay_scheduler.gd` used) to
+  presentation time. Never reorders or drops events — the domain already
+  guarantees contiguous sequence/nondecreasing tick
+  (`assertAdventureCombatPlayback`), so `advance()` only ever returns
+  events whose tick has actually been reached, and `set_speed_multiplier()`
+  changes how fast presentation time catches up, never which events fire
+  or their order (tested at 1x and 2x).
+- `client-godot/scripts/presentation/combat_actor.gd`: derives one unit's
+  HP/position/animation-state from the event stream, tick-accurate. HP
+  changes only inside `apply_event()` for `DAMAGE_APPLIED`/`HEAL_APPLIED`
+  (a `SHIELD_APPLIED` event is proven not to touch HP). Animation state
+  priority is `dead > hard_control > hit > cast > attack > move > idle`,
+  implemented as tracked time windows resolved by priority at query time.
+  Death is tick-exact and permanent (`state_at()` returns `"dead"` only
+  from the unit's own `UNIT_DIED` tick onward, and never reverts).
+  Handles the two structurally different movement shapes the kernel
+  emits: paired `MOVE_STARTED`/`MOVE_COMPLETED` for regular pathing
+  (source-driven, open window between the two events), and one-shot
+  `MOVE_STARTED` with `payload.kind` set for dash/retreat/knockback
+  (**target**-driven — a knockback's `sourceUnitId` is the caster, not
+  the unit that moves — and position updates immediately since there is
+  no paired completion event).
+- `client-godot/scripts/presenters/combat_presenter.gd`: owns one
+  `CombatTimeline` and one `CombatActor` per unit ID seen in the
+  playback, dispatching each due event to every actor it names
+  (source/target/`payload.unitId`) and emitting `actor_changed`/
+  `combat_finished`.
+- `client-godot/scripts/screens/match/combat_screen.gd`: a minimal
+  screen — renders live phase during `COMBAT`, loads the playback via
+  `AdventurePresenter.playback_ready` (wired in Mission 7), drives
+  `CombatPresenter` from `_process()` during `PLAYBACK`, and
+  automatically dispatches `ACK_PLAYBACK_COMPLETE` through the attached
+  `AdventureController` once the recorded playback finishes — guarded so
+  the same combat is never ACKed twice. Wired into `app_root.gd`,
+  replacing the placeholder combat screen from Mission 7.
+- Tests: `combat_timeline_test.gd`, `combat_actor_test.gd` (spawn, basic
+  attack + hit window, ranged cast window, stun outranking a simultaneous
+  hit, heal vs. shield-does-not-touch-HP, knockback moving the target
+  not the source, regular move pairing including the open-window case,
+  death permanence/priority, tick-accuracy of death for a summon expiry
+  with no killer), `combat_presenter_test.gd`, `match_combat_screen_test.gd`.
+
+### A real GDScript closure bug found and fixed while writing tests
+
+`combat_presenter_test.gd` initially captured a local `bool` in a
+signal-callback lambda and reassigned it (`var finished := false; ...
+connect(func(): finished = true)`) — this compiles and runs with no
+error, but GDScript closures do not write back to a captured primitive
+this way, so `finished` silently never became `true`. Every other signal
+assertion in this whole session's test suite happened to use `.append()`
+on a captured `Array` (a reference type, so mutation-through-append
+works regardless of by-value capture), which is why this specific
+failure mode never surfaced until now. Fixed by capturing a
+single-element `Array` and writing to `array[0]` instead. Worth keeping
+in mind for every future Godot test in this codebase.
+
+### Verification
+
+```
+Godot headless suite: 34/39 PASS (was 30/39) — 4 new tests, all passing,
+  the same 12 pre-existing failures remain (Mission 10 asset-pipeline
+  scope), zero regressions.
+pnpm run check — unaffected, still green (no game-core changes this mission)
+git diff --check   clean
+```
+
+### Remaining debt (explicitly not done here)
+
+- `ProjectilePool`, `VfxPool`, `FloatingNumberPool`, `StatusPresenter`,
+  `CombatCameraDirector` as named components — `CombatActor` exposes
+  everything they would need (state, hp, position) but no visual pooling
+  or camera work exists yet. The pre-existing `combat_vfx_pool.gd` (a
+  real, working pool for the *old* event vocabulary) is a reasonable
+  starting point to adapt once there is art to pool — not adapted this
+  mission.
+- No playback-speed toggle or Reduced Motion UI control exists yet,
+  though `CombatTimeline.set_speed_multiplier()` is built and tested and
+  `combat_vfx_pool.gd` already has `set_reduced_motion()` from the old
+  system — wiring a control to them is straightforward once the Combat
+  screen gets real UI.
+- `combat_screen.gd`'s unit list is text, not board-positioned sprites;
+  real positioning needs the 4×8 board layout work Mission 10's asset
+  contract will inform.

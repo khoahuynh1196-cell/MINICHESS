@@ -22,6 +22,7 @@ const AdventurePresenterScript = preload("res://scripts/adventure/adventure_pres
 const AdventureRuntimePortScript = preload("res://scripts/adventure/adventure_runtime_port.gd")
 const PreparePresenterScript = preload("res://scripts/presenters/prepare_presenter.gd")
 const PrepareScreenScript = preload("res://scripts/screens/match/prepare_screen.gd")
+const CombatScreenScript = preload("res://scripts/screens/match/combat_screen.gd")
 const PlaceholderScreenScript = preload("res://scripts/screens/placeholder_screen.gd")
 
 var app_controller
@@ -45,13 +46,16 @@ func _init() -> void:
 	prepare_screen.attach_presenter(prepare_presenter)
 	adventure_presenter.prepare_presented.connect(prepare_presenter.bind)
 
+	var combat_screen = CombatScreenScript.new()
+	combat_screen.attach_controller(adventure_controller)
+	adventure_presenter.combat_presented.connect(combat_screen.bind)
+	adventure_presenter.playback_ready.connect(combat_screen.on_playback_ready)
+
 	var home_screen = PlaceholderScreenScript.new("home")
-	var combat_screen = PlaceholderScreenScript.new("combat")
 	var reward_screen = PlaceholderScreenScript.new("reward")
 	var result_screen = PlaceholderScreenScript.new("result")
 	var collection_screen = PlaceholderScreenScript.new("collection")
 	var settings_screen = PlaceholderScreenScript.new("settings")
-	adventure_presenter.combat_presented.connect(combat_screen.bind)
 	adventure_presenter.reward_presented.connect(reward_screen.bind)
 	adventure_presenter.complete_presented.connect(result_screen.bind)
 
