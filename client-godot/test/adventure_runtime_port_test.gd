@@ -9,8 +9,10 @@ func _init() -> void:
 	var submitted: Array = []
 	var views: Array = []
 	var errors: Array = []
+	var playbacks: Array = []
 	port.request_submitted.connect(func(request: Dictionary) -> void: submitted.append(request))
 	port.view_changed.connect(func(view: Dictionary) -> void: views.append(view))
+	port.combat_playback_ready.connect(func(playback: Dictionary) -> void: playbacks.append(playback))
 	port.protocol_error.connect(func(message: String) -> void: errors.append(message))
 
 	var request := {
@@ -45,6 +47,28 @@ func _init() -> void:
 	response.view.gold = 999
 	_expect(port.current_view().get("gold", 0) == 8, "accepted views must be deep copied")
 	_expect(views.size() == 1 and int(views[0].get("revision", -1)) == 1, "accepted views must emit view_changed")
+	_expect(playbacks.is_empty(), "a response without playback must not emit combat_playback_ready")
+
+	var playback_response := {
+		"revision": 2,
+		"replayed": false,
+		"view": { "revision": 2, "phase": "REWARD", "round": 1, "gold": 8, "health": 30, "board": [], "bench": [], "shop": [] },
+		"playback": {
+			"combatId": "combat:run-port:1:3",
+			"events": [{ "sequence": 0, "tick": 0, "type": "COMBAT_STARTED" }],
+		},
+	}
+	_expect(port.accept_response(playback_response), "a response with valid playback must be accepted")
+	_expect(playbacks.size() == 1 and playbacks[0].get("combatId", "") == "combat:run-port:1:3",
+		"a response with playback must emit combat_playback_ready")
+
+	_expect(not port.accept_response({
+		"revision": 3,
+		"replayed": false,
+		"view": { "revision": 3 },
+		"playback": { "combatId": "", "events": [] },
+	}), "a playback missing combatId must be rejected")
+	_expect(playbacks.size() == 1, "a rejected playback must not emit combat_playback_ready")
 
 	_expect(not port.accept_response({
 		"revision": 0,
@@ -63,7 +87,7 @@ func _init() -> void:
 	}), "private fields must be rejected even when nested")
 	_expect(not port.submit({ "commandId": "", "expectedRevision": 1, "type": "LOCK_SHOP" }), "empty command IDs must be rejected")
 	_expect(not port.submit({ "commandId": "x", "expectedRevision": -1, "type": "LOCK_SHOP" }), "negative revisions must be rejected")
-	_expect(errors.size() >= 5, "protocol failures must emit errors")
+	_expect(errors.size() >= 6, "protocol failures must emit errors")
 
 	port.clear()
 	_expect(not port.has_view() and port.current_view().is_empty(), "clear must remove the cached view")

@@ -4,10 +4,13 @@ import type { CompiledRuleset } from "../rules/types.js";
 import {
   resolveAdventureCombat,
   type AdventureCombatEngine,
+  type AdventureCombatResolutionResult,
 } from "./engine.js";
 import {
+  ackAdventurePlaybackComplete,
   claimAdventureRoundReward,
   type AdventureCombatResolutionCommand,
+  type AdventurePlaybackAckCommand,
   type AdventureRewardClaimCommand,
 } from "./lifecycle.js";
 import {
@@ -24,6 +27,7 @@ import type {
   AdventureGameState,
   AdventureMutationResult,
 } from "./state.js";
+import { buildAdventureView, type AdventureView } from "./view.js";
 
 export interface AdventureStateStore {
   load(): string | undefined | Promise<string | undefined>;
@@ -61,6 +65,10 @@ export class AdventureSession {
 
   get hasState(): boolean {
     return this.#state !== undefined;
+  }
+
+  get view(): AdventureView {
+    return buildAdventureView(this.state, this.#dependencies.rules, this.#dependencies.content);
   }
 
   #saveContext(): AdventureSaveContext {
@@ -103,7 +111,7 @@ export class AdventureSession {
     return result;
   }
 
-  async resolveCombat(command: AdventureCombatResolutionCommand): Promise<AdventureMutationResult> {
+  async resolveCombat(command: AdventureCombatResolutionCommand): Promise<AdventureCombatResolutionResult> {
     const result = await resolveAdventureCombat(
       this.state,
       command,
@@ -117,6 +125,17 @@ export class AdventureSession {
 
   async claimReward(command: AdventureRewardClaimCommand): Promise<AdventureMutationResult> {
     const result = claimAdventureRoundReward(
+      this.state,
+      command,
+      this.#dependencies.rules,
+      this.#dependencies.content,
+    );
+    await this.#accept(result);
+    return result;
+  }
+
+  async ackPlaybackComplete(command: AdventurePlaybackAckCommand): Promise<AdventureMutationResult> {
+    const result = ackAdventurePlaybackComplete(
       this.state,
       command,
       this.#dependencies.rules,

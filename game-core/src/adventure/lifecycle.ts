@@ -2,6 +2,7 @@ import type { CompiledContentBundle } from "../content/types.js";
 import type { CompiledRuleset } from "../rules/types.js";
 import { progressionState } from "../rules/progression.js";
 import { grantAdventureItem } from "./items.js";
+import type { AdventureCombatPlayback } from "./playback.js";
 import {
   buildAdventureRewardPlan,
   validateAdventureRewardSelections,
@@ -32,6 +33,11 @@ export interface AdventureCombatOutcome {
   readonly reason: "elimination" | "timeout";
 }
 
+export interface AdventureCombatResultCommand extends AdventureMutationBase, AdventureCombatOutcome {
+  readonly type: "RECORD_COMBAT_RESULT";
+  readonly playback?: AdventureCombatPlayback;
+}
+
 export interface AdventureRewardClaimCommand extends AdventureMutationBase {
   readonly type: "CLAIM_ROUND_REWARD";
   readonly selections: readonly AdventureRewardSelection[];
@@ -55,39 +61,70 @@ function assertVersions(state: AdventureGameState, rules: CompiledRuleset, conte
   if (state.run.contentVersion !== content.version) throw new Error("ADVENTURE_CONTENT_MISMATCH");
 }
 
-function combatSummary(outcome: AdventureCombatOutcome): AdventureCombatSummary {
-  return Object.freeze({ ...outcome });
+function combatSummary(command: AdventureCombatResultCommand): AdventureCombatSummary {
+  return Object.freeze({
+    round: command.round,
+    winner: command.winner,
+    survivingEnemyUnits: command.survivingEnemyUnits,
+    resultHash: command.resultHash,
+    finalTick: command.finalTick,
+    reason: command.reason,
+    ...(command.playback === undefined ? {} : { playback: command.playback }),
+  });
+}
+
+/**
+ * Unlike `replayAdventureMutation`, this checks commandId presence only, not
+ * a fingerprint of the full command. `AdventureCombatResultCommand` carries
+ * the non-deterministic engine outcome, so a caller reconstructing it (e.g.
+ * from a later `state`) will not reproduce the exact original object; the
+ * commandId alone identifies "this combat was already recorded."
+ */
+function checkCombatResultReplay(
+  state: AdventureGameState,
+  command: AdventureCombatResultCommand,
+): AdventureMutationResult | undefined {
+  if (command.commandId.trim().length === 0) throw new Error("commandId must not be empty");
+  if (!Number.isSafeInteger(command.expectedRevision) || command.expectedRevision < 0) {
+    throw new Error("expectedRevision must be a safe integer >= 0");
+  }
+  const existing = state.commandHistory[command.commandId];
+  if (existing !== undefined) return Object.freeze({ state, revision: existing.revision, replayed: true });
+  if (command.expectedRevision !== state.run.revision) throw new Error("ADVENTURE_REVISION_CONFLICT");
+  return undefined;
 }
 
 export function recordAdventureCombatResult(
   state: AdventureGameState,
-  command: AdventureCombatResolutionCommand,
-  outcome: AdventureCombatOutcome,
+  command: AdventureCombatResultCommand,
   rules: CompiledRuleset,
   content: CompiledContentBundle,
 ): AdventureMutationResult {
-  const replay = replayAdventureMutation(state, command);
+  const replay = checkCombatResultReplay(state, command);
   if (replay !== undefined) return replay;
   assertVersions(state, rules, content);
-  requireCombatOutcome(outcome, rules);
+  requireCombatOutcome(command, rules);
   if (state.run.phase !== "COMBAT") throw new Error("ADVENTURE_COMMAND_NOT_ALLOWED");
-  if (state.run.round !== outcome.round) throw new Error("ADVENTURE_COMBAT_ROUND_MISMATCH");
+  if (state.run.round !== command.round) throw new Error("ADVENTURE_COMBAT_ROUND_MISMATCH");
 
-  const loss = outcome.winner === "enemy"
+  const loss = command.winner === "enemy"
     ? Math.min(
       rules.adventure.lossDamage.cap,
-      rules.adventure.lossDamage.base + rules.adventure.lossDamage.perSurvivor * outcome.survivingEnemyUnits,
+      rules.adventure.lossDamage.base + rules.adventure.lossDamage.perSurvivor * command.survivingEnemyUnits,
     )
     : 0;
   const health = Math.max(0, state.run.health - loss);
-  const lastCombat = combatSummary(outcome);
+  const lastCombat = combatSummary(command);
   const pendingReward = health === 0
     ? undefined
     : buildAdventureRewardPlan({ seed: state.seed, round: state.run.round, content });
   const run: AdventureRunState = {
     ...state.run,
     health,
-    phase: health === 0 ? "COMPLETE" : "REWARD",
+    // Combat always transitions to PLAYBACK first, win or lose, so a client
+    // can play the authoritative combat presentation before the run reacts
+    // to the outcome. ACK_PLAYBACK_COMPLETE (below) advances to REWARD/COMPLETE.
+    phase: "PLAYBACK",
   };
 
   return commitAdventureMutation(state, command, {
@@ -98,6 +135,40 @@ export function recordAdventureCombatResult(
     acquisitionCounter: state.acquisitionCounter,
     ...(pendingReward === undefined ? {} : { pendingReward }),
     lastCombat,
+  });
+}
+
+export interface AdventurePlaybackAckCommand extends AdventureMutationBase {
+  readonly type: "ACK_PLAYBACK_COMPLETE";
+}
+
+/**
+ * Advances PLAYBACK -> REWARD (won, reward already computed by
+ * recordAdventureCombatResult) or PLAYBACK -> COMPLETE (lost to zero
+ * health). Idempotent like every other mutation: a repeated ACK for the
+ * same commandId returns the original receipt without mutating state again.
+ */
+export function ackAdventurePlaybackComplete(
+  state: AdventureGameState,
+  command: AdventurePlaybackAckCommand,
+  rules: CompiledRuleset,
+  content: CompiledContentBundle,
+): AdventureMutationResult {
+  const replay = replayAdventureMutation(state, command);
+  if (replay !== undefined) return replay;
+  assertVersions(state, rules, content);
+  if (state.run.phase !== "PLAYBACK") throw new Error("ADVENTURE_COMMAND_NOT_ALLOWED");
+
+  const run: AdventureRunState = { ...state.run, phase: state.run.health === 0 ? "COMPLETE" : "REWARD" };
+
+  return commitAdventureMutation(state, command, {
+    seed: state.seed,
+    run,
+    shopPool: state.shopPool,
+    refreshNumber: state.refreshNumber,
+    acquisitionCounter: state.acquisitionCounter,
+    ...(state.pendingReward === undefined ? {} : { pendingReward: state.pendingReward }),
+    ...(state.lastCombat === undefined ? {} : { lastCombat: state.lastCombat }),
   });
 }
 

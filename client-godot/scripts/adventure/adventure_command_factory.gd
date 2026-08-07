@@ -16,6 +16,9 @@ static func start_round(command_id: String, revision: int) -> Dictionary:
 static func resolve_combat(command_id: String, revision: int) -> Dictionary:
 	return _simple(command_id, revision, "RESOLVE_COMBAT")
 
+static func ack_playback_complete(command_id: String, revision: int) -> Dictionary:
+	return _simple(command_id, revision, "ACK_PLAYBACK_COMPLETE")
+
 static func buy_shop_hero(command_id: String, revision: int, shop_slot_index: int) -> Dictionary:
 	return _base(command_id, revision, "BUY_SHOP_HERO").merged({
 		"shopSlotIndex": shop_slot_index,

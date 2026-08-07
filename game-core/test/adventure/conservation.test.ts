@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import {
+  ackAdventurePlaybackComplete,
   applyAdventureCommand,
   assertAdventureGameState,
   claimAdventureRoundReward,
@@ -26,7 +27,12 @@ function applyIfLegal(state: AdventureGameState, command: Parameters<typeof appl
     return applyAdventureCommand(state, command, rules).state;
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    if (!message.startsWith("ADVENTURE_") && !message.includes("capacity") && !message.includes("destination")) throw error;
+    const isExpectedRejection = message.startsWith("ADVENTURE_")
+      || message.includes("capacity")
+      || message.includes("destination")
+      || message.includes("is empty")
+      || message.includes("not found");
+    if (!isExpectedRejection) throw error;
     return state;
   }
 }
@@ -94,8 +100,7 @@ describe("Adventure conservation stress", () => {
       commandId: "start", expectedRevision: 2, type: "START_ROUND",
     }, rules).state;
     state = recordAdventureCombatResult(state, {
-      commandId: "resolve", expectedRevision: 3, type: "RESOLVE_COMBAT",
-    }, {
+      commandId: "resolve", expectedRevision: 3, type: "RECORD_COMBAT_RESULT",
       round: 1,
       winner: "player",
       survivingEnemyUnits: 0,
@@ -103,15 +108,18 @@ describe("Adventure conservation stress", () => {
       finalTick: 100,
       reason: "elimination",
     }, rules, content).state;
+    state = ackAdventurePlaybackComplete(state, {
+      commandId: "ack", expectedRevision: 4, type: "ACK_PLAYBACK_COMPLETE",
+    }, rules, content).state;
     const selections = state.pendingReward!.offers.map((offer) => ({
       offerId: offer.id,
       optionId: offer.options[0]!.id,
     }));
     state = claimAdventureRoundReward(state, {
-      commandId: "claim", expectedRevision: 4, type: "CLAIM_ROUND_REWARD", selections,
+      commandId: "claim", expectedRevision: 5, type: "CLAIM_ROUND_REWARD", selections,
     }, rules, content).state;
 
-    expect(state.run).toMatchObject({ phase: "PREPARE", round: 2, revision: 5 });
+    expect(state.run).toMatchObject({ phase: "PREPARE", round: 2, revision: 6 });
     expect(() => assertAdventureGameState(state, content, rules)).not.toThrow();
   });
 });

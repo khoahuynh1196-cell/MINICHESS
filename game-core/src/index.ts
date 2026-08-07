@@ -16,6 +16,14 @@ export {
 } from "./simulation/kernel.js";
 export { createSeededRng, type SeededRng } from "./simulation/seeded-rng.js";
 export {
+  LEGACY_ALPHA_GEOMETRY,
+  PRODUCTION_4X8_GEOMETRY,
+  geometryFromRules,
+  type CombatDirection,
+  type CombatGeometry,
+} from "./simulation/geometry.js";
+export { runProductionCombat } from "./simulation/production-kernel.js";
+export {
   validateEffectDefinition,
   type CombatEffect,
   type CombatStat,
@@ -24,7 +32,7 @@ export {
   type EffectTarget,
   type SummonDefinition,
 } from "./effects/definitions.js";
-export { compileContentBundle } from "./content/compiler.js";
+export { compileCombatEffect, compileContentBundle } from "./content/compiler.js";
 export type { CompiledCombatTrigger, CompiledContentBundle, CompiledItem, CompiledUniqueItem, ContentManifest, RawContentBundle, RawEncounter, RawEncounterReward, RawUniqueItem } from "./content/types.js";
 export {
   assertContentRulesetCompatibility,
@@ -45,6 +53,8 @@ export {
   resolveAdventureCombat,
   type AdventureCombatEngine,
   type AdventureCombatEngineRequest,
+  type AdventureCombatEngineResult,
+  type AdventureCombatResolutionResult,
 } from "./adventure/engine.js";
 export {
   equipAdventureItem,
@@ -52,13 +62,43 @@ export {
   unequipAdventureItem,
 } from "./adventure/items.js";
 export {
+  ackAdventurePlaybackComplete,
   claimAdventureRoundReward,
   recordAdventureCombatResult,
   type AdventureCombatOutcome,
   type AdventureCombatResolutionCommand,
   type AdventureCombatResultCommand,
+  type AdventurePlaybackAckCommand,
   type AdventureRewardClaimCommand,
 } from "./adventure/lifecycle.js";
+export {
+  assertAdventureCombatPlayback,
+  createAdventureCombatPlayback,
+  validateAdventurePlaybackEvents,
+  type AdventureCombatPlayback,
+  type AdventurePlaybackEvent,
+  type AdventurePlaybackEventType,
+} from "./adventure/playback.js";
+export {
+  handleAdventureRuntimeRequest,
+  parseAdventureRuntimeRequest,
+  type AdventureRuntimeRequest,
+  type AdventureRuntimeResponse,
+} from "./adventure/protocol.js";
+export {
+  buildAdventureCombatSnapshot,
+  type AdventureCombatBoardContract,
+  type AdventureCombatEnemyRef,
+  type AdventureCombatHeroRef,
+  type AdventureCombatSnapshot,
+} from "./adventure/snapshot.js";
+export {
+  buildAdventureView,
+  type AdventureActionAvailability,
+  type AdventureActions,
+  type AdventureTraitView,
+  type AdventureView,
+} from "./adventure/view.js";
 export {
   applyAdventureCommand,
   createAdventureGame,

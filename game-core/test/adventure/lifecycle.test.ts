@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import {
+  ackAdventurePlaybackComplete,
   adventureShopRemainingCopies,
   applyAdventureCommand,
   buildAdventureRewardPlan,
@@ -59,21 +60,42 @@ function recordWin(state: AdventureGameState, commandId = "combat-result") {
   }, rules, content);
 }
 
+function ackPlayback(state: AdventureGameState, commandId = "ack") {
+  return ackAdventurePlaybackComplete(state, {
+    commandId,
+    expectedRevision: state.run.revision,
+    type: "ACK_PLAYBACK_COMPLETE",
+  }, rules, content);
+}
+
 describe("Adventure combat and reward lifecycle", () => {
-  it("records a victory, creates the deterministic reward plan, and replays once", () => {
+  it("records a victory into PLAYBACK, then ACK advances to REWARD; both replay idempotently", () => {
     const started = combatReady();
     const result = recordWin(started);
-    const replay = recordWin(result.state);
+    const combatReplay = recordWin(result.state);
 
     expect(result).toMatchObject({ revision: 4, replayed: false });
-    expect(result.state.run).toMatchObject({ phase: "REWARD", health: 30, round: 1, revision: 4 });
+    expect(result.state.run).toMatchObject({ phase: "PLAYBACK", health: 30, round: 1, revision: 4 });
     expect(result.state.pendingReward)
       .toEqual(buildAdventureRewardPlan({ seed: started.seed, round: 1, content }));
     expect(result.state.lastCombat).toMatchObject({ winner: "player", round: 1, resultHash: "result-1" });
-    expect(replay).toEqual({ state: result.state, revision: 4, replayed: true });
+    expect(combatReplay).toEqual({ state: result.state, revision: 4, replayed: true });
+
+    const ackCommand = { commandId: "ack", expectedRevision: result.state.run.revision, type: "ACK_PLAYBACK_COMPLETE" as const };
+    const acked = ackAdventurePlaybackComplete(result.state, ackCommand, rules, content);
+    const ackReplay = ackAdventurePlaybackComplete(acked.state, ackCommand, rules, content);
+    expect(acked).toMatchObject({ revision: 5, replayed: false });
+    expect(acked.state.run.phase).toBe("REWARD");
+    expect(acked.state.pendingReward).toEqual(result.state.pendingReward);
+    expect(ackReplay).toEqual({ state: acked.state, revision: 5, replayed: true });
   });
 
-  it("applies rules-driven capped loss damage", () => {
+  it("rejects ACK_PLAYBACK_COMPLETE outside the PLAYBACK phase", () => {
+    const started = combatReady();
+    expect(() => ackPlayback(started)).toThrow("ADVENTURE_COMMAND_NOT_ALLOWED");
+  });
+
+  it("applies rules-driven capped loss damage and reaches REWARD only after ACK", () => {
     const started = combatReady();
     const result = recordAdventureCombatResult(started, {
       commandId: "loss",
@@ -87,10 +109,12 @@ describe("Adventure combat and reward lifecycle", () => {
       reason: "elimination",
     }, rules, content);
 
-    expect(result.state.run).toMatchObject({ phase: "REWARD", health: 18 });
+    expect(result.state.run).toMatchObject({ phase: "PLAYBACK", health: 18 });
+    const acked = ackPlayback(result.state);
+    expect(acked.state.run.phase).toBe("REWARD");
   });
 
-  it("completes the run without rewards when loss damage reaches zero health", () => {
+  it("completes the run without rewards when loss damage reaches zero health, after ACK", () => {
     const started = combatReady();
     const lowHealth = freezeAdventureGameState({
       ...started,
@@ -108,36 +132,39 @@ describe("Adventure combat and reward lifecycle", () => {
       reason: "elimination",
     }, rules, content);
 
-    expect(result.state.run).toMatchObject({ phase: "COMPLETE", health: 0 });
+    expect(result.state.run).toMatchObject({ phase: "PLAYBACK", health: 0 });
     expect(result.state.pendingReward).toBeUndefined();
+    const acked = ackPlayback(result.state);
+    expect(acked.state.run).toMatchObject({ phase: "COMPLETE", health: 0 });
+    expect(acked.state.pendingReward).toBeUndefined();
   });
 
   it("claims a reward once, grants base income, and advances the round", () => {
-    const rewarded = recordWin(combatReady()).state;
+    const rewarded = ackPlayback(recordWin(combatReady()).state).state;
     const plan = rewarded.pendingReward!;
     const selections = plan.offers.map((offer) => ({ offerId: offer.id, optionId: offer.options[0]!.id }));
     const claimed = claimAdventureRoundReward(rewarded, {
       commandId: "claim",
-      expectedRevision: 4,
+      expectedRevision: 5,
       type: "CLAIM_ROUND_REWARD",
       selections,
     }, rules, content);
     const replayed = claimAdventureRoundReward(claimed.state, {
       commandId: "claim",
-      expectedRevision: 4,
+      expectedRevision: 5,
       type: "CLAIM_ROUND_REWARD",
       selections,
     }, rules, content);
 
-    expect(claimed.state.run).toMatchObject({ phase: "PREPARE", round: 2, revision: 5 });
+    expect(claimed.state.run).toMatchObject({ phase: "PREPARE", round: 2, revision: 6 });
     expect(claimed.state.run.gold).toBe(rewarded.run.gold + 5 + plan.supplementalGold);
     expect(claimed.state.run.freeRefreshes).toBe(plan.freeRefreshes);
     expect(claimed.state.pendingReward).toBeUndefined();
-    expect(replayed).toEqual({ state: claimed.state, revision: 5, replayed: true });
+    expect(replayed).toEqual({ state: claimed.state, revision: 6, replayed: true });
   });
 
   it("materializes the round-four Unique selection as one team item", () => {
-    const rewarded = recordWin(combatReady(4)).state;
+    const rewarded = ackPlayback(recordWin(combatReady(4)).state).state;
     const uniqueOffer = rewarded.pendingReward?.offers.find((offer) => offer.kind === "unique_choice");
     if (uniqueOffer === undefined) throw new Error("Round four has no Unique offer");
     const unique = uniqueOffer.options[0]!;
@@ -147,7 +174,7 @@ describe("Adventure combat and reward lifecycle", () => {
     }));
     const claimed = claimAdventureRoundReward(rewarded, {
       commandId: "claim-unique",
-      expectedRevision: 4,
+      expectedRevision: 5,
       type: "CLAIM_ROUND_REWARD",
       selections,
     }, rules, content);
@@ -202,13 +229,17 @@ describe("Adventure combat and reward lifecycle", () => {
   });
 
   it("requires legal selections and rejects mismatched rounds", () => {
-    const rewarded = recordWin(combatReady()).state;
+    // Round 3 is used here (rather than the default round 1) because round 1's
+    // encounter grants only gold/shop_refresh, which produce zero reward
+    // offers; an empty selections array is trivially valid against zero
+    // offers and would not exercise this rejection path.
+    const rewarded = ackPlayback(recordWin(combatReady(3)).state).state;
     expect(() => claimAdventureRoundReward(rewarded, {
       commandId: "invalid-claim",
-      expectedRevision: 4,
+      expectedRevision: 5,
       type: "CLAIM_ROUND_REWARD",
       selections: [],
-    }, rules, content)).toThrow();
+    }, rules, content)).toThrow("ADVENTURE_REWARD_SELECTION_REQUIRED");
 
     expect(() => recordAdventureCombatResult(combatReady(), {
       commandId: "wrong-round",

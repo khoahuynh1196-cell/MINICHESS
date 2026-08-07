@@ -1,20 +1,24 @@
 import type { AdventureCommand } from "./reducer.js";
 import type {
   AdventureCombatResolutionCommand,
+  AdventurePlaybackAckCommand,
   AdventureRewardClaimCommand,
 } from "./lifecycle.js";
+import type { AdventureCombatPlayback } from "./playback.js";
 import type { AdventureSession } from "./session.js";
 import type { AdventureView } from "./view.js";
 
 export type AdventureRuntimeRequest =
   | AdventureCommand
   | AdventureCombatResolutionCommand
+  | AdventurePlaybackAckCommand
   | AdventureRewardClaimCommand;
 
 export interface AdventureRuntimeResponse {
   readonly revision: number;
   readonly replayed: boolean;
   readonly view: AdventureView;
+  readonly playback?: AdventureCombatPlayback;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -83,6 +87,7 @@ export function parseAdventureRuntimeRequest(value: unknown): AdventureRuntimeRe
     case "BUY_XP":
     case "START_ROUND":
     case "RESOLVE_COMBAT":
+    case "ACK_PLAYBACK_COMPLETE":
       exactKeys(raw, ["commandId", "expectedRevision", "type"], type);
       return Object.freeze({ ...common, type });
     case "BUY_SHOP_HERO":
@@ -124,10 +129,19 @@ export async function handleAdventureRuntimeRequest(
   value: unknown,
 ): Promise<AdventureRuntimeResponse> {
   const request = parseAdventureRuntimeRequest(value);
-  const result = request.type === "RESOLVE_COMBAT"
-    ? await session.resolveCombat(request)
-    : request.type === "CLAIM_ROUND_REWARD"
-      ? await session.claimReward(request)
+  if (request.type === "RESOLVE_COMBAT") {
+    const result = await session.resolveCombat(request);
+    return Object.freeze({
+      revision: result.revision,
+      replayed: result.replayed,
+      view: session.view,
+      playback: result.playback,
+    });
+  }
+  const result = request.type === "CLAIM_ROUND_REWARD"
+    ? await session.claimReward(request)
+    : request.type === "ACK_PLAYBACK_COMPLETE"
+      ? await session.ackPlaybackComplete(request)
       : await session.dispatch(request);
   return Object.freeze({
     revision: result.revision,

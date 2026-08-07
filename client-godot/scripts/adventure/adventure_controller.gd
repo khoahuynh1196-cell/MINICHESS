@@ -5,6 +5,7 @@ const CommandFactoryScript = preload("res://scripts/adventure/adventure_command_
 
 signal view_changed(view: Dictionary)
 signal phase_changed(previous_phase: String, next_phase: String)
+signal playback_ready(playback: Dictionary)
 signal command_rejected(action: String, reason: String)
 signal protocol_error(message: String)
 
@@ -20,8 +21,22 @@ func attach_runtime_port(runtime_port) -> void:
 		return
 	_runtime_port.view_changed.connect(_on_runtime_view_changed)
 	_runtime_port.protocol_error.connect(_on_runtime_protocol_error)
+	if _runtime_port.has_signal("combat_playback_ready"):
+		_runtime_port.combat_playback_ready.connect(_on_runtime_playback_ready)
 	if _runtime_port.has_view():
-		_on_runtime_view_changed(_runtime_port.current_view())
+		var restored_view: Dictionary = _runtime_port.current_view()
+		_on_runtime_view_changed(restored_view)
+		# A cold attach (e.g. after restoring a save) never goes through
+		# accept_response(), so combat_playback_ready never fires for it.
+		# If the restored run is already in PLAYBACK, its stored playback
+		# (persisted on lastCombat since Mission 1/4) must still reach the
+		# presentation layer so a resumed session doesn't lose the replay.
+		if String(restored_view.get("phase", "")) == "PLAYBACK":
+			var last_combat_value = restored_view.get("lastCombat", {})
+			if typeof(last_combat_value) == TYPE_DICTIONARY:
+				var playback_value = Dictionary(last_combat_value).get("playback", {})
+				if typeof(playback_value) == TYPE_DICTIONARY and not Dictionary(playback_value).is_empty():
+					playback_ready.emit(Dictionary(playback_value).duplicate(true))
 
 func current_view() -> Dictionary:
 	return _view.duplicate(true)
@@ -55,8 +70,9 @@ func request_buy_shop_hero(shop_slot_index: int) -> bool:
 	))
 
 func request_move_hero(hero_instance_id: String, destination_kind: String, destination_index: int) -> bool:
-	if not _prepare_phase():
-		return _reject("moveHero", "WRONG_PHASE")
+	var action := _action("moveHero")
+	if not bool(action.get("allowed", false)):
+		return _reject("moveHero", String(action.get("reason", "ACTION_NOT_ALLOWED")))
 	return _submit(CommandFactoryScript.move_hero(
 		_next_command_id("MOVE_HERO"),
 		_current_revision(),
@@ -66,8 +82,9 @@ func request_move_hero(hero_instance_id: String, destination_kind: String, desti
 	))
 
 func request_sell_hero(hero_instance_id: String) -> bool:
-	if not _prepare_phase():
-		return _reject("sellHero", "WRONG_PHASE")
+	var action := _action("sellHero")
+	if not bool(action.get("allowed", false)):
+		return _reject("sellHero", String(action.get("reason", "ACTION_NOT_ALLOWED")))
 	return _submit(CommandFactoryScript.sell_hero(
 		_next_command_id("SELL_HERO"),
 		_current_revision(),
@@ -75,8 +92,9 @@ func request_sell_hero(hero_instance_id: String) -> bool:
 	))
 
 func request_equip_item(item_instance_id: String, hero_instance_id: String) -> bool:
-	if not _prepare_phase():
-		return _reject("equipItem", "WRONG_PHASE")
+	var action := _action("equipItem")
+	if not bool(action.get("allowed", false)):
+		return _reject("equipItem", String(action.get("reason", "ACTION_NOT_ALLOWED")))
 	return _submit(CommandFactoryScript.equip_item(
 		_next_command_id("EQUIP_ITEM"),
 		_current_revision(),
@@ -85,8 +103,9 @@ func request_equip_item(item_instance_id: String, hero_instance_id: String) -> b
 	))
 
 func request_unequip_item(item_instance_id: String) -> bool:
-	if not _prepare_phase():
-		return _reject("unequipItem", "WRONG_PHASE")
+	var action := _action("unequipItem")
+	if not bool(action.get("allowed", false)):
+		return _reject("unequipItem", String(action.get("reason", "ACTION_NOT_ALLOWED")))
 	return _submit(CommandFactoryScript.unequip_item(
 		_next_command_id("UNEQUIP_ITEM"),
 		_current_revision(),
@@ -104,6 +123,10 @@ func request_start_round() -> bool:
 func request_resolve_combat() -> bool:
 	return _submit_action("resolveCombat", "RESOLVE_COMBAT", func(command_id: String, revision: int):
 		return CommandFactoryScript.resolve_combat(command_id, revision))
+
+func request_ack_playback_complete() -> bool:
+	return _submit_action("ackPlaybackComplete", "ACK_PLAYBACK_COMPLETE", func(command_id: String, revision: int):
+		return CommandFactoryScript.ack_playback_complete(command_id, revision))
 
 func request_claim_round_reward(selections: Array) -> bool:
 	return _submit_action("claimRoundReward", "CLAIM_ROUND_REWARD", func(command_id: String, revision: int):
@@ -145,9 +168,6 @@ func _shop_slot_action(index: int) -> Dictionary:
 		return { "allowed": false, "reason": "INVALID_SHOP_SLOT" }
 	return slots[index]
 
-func _prepare_phase() -> bool:
-	return has_view() and String(_view.get("phase", "")) == "PREPARE"
-
 func _current_revision() -> int:
 	return int(_view.get("revision", -1))
 
@@ -172,8 +192,13 @@ func _on_runtime_view_changed(view: Dictionary) -> void:
 func _on_runtime_protocol_error(message: String) -> void:
 	protocol_error.emit(message)
 
+func _on_runtime_playback_ready(playback: Dictionary) -> void:
+	playback_ready.emit(playback.duplicate(true))
+
 func _disconnect_runtime_port(runtime_port) -> void:
 	if runtime_port.view_changed.is_connected(_on_runtime_view_changed):
 		runtime_port.view_changed.disconnect(_on_runtime_view_changed)
 	if runtime_port.protocol_error.is_connected(_on_runtime_protocol_error):
 		runtime_port.protocol_error.disconnect(_on_runtime_protocol_error)
+	if runtime_port.has_signal("combat_playback_ready") and runtime_port.combat_playback_ready.is_connected(_on_runtime_playback_ready):
+		runtime_port.combat_playback_ready.disconnect(_on_runtime_playback_ready)

@@ -6,7 +6,10 @@ import {
   compileContentBundle,
   compileOfflineRelease,
   compileRuleset,
+  createAdventureCombatPlayback,
   type AdventureCombatEngine,
+  type AdventureCombatEngineResult,
+  type AdventureCombatSnapshot,
   type AdventureStateStore,
 } from "../../src/index.js";
 
@@ -37,6 +40,17 @@ class MemoryStore implements AdventureStateStore {
   }
 }
 
+function minimalResult(
+  snapshot: AdventureCombatSnapshot,
+  outcome: { round: number; winner: "player" | "enemy"; survivingEnemyUnits: number; resultHash: string; finalTick: number; reason: "elimination" | "timeout" },
+): AdventureCombatEngineResult {
+  const playback = createAdventureCombatPlayback(snapshot, [
+    { sequence: 0, tick: 0, type: "COMBAT_STARTED", payload: {} },
+    { sequence: 1, tick: outcome.finalTick, type: "COMBAT_ENDED", payload: { winner: outcome.winner } },
+  ]);
+  return { outcome, playback };
+}
+
 function dependencies(store: MemoryStore, engine?: AdventureCombatEngine) {
   return {
     release,
@@ -46,14 +60,14 @@ function dependencies(store: MemoryStore, engine?: AdventureCombatEngine) {
     clientSchema: 1,
     combatEngine: engine ?? {
       resolve(request) {
-        return {
-          round: request.state.run.round,
-          winner: "player" as const,
+        return minimalResult(request.snapshot, {
+          round: request.snapshot.round,
+          winner: "player",
           survivingEnemyUnits: 0,
-          resultHash: `session-result-${request.state.run.round}`,
+          resultHash: `session-result-${request.snapshot.round}`,
           finalTick: 100,
-          reason: "elimination" as const,
-        };
+          reason: "elimination",
+        });
       },
     },
     store,
@@ -91,20 +105,27 @@ describe("offline Adventure session", () => {
       expectedRevision: 3,
       type: "RESOLVE_COMBAT",
     });
-    const selections = resolved.state.pendingReward!.offers.map((offer) => ({
+    expect(resolved.state.run.phase).toBe("PLAYBACK");
+    const acked = await session.ackPlaybackComplete({
+      commandId: "ack",
+      expectedRevision: 4,
+      type: "ACK_PLAYBACK_COMPLETE",
+    });
+    expect(acked.state.run.phase).toBe("REWARD");
+    const selections = acked.state.pendingReward!.offers.map((offer) => ({
       offerId: offer.id,
       optionId: offer.options[0]!.id,
     }));
     await session.claimReward({
       commandId: "claim",
-      expectedRevision: 4,
+      expectedRevision: 5,
       type: "CLAIM_ROUND_REWARD",
       selections,
     });
 
-    expect(session.state.run).toMatchObject({ phase: "PREPARE", round: 2, revision: 5 });
+    expect(session.state.run).toMatchObject({ phase: "PREPARE", round: 2, revision: 6 });
     expect(store.encoded).toBeDefined();
-    expect(store.saves).toBe(6);
+    expect(store.saves).toBe(7);
   });
 
   it("restores the exact checksummed state in a new session", async () => {
@@ -126,14 +147,14 @@ describe("offline Adventure session", () => {
     const engine: AdventureCombatEngine = {
       resolve(request) {
         engineCalls += 1;
-        return {
-          round: request.state.run.round,
+        return minimalResult(request.snapshot, {
+          round: request.snapshot.round,
           winner: "player",
           survivingEnemyUnits: 0,
           resultHash: "one-result",
           finalTick: 1,
           reason: "elimination",
-        };
+        });
       },
     };
     const session = new AdventureSession(dependencies(store, engine));
@@ -150,6 +171,39 @@ describe("offline Adventure session", () => {
     expect(replay.replayed).toBe(true);
     expect(store.saves).toBe(savesAfterFirst);
     expect(savesAfterFirst).toBe(savesBefore + 1);
+  });
+
+  it("resumes PLAYBACK after a restore without re-simulating combat", async () => {
+    const store = new MemoryStore();
+    let engineCalls = 0;
+    const engine: AdventureCombatEngine = {
+      resolve(request) {
+        engineCalls += 1;
+        return minimalResult(request.snapshot, {
+          round: request.snapshot.round, winner: "player", survivingEnemyUnits: 0,
+          resultHash: "resume-result", finalTick: 1, reason: "elimination",
+        });
+      },
+    };
+    const session = new AdventureSession(dependencies(store, engine));
+    await session.start({ id: "resume-run", seed: "resume-seed" });
+    await reachCombat(session);
+    const resolved = await session.resolveCombat({ commandId: "resolve", expectedRevision: 3, type: "RESOLVE_COMBAT" });
+    expect(resolved.state.run.phase).toBe("PLAYBACK");
+    expect(engineCalls).toBe(1);
+
+    const restoredSession = new AdventureSession(dependencies(store, engine));
+    const restored = await restoredSession.restore();
+    expect(restored?.run.phase).toBe("PLAYBACK");
+    expect(restored?.lastCombat?.playback?.eventLogHash).toBe(resolved.playback.eventLogHash);
+
+    const retried = await restoredSession.resolveCombat({ commandId: "resolve", expectedRevision: 3, type: "RESOLVE_COMBAT" });
+    expect(engineCalls).toBe(1);
+    expect(retried.replayed).toBe(true);
+    expect(retried.playback.eventLogHash).toBe(resolved.playback.eventLogHash);
+
+    const acked = await restoredSession.ackPlaybackComplete({ commandId: "ack", expectedRevision: 4, type: "ACK_PLAYBACK_COMPLETE" });
+    expect(acked.state.run.phase).toBe("REWARD");
   });
 
   it("does not persist failed mutations", async () => {

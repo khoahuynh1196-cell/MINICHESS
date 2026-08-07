@@ -25,8 +25,13 @@ func _init() -> void:
 		"refreshShop": { "allowed": true },
 		"lockShop": { "allowed": true },
 		"buyXp": { "allowed": false, "reason": "NOT_ENOUGH_GOLD" },
+		"moveHero": { "allowed": true },
+		"sellHero": { "allowed": true },
+		"equipItem": { "allowed": true },
+		"unequipItem": { "allowed": true },
 		"startRound": { "allowed": false, "reason": "EMPTY_BOARD" },
 		"resolveCombat": { "allowed": false, "reason": "WRONG_PHASE" },
+		"ackPlaybackComplete": { "allowed": false, "reason": "WRONG_PHASE" },
 		"claimRoundReward": { "allowed": false, "reason": "WRONG_PHASE" },
 		"claimRewardHero": { "allowed": false, "reason": "NO_PENDING_HERO_REWARD" },
 		"buyShopSlots": [{ "allowed": true }, { "allowed": false, "reason": "SLOT_EMPTY" }],
@@ -53,8 +58,13 @@ func _init() -> void:
 		"refreshShop": { "allowed": false, "reason": "WRONG_PHASE" },
 		"lockShop": { "allowed": false, "reason": "WRONG_PHASE" },
 		"buyXp": { "allowed": false, "reason": "WRONG_PHASE" },
+		"moveHero": { "allowed": false, "reason": "WRONG_PHASE" },
+		"sellHero": { "allowed": false, "reason": "WRONG_PHASE" },
+		"equipItem": { "allowed": false, "reason": "WRONG_PHASE" },
+		"unequipItem": { "allowed": false, "reason": "WRONG_PHASE" },
 		"startRound": { "allowed": false, "reason": "WRONG_PHASE" },
 		"resolveCombat": { "allowed": true },
+		"ackPlaybackComplete": { "allowed": false, "reason": "WRONG_PHASE" },
 		"claimRoundReward": { "allowed": false, "reason": "WRONG_PHASE" },
 		"claimRewardHero": { "allowed": false, "reason": "WRONG_PHASE" },
 		"buyShopSlots": [{ "allowed": false, "reason": "WRONG_PHASE" }],
@@ -65,14 +75,56 @@ func _init() -> void:
 	_expect(not controller.request_move_hero("hero-a", "board", 0), "prepare-only move must be rejected in combat")
 	_expect(rejections.back() == ["moveHero", "WRONG_PHASE"], "prepare-only action must expose wrong phase")
 
+	var playbacks: Array = []
+	controller.playback_ready.connect(func(playback: Dictionary) -> void: playbacks.append(playback))
+	_expect(port.accept_response(_response_with_playback(2, "PLAYBACK", {
+		"refreshShop": { "allowed": false, "reason": "WRONG_PHASE" },
+		"lockShop": { "allowed": false, "reason": "WRONG_PHASE" },
+		"buyXp": { "allowed": false, "reason": "WRONG_PHASE" },
+		"moveHero": { "allowed": false, "reason": "WRONG_PHASE" },
+		"sellHero": { "allowed": false, "reason": "WRONG_PHASE" },
+		"equipItem": { "allowed": false, "reason": "WRONG_PHASE" },
+		"unequipItem": { "allowed": false, "reason": "WRONG_PHASE" },
+		"startRound": { "allowed": false, "reason": "WRONG_PHASE" },
+		"resolveCombat": { "allowed": false, "reason": "WRONG_PHASE" },
+		"ackPlaybackComplete": { "allowed": true },
+		"claimRoundReward": { "allowed": false, "reason": "WRONG_PHASE" },
+		"claimRewardHero": { "allowed": false, "reason": "WRONG_PHASE" },
+		"buyShopSlots": [{ "allowed": false, "reason": "WRONG_PHASE" }],
+	}, { "combatId": "combat:controller-run:1:0", "events": [{ "sequence": 0, "tick": 0, "type": "COMBAT_STARTED" }] })), "playback response must be accepted")
+	_expect(phases.back() == ["COMBAT", "PLAYBACK"], "playback view must emit a phase transition")
+	_expect(playbacks.size() == 1 and playbacks[0].get("combatId", "") == "combat:controller-run:1:0", "playback response must emit playback_ready")
+	_expect(controller.request_ack_playback_complete(), "ack must submit when authoritative view allows it")
+	_expect(requests.back().type == "ACK_PLAYBACK_COMPLETE" and requests.back().expectedRevision == 2, "ack must use the current authoritative revision")
+
 	var copied_view := controller.current_view()
 	copied_view["phase"] = "MUTATED"
-	_expect(String(controller.current_view().get("phase", "")) == "COMBAT", "current_view must return a deep copy")
+	_expect(String(controller.current_view().get("phase", "")) == "PLAYBACK", "current_view must return a deep copy")
 
 	controller.attach_runtime_port(null)
-	_expect(not controller.request_resolve_combat(), "commands must fail when runtime is detached")
-	_expect(rejections.back() == ["RESOLVE_COMBAT", "RUNTIME_NOT_ATTACHED"], "detached runtime must emit an explicit reason")
+	_expect(not controller.request_ack_playback_complete(), "commands must fail when runtime is detached")
+	_expect(rejections.back() == ["ACK_PLAYBACK_COMPLETE", "RUNTIME_NOT_ATTACHED"], "detached runtime must emit an explicit reason")
 	controller.queue_free()
+
+	# A cold attach onto a runtime port that already holds a restored
+	# PLAYBACK-phase view (e.g. after the app relaunches mid-combat) must
+	# still surface the stored playback, even though no live
+	# combat_playback_ready ever fires for it.
+	var resumed_controller = ControllerScript.new()
+	get_root().add_child(resumed_controller)
+	var resumed_port = RuntimePortScript.new()
+	var resumed_response := _response(9, "PLAYBACK", { "ackPlaybackComplete": { "allowed": true } })
+	resumed_response["view"]["lastCombat"] = {
+		"round": 1, "winner": "player", "survivingEnemyUnits": 0, "resultHash": "resumed-result", "finalTick": 1, "reason": "elimination",
+		"playback": { "combatId": "combat:resumed-run:1:0", "events": [{ "sequence": 0, "tick": 0, "type": "COMBAT_STARTED" }] },
+	}
+	resumed_port.accept_response(resumed_response)
+	var resumed_playbacks: Array = []
+	resumed_controller.playback_ready.connect(func(playback: Dictionary) -> void: resumed_playbacks.append(playback))
+	resumed_controller.attach_runtime_port(resumed_port)
+	_expect(resumed_playbacks.size() == 1 and resumed_playbacks[0].get("combatId", "") == "combat:resumed-run:1:0",
+		"cold attach into an existing PLAYBACK view must re-emit its stored playback")
+	resumed_controller.queue_free()
 	_finish()
 
 func _response(revision: int, phase: String, actions: Dictionary) -> Dictionary:
@@ -92,6 +144,11 @@ func _response(revision: int, phase: String, actions: Dictionary) -> Dictionary:
 			"actions": actions,
 		},
 	}
+
+func _response_with_playback(revision: int, phase: String, actions: Dictionary, playback: Dictionary) -> Dictionary:
+	var response := _response(revision, phase, actions)
+	response["playback"] = playback
+	return response
 
 func _expect(condition: bool, message: String) -> void:
 	if not condition:

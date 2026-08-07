@@ -127,7 +127,7 @@ func _valid_view(view: Dictionary, rules: Dictionary) -> bool:
 			return false
 	if String(view["id"]).is_empty() or int(view["revision"]) < 0:
 		return false
-	if not ["PREPARE", "COMBAT", "REWARD", "COMPLETE"].has(String(view["phase"])):
+	if not ["PREPARE", "COMBAT", "PLAYBACK", "REWARD", "COMPLETE"].has(String(view["phase"])):
 		return false
 	if String(view["rulesetVersion"]) != String(rules.get("version", "")):
 		return false

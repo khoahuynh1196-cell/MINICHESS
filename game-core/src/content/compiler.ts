@@ -302,6 +302,17 @@ function requireEncounter(value: unknown): RawEncounter {
   return { ...encounter, biome: biome as RawEncounter["biome"], ...(enemyComposition === undefined ? {} : { enemy_composition: enemyComposition }), ...(affix === undefined ? {} : { affix }) };
 }
 
+/**
+ * Normalizes one raw content effect (snake_case fields, e.g. `base_value`)
+ * into the compiled `CombatEffect` shape (camelCase). Skills are stored
+ * uncompiled in `CompiledContentBundle.skillsById` (unlike trait/item
+ * triggers, which are normalized during trait/item compilation) so combat
+ * simulation must call this itself to read a skill's effects.
+ */
+export function compileCombatEffect(value: unknown): CombatEffect {
+  return normalizeEffect(value);
+}
+
 function normalizeEffect(value: unknown): CombatEffect {
   const effect = requireIdentified(value, "effect") as RawEffect;
   const raw = effect as Record<string, unknown>;
