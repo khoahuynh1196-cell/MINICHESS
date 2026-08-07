@@ -962,3 +962,145 @@ git diff --check   clean
 - `combat_screen.gd`'s unit list is text, not board-positioned sprites;
   real positioning needs the 4×8 board layout work Mission 10's asset
   contract will inform.
+
+## Mission 9 — Harden production content and generic primitives (2026-08-07)
+
+**Branch:** `antigravity/offline-foundation-hardening`.
+
+### What was investigated and found already satisfied
+
+Most of this mission's checklist turned out to already be enforced by
+existing code from earlier missions, not new work:
+
+- **Cardinality (20 heroes / 20 skills / 10 traits / 12 normal items / 6
+  unique items / 6 transformations / 8 encounters).** Enforced by
+  `validateAlphaV03Cardinality()` inside `compileContentBundle()`
+  (`game-core/src/content/compiler.ts:441`) — it throws if any count is
+  wrong, so a successful `compileContentBundle()` call (used by every
+  test, the domain smoke, and this mission's own balance script) is
+  itself the proof, not a one-off check that can go stale.
+- **No hero-ID branching in generic systems.** Re-searched
+  `production-kernel.ts`, `adventure/*.ts`, and `content/compiler.ts` for
+  `heroId ===` / literal `"H0x"` comparisons. The only match
+  (`roster.ts:195-198`, star-merge grouping) compares two roster entries'
+  `heroId` fields to each other generically — not a hardcoded ID — so the
+  no-hero-ID-branching invariant holds.
+- **Every compiled effect primitive/trigger has executor coverage.**
+  Already proven behaviorally by Mission 3's `production-kernel.test.ts`
+  (18 tests, one or more per primitive/trigger family). Not re-proven
+  here since nothing in the kernel changed this mission.
+- **Visual profile completeness** (separate board/portrait/ability-icon/
+  transformation-VFX references per the plan's wording). Read
+  `content/alpha-0.3.0/bundle.json` directly: all 20 heroes have a
+  `visual_profile_id` resolving to a `visual_profiles` entry with four
+  distinct keys (`sprite_key`, `portrait_key`, `ability_icon_key`,
+  `vfx_key`) plus five anchor points; all 6 unique items resolve a
+  `visual_transformation_id` to a `transformations` entry with five more
+  distinct keys (`accessory_key`, `aura_key`, `vfx_key`, `icon_key`,
+  `portrait_badge_key`). No gaps found — 20/20 heroes, distinct keys
+  throughout.
+- **Content version.** `releases/offline-foundation-0.1.0/release.json`
+  locks `content.version: "alpha-0.3.0"`. Content itself needed no
+  changes this mission (only new tooling was added), so no new content
+  version was forked — CONTEXT.md's version-bump rule is conditional on
+  content actually changing.
+
+### Added
+
+The one concrete, not-yet-satisfied deliverable from the plan text: *"Add
+deterministic balance simulation script with explicit seeds and sample
+size. Produce a report containing pick/use frequency, win/loss proxies,
+damage/heal/shield distributions and caveats. Do not overfit balance from
+tiny samples."*
+
+- `tools/run-balance-simulation.mjs` (new): plays `BALANCE_SAMPLE_SIZE`
+  (default 30) full Adventure runs, seeds `balance-seed-1..N`, through
+  the same scripted greedy economy `tools/run-adventure-domain-smoke.mjs`
+  uses (buy affordable heroes preferring the offense-tagged roster,
+  deploy bench to board cap, spend remaining gold on XP, claim queued
+  reward heroes, auto-select each reward's first option) — driven through
+  the **real** `runProductionCombat()` kernel, not a fake. For every
+  resolved round it maps each playback event's `sourceUnitId` back to a
+  `heroId` via the combat snapshot's `playerUnits` list (`unitId ->
+  heroId`), and aggregates: win rate and mean final tick per round
+  number, and total damage/heal/shield dealt plus deployment count per
+  hero. Writes `docs/evidence/balance-simulation-report.json` and prints
+  a summary.
+- Explicit `caveats` array embedded in the JSON report itself (not just
+  this doc) so anyone reading the report in isolation sees the
+  limitations: small sample size, deployment frequency reflects the
+  scripted heuristic not real player choice, raw per-hero totals aren't
+  normalized by deployment count, and the numeric interpretation of
+  `CombatEffect.baseValue` is this branch's own inferred convention.
+- `package.json`: added `"balance:simulate": "node
+  tools/run-balance-simulation.mjs"`. Deliberately **not** wired into
+  `check` — it's an informational report, not a correctness gate, and
+  running 30 full 8-round simulations on every `check` would slow the
+  fast feedback loop for no correctness benefit.
+
+### A real bug the script caught in itself while writing it
+
+First run produced an empty `roundSummary` for all 30 seeds — the script
+called `spendRemainingGoldOnXp()` before `buyAffordableHeroes()`, so the
+starting 8 gold got fully drained into XP purchases (cost 4 each) before
+any hero could be bought, leaving the board empty and breaking the loop
+on round 1 every time. Fixed by reordering to buy-then-deploy-then-spend,
+matching what the function name ("remaining" gold) already implied.
+Caught by inspecting the first run's output rather than trusting a
+`status: PASS` field that was true regardless of whether any combat
+actually ran — worth remembering for any future script whose top-level
+status doesn't depend on its own body having done anything.
+
+### Balance signal (informational, not a gate — see caveats above)
+
+```
+BALANCE_SAMPLE_SIZE=30 pnpm run balance:simulate
+{"status":"PASS","sampleSize":30,"roundSummary":[
+  {"round":1,"winRate":1,"samples":30,"meanFinalTick":234},
+  {"round":2,"winRate":1,"samples":30,"meanFinalTick":311},
+  {"round":3,"winRate":0.933,"samples":30,"meanFinalTick":433},
+  {"round":4,"winRate":0,"samples":30,"meanFinalTick":437},
+  {"round":5,"winRate":0.2,"samples":30,"meanFinalTick":600},
+  {"round":6,"winRate":0,"samples":30,"meanFinalTick":205},
+  {"round":7,"winRate":0,"samples":8,"meanFinalTick":191}
+],"reportPath":"docs/evidence/balance-simulation-report.json"}
+```
+
+Win rate falls off a cliff after round 3 under this scripted economy,
+consistent with `run-adventure-domain-smoke.mjs`'s own single-seed
+result (dies at round 4 in its `defeatPath` check) and Mission 5's
+evidence note that a generic greedy strategy does not clear all 8
+rounds under current balance. 19/20 non-unique heroes got deployed at
+least once across the 30 seeds (only `H02` was rare, 6 deployments) —
+full `heroSummary` is in the JSON report, not reproduced here. This is a
+directional signal for future tuning work, not a balance verdict: 30
+seeds of one fixed heuristic cannot distinguish "kernel numeric
+convention needs revisiting" from "this specific greedy strategy is
+weak" from "round 4+ encounters are intentionally meant to require
+better play than a scripted buyer provides."
+
+### Verification
+
+```
+pnpm run check — green (rules:check, typecheck [game-core+server],
+  243 game-core tests, 142 server tests, smoke:domain PASS)
+pnpm run balance:simulate — PASS, report written, see above
+Godot headless suite: 34/46 PASS — same 12 pre-existing failures as
+  Mission 8 (asset-pipeline/battle_controller/old-screen debt, all
+  Mission 10 scope), zero regressions. No .gd files touched this
+  mission.
+```
+
+### Remaining debt (explicitly not done here)
+
+- The balance report's damage/heal/shield totals are raw sums, not
+  normalized per-round-deployed — comparing two heroes with very
+  different deployment counts requires dividing manually for now.
+- No pick/use frequency proxy independent of the scripted economy's
+  purchase heuristic exists — a real player-preference signal would
+  need actual playtesting, which is out of scope for an offline
+  automation branch.
+- `CombatEffect.baseValue`'s numeric convention (documented as an
+  inferred convention since Mission 3) is unconfirmed against original
+  design intent; this mission surfaces balance data under that
+  convention but does not resolve the ambiguity.

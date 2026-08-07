@@ -1,0 +1,200 @@
+{
+  "status": "PASS",
+  "scope": "Deterministic balance simulation via the real production 4x8 combat engine",
+  "sampleSize": 30,
+  "caveats": [
+    "Sample size is small (see sampleSize above); treat every number here as directional, not conclusive -- do not overfit balance decisions to it.",
+    "\"Deployment frequency\" reflects tools/run-adventure-domain-smoke.mjs's scripted purchasing heuristic (prefer offense-tagged heroes, buy up to board cap, then spend on XP), not real player preference.",
+    "Damage/heal/shield totals are summed across every simulated round a hero was deployed in, not normalized per-round or per-deployment -- a hero deployed more often will show a higher raw total even at equal per-fight output.",
+    "Numeric interpretation of CombatEffect.baseValue (see game-core/src/simulation/production-kernel.ts) is this branch's own inferred convention, not confirmed game-design intent; balance conclusions inherit that uncertainty.",
+    "Win rate reflects THIS kernel's current numeric interpretation and THIS scripted economy, matching Mission 5's own finding that a generic greedy strategy does not clear all 8 rounds under current balance."
+  ],
+  "roundSummary": [
+    {
+      "round": 1,
+      "winRate": 1,
+      "samples": 30,
+      "meanFinalTick": 234
+    },
+    {
+      "round": 2,
+      "winRate": 1,
+      "samples": 30,
+      "meanFinalTick": 311
+    },
+    {
+      "round": 3,
+      "winRate": 0.933,
+      "samples": 30,
+      "meanFinalTick": 433
+    },
+    {
+      "round": 4,
+      "winRate": 0,
+      "samples": 30,
+      "meanFinalTick": 437
+    },
+    {
+      "round": 5,
+      "winRate": 0.2,
+      "samples": 30,
+      "meanFinalTick": 600
+    },
+    {
+      "round": 6,
+      "winRate": 0,
+      "samples": 30,
+      "meanFinalTick": 205
+    },
+    {
+      "round": 7,
+      "winRate": 0,
+      "samples": 8,
+      "meanFinalTick": 191
+    }
+  ],
+  "heroSummary": [
+    {
+      "heroId": "H01",
+      "deployedRounds": 38,
+      "totalDamage": 2584198,
+      "totalHeal": 0,
+      "totalShield": 2530000
+    },
+    {
+      "heroId": "H02",
+      "deployedRounds": 6,
+      "totalDamage": 360858,
+      "totalHeal": 0,
+      "totalShield": 0
+    },
+    {
+      "heroId": "H03",
+      "deployedRounds": 90,
+      "totalDamage": 6863544,
+      "totalHeal": 0,
+      "totalShield": 0
+    },
+    {
+      "heroId": "H04",
+      "deployedRounds": 11,
+      "totalDamage": 640619,
+      "totalHeal": 0,
+      "totalShield": 0
+    },
+    {
+      "heroId": "H05",
+      "deployedRounds": 25,
+      "totalDamage": 1274504,
+      "totalHeal": 759768,
+      "totalShield": 0
+    },
+    {
+      "heroId": "H06",
+      "deployedRounds": 41,
+      "totalDamage": 2096736,
+      "totalHeal": 0,
+      "totalShield": 1800000
+    },
+    {
+      "heroId": "H07",
+      "deployedRounds": 79,
+      "totalDamage": 4322695,
+      "totalHeal": 0,
+      "totalShield": 0
+    },
+    {
+      "heroId": "H08",
+      "deployedRounds": 20,
+      "totalDamage": 1782536,
+      "totalHeal": 0,
+      "totalShield": 0
+    },
+    {
+      "heroId": "H09",
+      "deployedRounds": 6,
+      "totalDamage": 614606,
+      "totalHeal": 0,
+      "totalShield": 0
+    },
+    {
+      "heroId": "H10",
+      "deployedRounds": 66,
+      "totalDamage": 3776851,
+      "totalHeal": 0,
+      "totalShield": 2272000
+    },
+    {
+      "heroId": "H11",
+      "deployedRounds": 60,
+      "totalDamage": 3580411,
+      "totalHeal": 0,
+      "totalShield": 0
+    },
+    {
+      "heroId": "H12",
+      "deployedRounds": 66,
+      "totalDamage": 5048426,
+      "totalHeal": 0,
+      "totalShield": 0
+    },
+    {
+      "heroId": "H13",
+      "deployedRounds": 12,
+      "totalDamage": 1090703,
+      "totalHeal": 0,
+      "totalShield": 0
+    },
+    {
+      "heroId": "H14",
+      "deployedRounds": 30,
+      "totalDamage": 1330597,
+      "totalHeal": 941184,
+      "totalShield": 0
+    },
+    {
+      "heroId": "H15",
+      "deployedRounds": 73,
+      "totalDamage": 3125170,
+      "totalHeal": 0,
+      "totalShield": 0
+    },
+    {
+      "heroId": "H16",
+      "deployedRounds": 13,
+      "totalDamage": 713222,
+      "totalHeal": 0,
+      "totalShield": 0
+    },
+    {
+      "heroId": "H17",
+      "deployedRounds": 31,
+      "totalDamage": 1520260,
+      "totalHeal": 1172789,
+      "totalShield": 0
+    },
+    {
+      "heroId": "H18",
+      "deployedRounds": 0,
+      "totalDamage": 0,
+      "totalHeal": 0,
+      "totalShield": 0
+    },
+    {
+      "heroId": "H19",
+      "deployedRounds": 7,
+      "totalDamage": 929142,
+      "totalHeal": 0,
+      "totalShield": 0
+    },
+    {
+      "heroId": "H20",
+      "deployedRounds": 1,
+      "totalDamage": 13424,
+      "totalHeal": 0,
+      "totalShield": 20000
+    }
+  ],
+  "rulesetVersion": "production-rules-0.1.0",
+  "contentVersion": "alpha-0.3.0"
+}
