@@ -555,3 +555,85 @@ git diff --check   clean
   controller do not yet know about the `PLAYBACK` phase or emit/consume
   `ACK_PLAYBACK_COMPLETE`. That is Mission 6 scope (Godot Adventure
   runtime boundary).
+
+## Mission 5 — Eight-round headless Adventure via the production engine (2026-08-07)
+
+**Branch:** `antigravity/offline-foundation-hardening`.
+
+### Kernel bug found and fixed while building this mission
+
+Building a real (not fake-outcome) 8-round scripted playthrough is the
+first thing that actually *exercises* the production kernel against
+realistic content end-to-end, and it immediately surfaced two dimensional
+bugs in Mission 3's kernel that made every realistic matchup time out.
+Both are fixed in a dedicated commit (`ec3989a`, described above the
+Mission 3 section date but landed while working this mission): the
+attack/move pacing formula ignored the ruleset's actual tick rate (5x too
+slow), and the armor/magic-resist mitigation formula compared armor
+directly against `SCALE` instead of the standard `resist/(100+resist)`
+curve (crushing ~95% of all damage instead of the intended ~15-20%).
+Verified before/after with a controlled 3v2 matchup: previously timed out
+at tick 700 with zero kills; now resolves by elimination at tick 181.
+
+### Added
+
+- `tools/run-adventure-domain-smoke.mjs`: rewritten to inject the real
+  `runProductionCombat` as `combatEngine` (previously a scripted
+  fake-outcome stub). The scripted economy: buys heroes (preferring
+  offense-skill heroes — roughly half the roster is pure
+  support/utility, so a generic buyer starves DPS), spends leftover gold
+  on XP, deploys up to the current board cap, equips every unassigned
+  reward item, claims queued hero rewards (selling bench space if
+  needed), and always ACKs playback before claiming a reward. A mid-run
+  save/restore is verified after round 4 (a second `AdventureSession`
+  sharing the same store must restore into `REWARD` phase at round 4).
+  The whole script runs twice with the same seed and asserts byte-identical
+  final state and per-round outcomes.
+- `package.json`: added `smoke:domain` and wired it into `pnpm run check`
+  (previously not wired into any script at all).
+- A second scripted run, `playToDefeat()`, deploys exactly one hero once
+  and never invests further, so the encounter's rising stat multiplier
+  guarantees a loss without needing any randomness to decide the outcome
+  — this is the deterministic defeat-path proof the mission asked for.
+
+### Honest result: a generic greedy economy does not clear all 8 rounds
+
+The scripted playthrough wins rounds 1-3 convincingly (and round 5 in one
+of the explored variants) but loses by round 7 under the current content
+balance and kernel numeric interpretation documented in
+`production-kernel.ts`. This was not treated as a bug to route around:
+several purchasing heuristics were tried (buy-to-cap then XP,
+duplicate-priority buying for star merges, XP-rush, offense-hero
+prioritization, highest-cost reward selection) and the best one is what
+shipped. Squeezing out a guaranteed full clear from here is balance
+tuning — Mission 9's explicit scope ("Add deterministic balance
+simulation script... produce a report containing pick/use frequency,
+win/loss proxies... do not overfit balance from tiny samples") — not an
+architecture defect. What this mission needed to prove, and does prove,
+is that the pure domain lifecycle correctly drives *real, undoctored*
+combat through repeated wins and losses, round after round, via
+deterministic scripted decisions, all the way to a legitimate `COMPLETE`.
+
+### Verification
+
+```
+pnpm run check
+  rules:check PASS, typecheck PASS, game-core 29/241 PASS, server 10/142 PASS,
+  smoke:domain PASS:
+    run: 7 rounds played (W,W,W,L,L,L,L), final health 0, level 5,
+         revision 55, 2 items, 56 saves, deterministic across two full
+         identical-seed runs (byte-identical final state and per-round
+         outcomes)
+    defeatPath: health 0, round 4, phase COMPLETE
+git diff --check   clean
+```
+
+### Remaining debt
+
+- No generic scripted economy achieves a full 8-round clear under the
+  current balance (see above) — flagged for Mission 9, not silently
+  hidden.
+- `smoke:domain` is wired into `pnpm run check` but not yet into
+  `.github/workflows/ci.yml` as a separate named step; it runs as part of
+  the existing `pnpm run check` CI step, so it is covered, just not
+  separately labeled in CI output.

@@ -12,7 +12,8 @@
     "rules:check": "node tools/export-client-ruleset.mjs --check",
     "typecheck": "pnpm --recursive run typecheck",
     "test": "pnpm --recursive run test",
-    "check": "pnpm run rules:check && pnpm run typecheck && pnpm run test"
+    "smoke:domain": "node tools/run-adventure-domain-smoke.mjs",
+    "check": "pnpm run rules:check && pnpm run typecheck && pnpm run test && pnpm run smoke:domain"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",
