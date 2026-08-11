@@ -11,6 +11,8 @@ func _init() -> void:
 	_expect(_label(screen, "GoldValue") == "12 GOLD", "Prepare header must render gold from the authoritative public view")
 	_expect(_label(screen, "HealthValue") == "31 HP", "Prepare header must render health from the authoritative public view")
 	_expect(_label(screen, "LevelValue") == "LV. 4", "Prepare header must render level from the authoritative public view")
+	var experience_bar := screen.find_child("ExperienceBar", true, false) as ProgressBar
+	_expect(experience_bar != null and is_equal_approx(experience_bar.value, 2.0) and is_equal_approx(experience_bar.max_value, 10.0), "Prepare header must render an authoritative XP progress bar")
 	_expect(_all_core_controls_fit(screen), "Prepare core controls must fit within the 1080 x 1920 portrait viewport")
 	_expect(not _button(screen, "BuySlot0").disabled and not _button(screen, "BuyXp").disabled and not _button(screen, "StartRound").disabled, "Prepare controls must be available during PREPARE")
 	_expect(_label(screen, "TierOdds") == "T1 45%  T2 35%  T3 18%  T4 2%  T5 0%", "Prepare must pass authoritative shop odds into its presentation panel")

@@ -184,6 +184,30 @@ func _header() -> void:
 	_label("RoundValue", "TACTICAL PREP", Rect2(52.0, 78.0, 190.0, 24.0), 16, ThemeTokensScript.MUTED)
 	_label("HealthValue", "%d HP" % int(_view.get("health", 0)), Rect2(270.0, 76.0, 130.0, 28.0), ThemeTokensScript.TYPE_META, ThemeTokensScript.PARCHMENT)
 	_label("GoldValue", "%d GOLD" % int(_view.get("gold", 0)), Rect2(430.0, 76.0, 150.0, 28.0), ThemeTokensScript.TYPE_META, ThemeTokensScript.GOLD)
+	var experience_bar := ProgressBar.new()
+	experience_bar.name = "ExperienceBar"
+	experience_bar.position = Vector2(620.0, 43.0)
+	experience_bar.size = Vector2(132.0, 22.0)
+	experience_bar.min_value = 0.0
+	experience_bar.max_value = float(max(1, int(_view.get("experienceToNext", 0))))
+	experience_bar.value = clampf(float(_view.get("experience", 0)), 0.0, experience_bar.max_value)
+	experience_bar.show_percentage = false
+	experience_bar.tooltip_text = "%d / %d XP to next level" % [int(experience_bar.value), int(experience_bar.max_value)]
+	var experience_background := StyleBoxFlat.new()
+	experience_background.bg_color = Color(ThemeTokensScript.ABYSS, 0.82)
+	experience_background.corner_radius_top_left = 8
+	experience_background.corner_radius_top_right = 8
+	experience_background.corner_radius_bottom_left = 8
+	experience_background.corner_radius_bottom_right = 8
+	var experience_fill := StyleBoxFlat.new()
+	experience_fill.bg_color = ThemeTokensScript.PLAYER
+	experience_fill.corner_radius_top_left = 8
+	experience_fill.corner_radius_top_right = 8
+	experience_fill.corner_radius_bottom_left = 8
+	experience_fill.corner_radius_bottom_right = 8
+	experience_bar.add_theme_stylebox_override("background", experience_background)
+	experience_bar.add_theme_stylebox_override("fill", experience_fill)
+	add_child(experience_bar)
 	_label("LevelValue", "LV. %d" % int(_view.get("level", 0)), Rect2(766.0, 42.0, 105.0, 26.0), ThemeTokensScript.TYPE_META, ThemeTokensScript.PLAYER)
 	_label("ExperienceValue", "%d / %d XP" % [int(_view.get("experience", 0)), int(_view.get("experienceToNext", 0))], Rect2(882.0, 42.0, 130.0, 26.0), 16, ThemeTokensScript.PARCHMENT)
 	_label("FormationHint", "Set formation, then launch the round.", Rect2(628.0, 77.0, 380.0, 24.0), 16, ThemeTokensScript.MUTED)

@@ -88,4 +88,5 @@
 - [x] Keep the tutorial dismissal control at the shared 44px mobile touch target.
 - [x] Render encounter monster previews in the enemy half from the registered manifest, with a visible fallback for missing data.
 - [x] Recycle combat VFX manifest layers without accumulating sprites during replay.
+- [x] Add an authoritative XP progress bar to the mobile Prepare header.
 - [x] Run all 33 Godot headless tests and the full `pnpm run check` gate.
