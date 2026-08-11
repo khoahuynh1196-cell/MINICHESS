@@ -19,7 +19,7 @@ Deliver a testable Adventure PvE slice on one 4 columns × 8 rows board before t
 1. Rules, server state, snapshot generation, replay placement, fixtures, and Godot board layout use the fixed geometry.
 2. All eight Adventure encounters remain playable through the existing authoritative flow.
 3. The client has a progressive, dismissible tutorial cue for rounds 1–8: buy/deploy, roll/merge, traits, Unique, item, positioning, full team, final boss.
-4. The client does not attempt to load the missing `combat-board-3x8-atlas-v2.png`; it uses a registered existing biome board texture or a visible fallback.
+4. Prepare derives the active biome from the authoritative Adventure round (`meadow` 1-2, `ruins` 3-4, `frost_keep` 5-6, `ember_citadel` 7-8) and selects that biome's distinct atlas region; a missing region still uses a visible fallback.
 5. Targeted core, server, and Godot tests run without regressions; `pnpm run check` has a correct build order.
 
 ## Explicitly deferred
@@ -34,6 +34,7 @@ Deliver a testable Adventure PvE slice on one 4 columns × 8 rows board before t
 - A fresh run can buy, deploy, roll, level, equip, start combat, take rewards, and reach recap over all eight existing PvE rounds.
 - Server rejects invalid positions outside `16..31` for player formation; snapshots place player units only in that half of the 4×8 board.
 - A Godot smoke test can build Prepare without a missing board-texture error.
+- Tutorial dismissal remains touch-safe at the shared 44px mobile target.
 - TypeScript typecheck and existing test suites are green after the root check-order repair.
 
 ## Risk management

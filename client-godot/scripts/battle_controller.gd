@@ -34,6 +34,7 @@ const COMBAT_NOTICE_BODY_LINES := 4.0
 const COMBAT_NOTICE_VERTICAL_PADDING := 44.0
 const CONTENT_VERSION := "alpha-0.3.0"
 const MOBILE_CONTROLS_RECT := Rect2(24.0, 1110.0, 1032.0, 760.0)
+const ADVENTURE_BIOMES := ["meadow", "meadow", "ruins", "ruins", "frost_keep", "frost_keep", "ember_citadel", "ember_citadel"]
 
 var unit_views: Dictionary = {}
 var status_text := "Waiting for replay"
@@ -1047,12 +1048,19 @@ func _build_prepare_screen(root: Control) -> void:
 
 func _prepare_screen_view() -> Dictionary:
 	var view := _public_run_view.duplicate(true)
+	view["biome"] = _biome_for_round(run_state.round)
 	view["selectedHeroInstanceId"] = formation_controller.selected_hero_instance_id
 	view["selectedItemInstanceId"] = _selected_item_instance_id
 	view["itemFeedback"] = _item_feedback
 	view["starUpgrade"] = _star_upgrade
 	view["reducedMotion"] = bool(settings.get("reduced_motion", false))
 	return view
+
+func _biome_for_round(round: int) -> String:
+	if ADVENTURE_BIOMES.is_empty():
+		return "meadow"
+	var index := clampi(round - 1, 0, ADVENTURE_BIOMES.size() - 1)
+	return String(ADVENTURE_BIOMES[index])
 
 func _board_hero_count() -> int:
 	return run_state.board.filter(func(hero): return hero != null).size()

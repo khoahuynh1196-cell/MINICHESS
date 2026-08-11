@@ -44,6 +44,7 @@ var _item_feedback := ""
 var _star_upgrade: Dictionary = {}
 var _reduced_motion := false
 var _dismissed_tutorial_round := -1
+var _biome_id := "meadow"
 
 func _init() -> void:
 	name = "PrepareScreen"
@@ -69,6 +70,9 @@ func bind_run(view: Dictionary) -> void:
 	_item_feedback = String(_view.get("itemFeedback", ""))
 	_star_upgrade = Dictionary(_view.get("starUpgrade", {}))
 	_reduced_motion = bool(_view.get("reducedMotion", false))
+	_biome_id = String(_view.get("biome", "meadow"))
+	if _biome_id.is_empty():
+		_biome_id = "meadow"
 	_rebuild()
 
 func _rebuild() -> void:
@@ -116,7 +120,7 @@ func _add_board_art() -> void:
 	add_child(board_art)
 
 func _board_texture() -> Texture2D:
-	var texture := AssetManifestScript.resolve_biome_texture("meadow")
+	var texture := AssetManifestScript.resolve_biome_texture(_biome_id)
 	if texture != null:
 		return texture
 	var gradient := Gradient.new()

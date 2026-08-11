@@ -1,6 +1,7 @@
 extends SceneTree
 
 const PrepareScreenScript = preload("res://scripts/ui/prepare_screen.gd")
+const AssetManifestScript = preload("res://scripts/presentation/asset_manifest.gd")
 
 var _failed := false
 
@@ -22,6 +23,15 @@ func _init() -> void:
 	var final_board_cell := _button(screen, "BoardCell15")
 	_expect(final_board_cell != null and final_board_cell.destination == 31, "BoardCell15 must map to global player target 31")
 	_expect(board_terrain != null and board_terrain.texture != null, "Prepare must render registered board art or a visible fallback")
+	var biome_origins: Dictionary = {}
+	for biome_id in ["meadow", "ruins", "frost_keep", "ember_citadel"]:
+		var biome_view := _prepare_view()
+		biome_view["biome"] = biome_id
+		screen.bind_run(biome_view)
+		var biome_terrain := screen.find_child("BoardTerrain", true, false) as TextureRect
+		biome_origins[biome_id] = _texture_region_origin(biome_terrain.texture if biome_terrain != null else null)
+	_expect(biome_origins["meadow"] != biome_origins["ruins"] and biome_origins["ruins"] != biome_origins["frost_keep"] and biome_origins["frost_keep"] != biome_origins["ember_citadel"], "Prepare must select a distinct manifest board quadrant for each Adventure biome")
+	_expect(_texture_region_origin(AssetManifestScript.resolve_biome_texture("meadow")) != _texture_region_origin(AssetManifestScript.resolve_biome_texture("ruins")), "manifest biome board regions must remain distinct")
 	var tutorial := screen.find_child("AdventureTutorial", true, false) as Control
 	var bottom_board_cell := _button(screen, "BoardCell15")
 	_expect(tutorial != null and bottom_board_cell != null and not tutorial.get_rect().intersects(bottom_board_cell.get_rect()), "Tutorial must not overlap or intercept the bottom formation row")
@@ -112,6 +122,11 @@ func _prepare_view() -> Dictionary:
 		"board": board,
 		"items": [{ "instanceId": "item-1", "itemId": "I01", "kind": "normal" }],
 	}
+
+func _texture_region_origin(texture: Texture2D) -> Vector2:
+	if texture is AtlasTexture:
+		return (texture as AtlasTexture).region.position
+	return Vector2(-1.0, -1.0)
 
 func _label(screen: Control, node_name: String) -> String:
 	var label: Label = screen.find_child(node_name, true, false)

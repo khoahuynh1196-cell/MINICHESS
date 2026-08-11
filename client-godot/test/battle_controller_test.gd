@@ -15,6 +15,11 @@ func _init() -> void:
 		return
 
 	var controller = controller_script.new()
+	var expected_adventure_biomes := ["meadow", "meadow", "ruins", "ruins", "frost_keep", "frost_keep", "ember_citadel", "ember_citadel"]
+	for index in expected_adventure_biomes.size():
+		controller.run_state.round = index + 1
+		var prepare_view: Dictionary = controller.call("_prepare_screen_view")
+		_expect(String(prepare_view.get("biome", "")) == expected_adventure_biomes[index], "round %d Prepare view must expose its Adventure biome" % (index + 1))
 	controller.run_state.items = [{ "itemId": "I02", "kind": "normal" }]
 	controller._ensure_manifest_hud_item_icon()
 	var normal_hud_icon = controller.get_node_or_null("ManifestHudItemIcon")

@@ -24,8 +24,9 @@ func _init() -> void:
 	var dismiss := Button.new()
 	dismiss.name = "DismissTutorialCue"
 	dismiss.text = "GOT IT"
-	dismiss.position = Vector2(500.0, 4.0)
-	dismiss.size = Vector2(112.0, 40.0)
+	dismiss.position = Vector2(500.0, 2.0)
+	dismiss.size = Vector2(112.0, ThemeTokensScript.TOUCH_TARGET)
+	ThemeTokensScript.apply_button_style(dismiss, ThemeTokensScript.GOLD)
 	dismiss.tooltip_text = "Dismiss this round's Adventure tip"
 	dismiss.add_theme_font_size_override("font_size", 14)
 	dismiss.pressed.connect(_dismiss)

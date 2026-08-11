@@ -80,3 +80,10 @@
 - [ ] Document the exact Adventure cutline, targeted commands, and deferred production scope.
 - [ ] Run `pnpm run check`, focused Godot smoke verification, and `git diff --check`.
 - [ ] Commit all approved implementation and documentation on `codex/adventure-4x8-today` at 17:30 Asia/Bangkok, then push that branch.
+
+### Follow-up milestone: biome presentation and onboarding hardening
+
+- [x] Route the authoritative Adventure round to the four registered board themes without changing combat authority.
+- [x] Prove Prepare selects four distinct atlas regions and the BattleController exposes the expected biome for all eight rounds.
+- [x] Keep the tutorial dismissal control at the shared 44px mobile touch target.
+- [x] Run all 33 Godot headless tests and the full `pnpm run check` gate.
