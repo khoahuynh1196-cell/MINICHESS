@@ -526,14 +526,14 @@
       ]
     },
     "heroes/h09/skill_vfx": {
-      "path": "res://assets/vfx/vfx-atlas-v1.png",
-      "render_mode": "procedural",
+      "path": "res://assets/vfx/hero-h09-starburst-skill-v1.png",
+      "render_mode": "authored",
       "frames": [
         {
-          "x": 512,
-          "y": 768,
-          "width": 256,
-          "height": 256
+          "x": 0,
+          "y": 0,
+          "width": 1254,
+          "height": 1254
         }
       ]
     },
@@ -582,14 +582,14 @@
       ]
     },
     "heroes/h10/skill_vfx": {
-      "path": "res://assets/vfx/vfx-atlas-v1.png",
-      "render_mode": "procedural",
+      "path": "res://assets/vfx/hero-h10-heal-pulse-skill-v1.png",
+      "render_mode": "authored",
       "frames": [
         {
-          "x": 768,
-          "y": 768,
-          "width": 256,
-          "height": 256
+          "x": 0,
+          "y": 0,
+          "width": 1254,
+          "height": 1254
         }
       ]
     },
@@ -638,14 +638,14 @@
       ]
     },
     "heroes/h11/skill_vfx": {
-      "path": "res://assets/vfx/vfx-atlas-v1.png",
-      "render_mode": "procedural",
+      "path": "res://assets/vfx/hero-h11-dash-burst-skill-v1.png",
+      "render_mode": "authored",
       "frames": [
         {
-          "x": 1024,
-          "y": 768,
-          "width": 256,
-          "height": 256
+          "x": 0,
+          "y": 0,
+          "width": 1254,
+          "height": 1254
         }
       ]
     },
@@ -694,14 +694,14 @@
       ]
     },
     "heroes/h12/skill_vfx": {
-      "path": "res://assets/vfx/vfx-atlas-v1.png",
-      "render_mode": "procedural",
+      "path": "res://assets/vfx/hero-h12-bramble-volley-skill-v1.png",
+      "render_mode": "authored",
       "frames": [
         {
-          "x": 1280,
-          "y": 768,
-          "width": 256,
-          "height": 256
+          "x": 0,
+          "y": 0,
+          "width": 1254,
+          "height": 1254
         }
       ]
     },
