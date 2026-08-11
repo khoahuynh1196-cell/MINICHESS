@@ -750,14 +750,14 @@
       ]
     },
     "heroes/h13/skill_vfx": {
-      "path": "res://assets/vfx/vfx-atlas-v1.png",
-      "render_mode": "procedural",
+      "path": "res://assets/vfx/hero-h13-searing-spores-skill-v1.png",
+      "render_mode": "authored",
       "frames": [
         {
           "x": 0,
-          "y": 768,
-          "width": 256,
-          "height": 256
+          "y": 0,
+          "width": 1254,
+          "height": 1254
         }
       ]
     },
@@ -806,14 +806,14 @@
       ]
     },
     "heroes/h14/skill_vfx": {
-      "path": "res://assets/vfx/vfx-atlas-v1.png",
-      "render_mode": "procedural",
+      "path": "res://assets/vfx/hero-h14-meadow-remedy-skill-v1.png",
+      "render_mode": "authored",
       "frames": [
         {
-          "x": 256,
-          "y": 768,
-          "width": 256,
-          "height": 256
+          "x": 0,
+          "y": 0,
+          "width": 1254,
+          "height": 1254
         }
       ]
     },
@@ -862,14 +862,14 @@
       ]
     },
     "heroes/h15/skill_vfx": {
-      "path": "res://assets/vfx/vfx-atlas-v1.png",
-      "render_mode": "procedural",
+      "path": "res://assets/vfx/hero-h15-earth-decoy-skill-v1.png",
+      "render_mode": "authored",
       "frames": [
         {
-          "x": 512,
-          "y": 768,
-          "width": 256,
-          "height": 256
+          "x": 0,
+          "y": 0,
+          "width": 1254,
+          "height": 1254
         }
       ]
     },
@@ -918,14 +918,14 @@
       ]
     },
     "heroes/h16/skill_vfx": {
-      "path": "res://assets/vfx/vfx-atlas-v1.png",
-      "render_mode": "procedural",
+      "path": "res://assets/vfx/hero-h16-hornbreaker-skill-v1.png",
+      "render_mode": "authored",
       "frames": [
         {
-          "x": 768,
-          "y": 768,
-          "width": 256,
-          "height": 256
+          "x": 0,
+          "y": 0,
+          "width": 1254,
+          "height": 1254
         }
       ]
     },
