@@ -78,14 +78,14 @@
       ]
     },
     "heroes/h01/skill_vfx": {
-      "path": "res://assets/vfx/vfx-atlas-v1.png",
-      "render_mode": "procedural",
+      "path": "res://assets/vfx/hero-h01-shield-skill-v1.png",
+      "render_mode": "authored",
       "frames": [
         {
           "x": 0,
-          "y": 768,
-          "width": 256,
-          "height": 256
+          "y": 0,
+          "width": 1254,
+          "height": 1254
         }
       ]
     },
@@ -134,14 +134,14 @@
       ]
     },
     "heroes/h02/skill_vfx": {
-      "path": "res://assets/vfx/vfx-atlas-v1.png",
-      "render_mode": "procedural",
+      "path": "res://assets/vfx/hero-h02-ember-slash-skill-v1.png",
+      "render_mode": "authored",
       "frames": [
         {
-          "x": 256,
-          "y": 768,
-          "width": 256,
-          "height": 256
+          "x": 0,
+          "y": 0,
+          "width": 1254,
+          "height": 1254
         }
       ]
     },
@@ -190,14 +190,14 @@
       ]
     },
     "heroes/h03/skill_vfx": {
-      "path": "res://assets/vfx/vfx-atlas-v1.png",
-      "render_mode": "procedural",
+      "path": "res://assets/vfx/hero-h03-forest-volley-skill-v1.png",
+      "render_mode": "authored",
       "frames": [
         {
-          "x": 512,
-          "y": 768,
-          "width": 256,
-          "height": 256
+          "x": 0,
+          "y": 0,
+          "width": 1254,
+          "height": 1254
         }
       ]
     },
@@ -246,14 +246,14 @@
       ]
     },
     "heroes/h04/skill_vfx": {
-      "path": "res://assets/vfx/vfx-atlas-v1.png",
-      "render_mode": "procedural",
+      "path": "res://assets/vfx/hero-h04-frost-burst-skill-v1.png",
+      "render_mode": "authored",
       "frames": [
         {
-          "x": 768,
-          "y": 768,
-          "width": 256,
-          "height": 256
+          "x": 0,
+          "y": 0,
+          "width": 1254,
+          "height": 1254
         }
       ]
     },

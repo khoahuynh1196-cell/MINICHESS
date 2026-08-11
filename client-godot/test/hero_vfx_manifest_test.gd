@@ -6,17 +6,20 @@ const HeroVisualCatalogScript = preload("res://scripts/presentation/hero_visual_
 
 func _init() -> void:
 	var manifest := AssetManifestScript.load_manifest()
+	var authored_heroes := ["H01", "H02", "H03", "H04"]
 	for hero_id in HeroVisualCatalogScript.hero_ids():
 		var profile: Dictionary = manifest.get("visual_profiles", {}).get("VP_%s" % hero_id, {})
 		var vfx_key := String(profile.get("vfx", ""))
 		var vfx_asset: Dictionary = manifest.get("assets", {}).get(vfx_key, {})
 		_expect(String(vfx_asset.get("path", "")).begins_with("res://assets/vfx/"), "%s VFX must be a VFX-category source, never a hero cutout" % hero_id)
-		_expect(String(vfx_asset.get("render_mode", "")) == "procedural", "%s must truthfully mark its procedural skill VFX fallback" % hero_id)
-		_expect(AssetManifestScript.resolve_hero_vfx_texture(hero_id) == null, "%s procedural VFX must not supply a translucent sprite layer" % hero_id)
+		var is_authored := authored_heroes.has(hero_id)
+		_expect(String(vfx_asset.get("render_mode", "")) == ("authored" if is_authored else "procedural"), "%s VFX render mode must match its production asset status" % hero_id)
+		_expect((AssetManifestScript.resolve_hero_vfx_texture(hero_id) != null) == is_authored, "%s VFX texture resolution must match its render mode" % hero_id)
 		var rig = HeroRigScript.new()
 		rig.configure(hero_id)
 		rig.play_action("skill_cast")
-		_expect(rig.find_child("ManifestVfxLayer", true, false) == null, "%s runtime VFX must not overlay a hero image" % hero_id)
+		var manifest_layer := rig.find_child("ManifestVfxLayer", true, false)
+		_expect((manifest_layer != null) == is_authored, "%s runtime VFX layer must match its authored manifest status" % hero_id)
 		rig.free()
 	var unique_rig = HeroRigScript.new()
 	unique_rig.configure("H01", null, true, "U02")

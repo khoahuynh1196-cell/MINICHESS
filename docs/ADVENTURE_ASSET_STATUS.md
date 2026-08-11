@@ -1,5 +1,5 @@
 # Adventure Asset Production Status
-**Version 1.2.0** · Client presentation milestone · 2026-08-11 · `codex/adventure-4x8-today`
+**Version 1.3.0** · Client presentation milestone · 2026-08-11 · `codex/adventure-4x8-today`
 
 ---
 
@@ -36,7 +36,7 @@ The six files were generated as centered full-body chroma-key art and converted 
 
 **[SPEC]**
 
-- All 20 hero skill VFX manifest entries are truthfully marked `render_mode=procedural`.
+- H01-H04 now resolve authored hero skill VFX alpha sprites; H05-H20 remain truthfully marked `render_mode=procedural`.
 - Four combat routes now have authored alpha layers: `combat_vfx/damage`, `combat_vfx/heal`, `combat_vfx/shield`, and `combat_vfx/cc`.
 - `CombatVfxPool` resolves those route layers through the manifest and passes them into the pooled effect; a missing layer still falls back to the procedural draw path.
 - `CombatVfx2D` supplies the live runtime cues (damage flash, hit spark, shield/barrier, heal bloom, crowd-control, elemental waves, dash and related telegraphs).
@@ -45,7 +45,7 @@ The six files were generated as centered full-body chroma-key art and converted 
 
 **[?]**
 
-Per-hero authored skill VFX (dedicated alpha sprites/particle scenes) are not complete. The current build has an authored route foundation plus a production-safe procedural readability fallback, but it is not the final 20-skill authored VFX pack.
+Per-hero authored skill VFX are in a validated pilot state: H01 shield, H02 ember slash, H03 forest volley, and H04 frost burst are authored alpha sprites. H05-H20 still use the production-safe procedural readability fallback, so the final 20-skill authored VFX pack is not complete.
 
 ## 3. Audio coverage
 
@@ -77,7 +77,7 @@ This state gate is the Gate 2 preparation slice, not the complete combat present
 **[SPEC]**
 
 1. Keep the manifest and `asset_manifest_test.gd` green for all 16 monster variants.
-2. Add one authored VFX layer/scene per hero skill key, then switch only that key from `procedural` after visual QA.
+2. Add one authored VFX layer/scene per remaining hero skill key, then switch only that key from `procedural` after visual QA.
 3. Add recorded audio files behind the existing `AudioFeedback.CUE_IDS`, with a device loudness and latency pass before release.
 4. Re-run the Godot headless suite and capture a 1080 × 1920 Adventure combat frame showing independent board, monster, HUD, VFX, and audio-triggered feedback layers.
 
@@ -87,11 +87,13 @@ This state gate is the Gate 2 preparation slice, not the complete combat present
 
 - Focused command: `Godot --headless --path client-godot --script res://test/asset_manifest_test.gd --quit`
 - Animation priority regression: `Godot --headless --path client-godot --script res://test/animation_priority_test.gd --quit`
-- The focused asset manifest test passes after importing the six new PNGs.
+- Hero VFX manifest regression: `Godot --headless --path client-godot --script res://test/hero_vfx_manifest_test.gd --quit`
+- The focused asset and hero VFX manifest tests pass after importing the generated PNGs.
 - The same test fails when any monster source mode contains a pending fallback marker.
 
 ## Changelog
 
+- 1.3.0 — Added the validated H01-H04 authored hero skill VFX pilot pack; H05-H20 remain procedural until their own assets pass QA.
 - 1.2.0 — Added the authoritative combat animation priority gate and explicit hard-control presentation state.
 
 - 1.1.0 — Added authored damage/heal/shield/CC route layers while retaining the procedural hero-skill fallback.
