@@ -89,6 +89,19 @@ static func resolve_item_texture(item_id: String) -> Texture2D:
 static func resolve_vfx_texture(asset_key: String) -> Texture2D:
 	return resolve_asset_texture(asset_key)
 
+static func resolve_audio_stream(cue_id: String) -> AudioStream:
+	var cue_path := String(load_manifest().get("audio_cues", {}).get(cue_id, ""))
+	if cue_path.is_empty() or not FileAccess.file_exists(cue_path):
+		return null
+	return load(cue_path) as AudioStream
+
+static func validate_audio_cues(cue_ids: Array) -> PackedStringArray:
+	var errors := PackedStringArray()
+	for cue_id in cue_ids:
+		if resolve_audio_stream(cue_id) == null:
+			errors.append("missing audio cue %s" % cue_id)
+	return errors
+
 static func resolve_asset_texture(asset_key: String) -> Texture2D:
 	var assets: Dictionary = load_manifest().get("assets", {})
 	var record: Dictionary = assets.get(asset_key, {})

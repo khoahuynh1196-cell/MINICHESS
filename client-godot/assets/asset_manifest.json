@@ -43,6 +43,19 @@
     "vfx": "res://scripts/presentation/combat_vfx_2d.gd",
     "sfx": "res://scripts/presentation/hero_sfx_bus.gd"
   },
+  "audio_cues": {
+    "guard": "res://assets/audio/cues/guard-v1.wav",
+    "slash": "res://assets/audio/cues/slash-v1.wav",
+    "punch": "res://assets/audio/cues/punch-v1.wav",
+    "hit": "res://assets/audio/cues/hit-v1.wav",
+    "bow": "res://assets/audio/cues/bow-v1.wav",
+    "magic": "res://assets/audio/cues/magic-v1.wav",
+    "frost": "res://assets/audio/cues/frost-v1.wav",
+    "chime": "res://assets/audio/cues/chime-v1.wav",
+    "hammer": "res://assets/audio/cues/hammer-v1.wav",
+    "charge": "res://assets/audio/cues/charge-v1.wav",
+    "defeat": "res://assets/audio/cues/defeat-v1.wav"
+  },
   "assets": {
     "heroes/h01/base": {
       "path": "res://assets/sprites/h01-cotton-shield-cat-chibi-v2.png",

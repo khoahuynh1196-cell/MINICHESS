@@ -1,6 +1,7 @@
 class_name HeroSfxBus
 extends Node
 
+const AssetManifestScript = preload("res://scripts/presentation/asset_manifest.gd")
 const MIX_RATE := 22050
 const DEFAULT_GAIN_DB := -15.0
 
@@ -10,10 +11,14 @@ static func play_cue(host: Node, cue_id: String, gain_db: float = DEFAULT_GAIN_D
 	var player := AudioStreamPlayer.new()
 	player.bus = &"Master"
 	player.volume_db = gain_db
-	player.stream = _make_stream(cue_id)
+	player.stream = resolve_cue_stream(cue_id)
 	host.add_child(player)
 	player.finished.connect(player.queue_free)
 	player.play()
+
+static func resolve_cue_stream(cue_id: String) -> AudioStream:
+	var authored := AssetManifestScript.resolve_audio_stream(cue_id)
+	return authored if authored != null else _make_stream(cue_id)
 
 static func _make_stream(cue_id: String) -> AudioStreamWAV:
 	var duration := 0.16

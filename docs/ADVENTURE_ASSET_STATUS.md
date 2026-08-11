@@ -1,5 +1,5 @@
 # Adventure Asset Production Status
-**Version 1.7.0** · Client presentation milestone · 2026-08-11 · `codex/adventure-4x8-today`
+**Version 1.8.0** · Client presentation milestone · 2026-08-11 · `codex/adventure-4x8-today`
 
 ---
 
@@ -51,13 +51,13 @@ The full 20-skill authored VFX pack is now generated as centered 1254×1254 RGBA
 
 **[SPEC]**
 
-- No recorded `.ogg`, `.wav`, `.mp3`, or `.flac` files are currently shipped under `client-godot/assets`.
+- Eleven designed one-shot `.wav` cues are shipped under `client-godot/assets/audio/cues`, covering every approved `AudioFeedback.CUE_IDS` entry at 22.05 kHz, 16-bit mono PCM.
 - `AudioFeedback` validates the approved cue IDs and haptic requests.
-- `HeroSfxBus` synthesizes short 16-bit, 22.05 kHz PCM cues at runtime for the current demo build.
+- `HeroSfxBus` resolves the shipped WAV first and keeps its short 16-bit, 22.05 kHz procedural stream as a missing-asset fallback.
 
 **[?]**
 
-The final audio pack (recorded or designed one-shot cues, mix variants, and device loudness QA) is not complete. Replace the synthesized fallback behind the existing cue IDs without changing combat event contracts.
+The designed cue pack is complete for the Adventure demo. Recorded mix variants, device loudness/latency QA, and final mastering are still release gates; those replacements must keep the existing cue IDs and combat event contracts.
 
 ## 4. Combat animation state contract
 
@@ -78,7 +78,7 @@ This state gate is the Gate 2 preparation slice, not the complete combat present
 
 1. Keep the manifest and `asset_manifest_test.gd` green for all 16 monster variants.
 2. Keep all 20 authored hero skill keys resolving through the manifest after visual QA; no hero skill key should regress to `procedural`.
-3. Add recorded audio files behind the existing `AudioFeedback.CUE_IDS`, with a device loudness and latency pass before release.
+3. Replace the designed WAV cues with recorded/mastered variants behind the existing `AudioFeedback.CUE_IDS`, then complete device loudness and latency QA before release.
 4. Re-run the Godot headless suite and capture a 1080 × 1920 Adventure combat frame showing independent board, monster, HUD, VFX, and audio-triggered feedback layers.
 
 ## 6. Verification
@@ -93,6 +93,7 @@ This state gate is the Gate 2 preparation slice, not the complete combat present
 
 ## Changelog
 
+- 1.8.0 — Added all eleven designed Adventure audio cues, manifest resolution, asset-first HeroSfxBus playback, and a procedural fallback regression.
 - 1.7.0 — Added the validated H17-H20 authored hero skill VFX batch; all 20 hero skill keys now resolve authored alpha sprites.
 - 1.6.0 — Added the validated H13-H16 authored hero skill VFX batch; H17-H20 remain procedural until their own assets pass QA.
 - 1.5.0 — Added the validated H09-H12 authored hero skill VFX batch; H13-H20 remain procedural until their own assets pass QA.
