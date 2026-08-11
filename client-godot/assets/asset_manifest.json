@@ -974,14 +974,14 @@
       ]
     },
     "heroes/h17/skill_vfx": {
-      "path": "res://assets/vfx/vfx-atlas-v1.png",
-      "render_mode": "procedural",
+      "path": "res://assets/vfx/hero-h17-purifying-bloom-skill-v1.png",
+      "render_mode": "authored",
       "frames": [
         {
-          "x": 1024,
-          "y": 768,
-          "width": 256,
-          "height": 256
+          "x": 0,
+          "y": 0,
+          "width": 1254,
+          "height": 1254
         }
       ]
     },
@@ -1030,14 +1030,14 @@
       ]
     },
     "heroes/h18/skill_vfx": {
-      "path": "res://assets/vfx/vfx-atlas-v1.png",
-      "render_mode": "procedural",
+      "path": "res://assets/vfx/hero-h18-exotic-ricochet-skill-v1.png",
+      "render_mode": "authored",
       "frames": [
         {
-          "x": 1280,
-          "y": 768,
-          "width": 256,
-          "height": 256
+          "x": 0,
+          "y": 0,
+          "width": 1254,
+          "height": 1254
         }
       ]
     },
@@ -1086,14 +1086,14 @@
       ]
     },
     "heroes/h19/skill_vfx": {
-      "path": "res://assets/vfx/vfx-atlas-v1.png",
-      "render_mode": "procedural",
+      "path": "res://assets/vfx/hero-h19-prismatic-burst-skill-v1.png",
+      "render_mode": "authored",
       "frames": [
         {
           "x": 0,
-          "y": 768,
-          "width": 256,
-          "height": 256
+          "y": 0,
+          "width": 1254,
+          "height": 1254
         }
       ]
     },
@@ -1142,14 +1142,14 @@
       ]
     },
     "heroes/h20/skill_vfx": {
-      "path": "res://assets/vfx/vfx-atlas-v1.png",
-      "render_mode": "procedural",
+      "path": "res://assets/vfx/hero-h20-last-stand-shell-skill-v1.png",
+      "render_mode": "authored",
       "frames": [
         {
-          "x": 256,
-          "y": 768,
-          "width": 256,
-          "height": 256
+          "x": 0,
+          "y": 0,
+          "width": 1254,
+          "height": 1254
         }
       ]
     },
