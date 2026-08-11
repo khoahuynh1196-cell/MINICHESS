@@ -16,6 +16,12 @@ func _init() -> void:
 		push_error("CombatVfx must consume its supplied manifest texture layer")
 		quit(1)
 		return
+	vfx.play("hit_spark", Color.WHITE, -1.0, texture)
+	var manifest_layers := vfx.get_children().filter(func(child): return child is Sprite2D)
+	if manifest_layers.size() != 1:
+		push_error("CombatVfx must replace a pooled manifest layer instead of accumulating one per replayed cue")
+		quit(1)
+		return
 	vfx.free()
 	print("PASS combat_vfx_manifest_test")
 	quit(0)

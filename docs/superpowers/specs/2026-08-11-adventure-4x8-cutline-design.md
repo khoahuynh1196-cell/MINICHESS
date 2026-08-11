@@ -21,7 +21,8 @@ Deliver a testable Adventure PvE slice on one 4 columns × 8 rows board before t
 3. The client has a progressive, dismissible tutorial cue for rounds 1–8: buy/deploy, roll/merge, traits, Unique, item, positioning, full team, final boss.
 4. Prepare derives the active biome from the authoritative Adventure round (`meadow` 1-2, `ruins` 3-4, `frost_keep` 5-6, `ember_citadel` 7-8) and selects that biome's distinct atlas region; a missing region still uses a visible fallback.
 5. Prepare shows the content-versioned encounter's manifest monster previews in the enemy half; preview art is presentation-only and never resolves combat outcomes.
-6. Targeted core, server, and Godot tests run without regressions; `pnpm run check` has a correct build order.
+6. Replayed VFX cues replace pooled manifest layers instead of accumulating render nodes across a combat.
+7. Targeted core, server, and Godot tests run without regressions; `pnpm run check` has a correct build order.
 
 ## Explicitly deferred
 

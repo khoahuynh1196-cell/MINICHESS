@@ -193,7 +193,7 @@ func _board() -> void:
 	_add_board_art()
 	_label("BoardHeading", "BATTLEFIELD  4 x 8" , Rect2(52.0, 157.0, 310.0, 26.0), 18, ThemeTokensScript.PARCHMENT)
 	_label("DeployedCount", "%d / %d" % [_deployed_count(), int(_view.get("boardCap", 0))], Rect2(900.0, 157.0, 105.0, 26.0), 18, ThemeTokensScript.GOLD)
-	_label("EnemyTerritory", "FOG OF WAR", Rect2(737.0, 196.0, 220.0, 24.0), 15, Color(ThemeTokensScript.ENEMY, 0.9))
+	_label("EnemyTerritory", "ENCOUNTER PREVIEW", Rect2(737.0, 196.0, 250.0, 24.0), 15, Color(ThemeTokensScript.ENEMY, 0.9))
 	_label("PlayerTerritory", "YOUR FORMATION", Rect2(80.0, 772.0, 260.0, 24.0), 15, Color(ThemeTokensScript.PLAYER, 0.95))
 	var divider := ColorRect.new()
 	divider.name = "FrontlineDivider"

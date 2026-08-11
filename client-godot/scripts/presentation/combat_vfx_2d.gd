@@ -18,6 +18,10 @@ func play(next_cue_id: String, next_color: Color, next_direction: float = 1.0, l
 	direction = signf(next_direction) if not is_zero_approx(next_direction) else 1.0
 	duration = 0.48 if cue_id in ["barrier", "moon_barrier", "shell_bastion", "earth_decoy"] else 0.28
 	age = 0.0
+	for child in get_children():
+		if child is Sprite2D:
+			remove_child(child)
+			child.free()
 	if layer_texture != null:
 		var layer := Sprite2D.new()
 		layer.name = "ManifestVfxLayer"

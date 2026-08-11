@@ -20,6 +20,7 @@ func _init() -> void:
 		_expect(bench_button.find_child("BenchEmpty", true, false) != null and bench_button.tooltip_text == "Empty bench slot %d" % (index + 1) and bench_button.get_rect().end.x <= 1080.0, "Empty bench controls must expose a compact, accessible empty-slot affordance")
 	var board_terrain := screen.find_child("BoardTerrain", true, false) as TextureRect
 	_expect(_board_cell_count(screen) == 16 and _enemy_cell_count(screen) == 16 and _button(screen, "BoardCell15") != null and _button(screen, "BoardCell16") == null, "Prepare must render a 4x8 battlefield with 16 legal player-half board slots")
+	_expect(_label(screen, "EnemyTerritory") == "ENCOUNTER PREVIEW", "Prepare must label the enemy half as an encounter preview when manifest monster art is rendered")
 	var final_board_cell := _button(screen, "BoardCell15")
 	_expect(final_board_cell != null and final_board_cell.destination == 31, "BoardCell15 must map to global player target 31")
 	_expect(board_terrain != null and board_terrain.texture != null, "Prepare must render registered board art or a visible fallback")
