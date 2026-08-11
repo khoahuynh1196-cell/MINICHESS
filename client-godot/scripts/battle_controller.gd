@@ -213,9 +213,9 @@ func apply_event(event) -> void:
 		"CLEANSE_APPLIED":
 			_present_target_with_status(event, "", "skill")
 		"STUN_APPLIED":
-			_present_target_with_status(event, "stunned", "hit")
+			_present_target_with_status(event, "stunned", "control")
 		"SLOW_APPLIED":
-			_present_target_with_status(event, "slowed", "hit")
+			_present_target_with_status(event, "slowed", "control")
 		"UNIT_DIED":
 			_mark_unit_defeated(event)
 		"COMBAT_ENDED":

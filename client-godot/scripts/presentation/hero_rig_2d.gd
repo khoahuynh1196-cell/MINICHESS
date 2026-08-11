@@ -64,20 +64,26 @@ func set_layer_texture(layer_id: String, texture: Texture2D, anchor_name: String
 func play_action(next_action: String) -> void:
 	if animation_state == "death" and next_action != "death":
 		return
+	if next_action != "idle" and animation_state != "idle":
+		if _animation_priority(next_action) < _animation_priority(animation_state):
+			return
 	animation_state = next_action
 	action_elapsed = 0.0
 	action_duration = _duration_for(next_action)
 	if not reduced_motion:
-		_spawn_vfx(String(profile.vfx.get(next_action, "attack_flash")))
+		var vfx_action := "hit" if next_action == "control" else next_action
+		_spawn_vfx(String(profile.vfx.get(vfx_action, "attack_flash")))
 	if sound_enabled and next_action != "idle":
-		HeroSfx.play_cue(self, String(profile.sfx.get(next_action, "magic")))
+		var sfx_action := "hit" if next_action == "control" else next_action
+		HeroSfx.play_cue(self, String(profile.sfx.get(sfx_action, "magic")))
 
 func trigger_from_combat_event(event_type: String) -> void:
 	match event_type:
 		"UNIT_MOVED", "UNIT_DISPLACED": play_action("move")
 		"BASIC_ATTACK": play_action("basic_attack")
 		"CAST_STARTED", "CAST_RESOLVED": play_action("skill_cast")
-		"DAMAGE_APPLIED", "STUN_APPLIED", "SLOW_APPLIED": play_action("hit")
+		"DAMAGE_APPLIED": play_action("hit")
+		"STUN_APPLIED", "SLOW_APPLIED": play_action("control")
 		"UNIT_DIED": play_action("death")
 
 func reset_pose() -> void:
@@ -167,7 +173,7 @@ func _apply_pose(t: float) -> void:
 			_apply_attack_motion(String(profile.motion.basic_attack), t, direction)
 		"skill_cast":
 			_apply_skill_motion(String(profile.motion.skill_cast), t, direction)
-		"hit":
+		"hit", "control":
 			body_anchor.position.x = -direction * sin(t * PI) * 8.0
 			body_sprite.modulate = Color.from_string(String(profile.palette.hit), Color.WHITE)
 		"death":
@@ -214,8 +220,26 @@ func _duration_for(action: String) -> float:
 		"basic_attack": 0.34,
 		"skill_cast": 0.52,
 		"hit": 0.18,
+		"control": 0.18,
 		"death": 0.65,
 	}.get(action, 0.28)
+
+func _animation_priority(state: String) -> int:
+	match state:
+		"death":
+			return 6
+		"control":
+			return 5
+		"hit":
+			return 4
+		"skill_cast":
+			return 3
+		"basic_attack", "attack":
+			return 2
+		"move":
+			return 1
+		_:
+			return 0
 
 func _bone(node_name: String, node_position: Vector2, parent: Node) -> Bone2D:
 	var bone := Bone2D.new()

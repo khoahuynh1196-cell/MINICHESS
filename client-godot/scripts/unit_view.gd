@@ -125,12 +125,21 @@ func set_status(next_status: String) -> void:
 func present(next_animation_state: String) -> void:
 	if is_defeated and next_animation_state != "death":
 		return
+	if animation_state == "death" and next_animation_state != "death":
+		return
+	# Combat presentation is monotonic while an action is active. A lower
+	# priority event must not erase a cast, hit reaction, crowd control, or
+	# terminal death state; idle is reserved for action completion.
+	if next_animation_state != "idle" and animation_state != "idle":
+		if _animation_priority(next_animation_state) < _animation_priority(animation_state):
+			return
 	animation_state = next_animation_state
 	_animation_elapsed = 0.0
 	if hero_rig != null:
 		var rig_action: String = String({
 			"basic_attack": "basic_attack",
 			"hit": "hit",
+			"control": "control",
 			"skill": "skill_cast",
 			"skill_cast": "skill_cast",
 			"move": "move",
@@ -153,6 +162,8 @@ func present(next_animation_state: String) -> void:
 			portrait.scale = Vector2(0.06, 0.06)
 		"hit":
 			portrait.modulate = Color("#ff9b9b")
+		"control":
+			portrait.modulate = Color("#c4b5fd")
 		"skill":
 			portrait.modulate = Color("#d9b8ff")
 			portrait.scale = Vector2(0.062, 0.062)
@@ -162,6 +173,23 @@ func present(next_animation_state: String) -> void:
 		_:
 			portrait.position = Vector2(0.0, -5.0)
 	queue_redraw()
+
+func _animation_priority(state: String) -> int:
+	match state:
+		"death":
+			return 6
+		"control":
+			return 5
+		"hit":
+			return 4
+		"skill", "skill_cast":
+			return 3
+		"basic_attack", "attack":
+			return 2
+		"move":
+			return 1
+		_:
+			return 0
 
 func _update_position() -> void:
 	position = BOARD_ORIGIN + Vector2((grid_index % BOARD_COLUMNS + 0.5) * CELL_WIDTH, (grid_index / BOARD_COLUMNS + 0.5) * CELL_HEIGHT)

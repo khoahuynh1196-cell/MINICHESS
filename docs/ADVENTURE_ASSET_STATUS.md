@@ -1,5 +1,5 @@
 # Adventure Asset Production Status
-**Version 1.1.0** · Client presentation milestone · 2026-08-11 · `codex/adventure-4x8-today`
+**Version 1.2.0** · Client presentation milestone · 2026-08-11 · `codex/adventure-4x8-today`
 
 ---
 
@@ -59,7 +59,20 @@ Per-hero authored skill VFX (dedicated alpha sprites/particle scenes) are not co
 
 The final audio pack (recorded or designed one-shot cues, mix variants, and device loudness QA) is not complete. Replace the synthesized fallback behind the existing cue IDs without changing combat event contracts.
 
-## 4. Completion gates
+## 4. Combat animation state contract
+
+**[SPEC]**
+
+- `UnitView.present()` and `HeroRig2D.play_action()` enforce one shared presentation priority: `death > control > hit > skill/cast > basic_attack > move > idle`.
+- A lower-priority event cannot overwrite an active action; `idle` is reserved for action completion and `death` remains terminal.
+- `STUN_APPLIED` and `SLOW_APPLIED` now use the explicit `control` state while preserving the authoritative status text (`stunned`/`slowed`).
+- The rig reuses the hit pose, VFX and SFX fallback for `control` until a dedicated crowd-control animation layer is authored.
+
+**[?]**
+
+This state gate is the Gate 2 preparation slice, not the complete combat presentation gate. Timeline-authored release/impact frames, per-hero skill layers, recorded audio and device performance evidence remain open.
+
+## 5. Completion gates
 
 **[SPEC]**
 
@@ -68,15 +81,18 @@ The final audio pack (recorded or designed one-shot cues, mix variants, and devi
 3. Add recorded audio files behind the existing `AudioFeedback.CUE_IDS`, with a device loudness and latency pass before release.
 4. Re-run the Godot headless suite and capture a 1080 × 1920 Adventure combat frame showing independent board, monster, HUD, VFX, and audio-triggered feedback layers.
 
-## 5. Verification
+## 6. Verification
 
 **[SPEC]**
 
 - Focused command: `Godot --headless --path client-godot --script res://test/asset_manifest_test.gd --quit`
+- Animation priority regression: `Godot --headless --path client-godot --script res://test/animation_priority_test.gd --quit`
 - The focused asset manifest test passes after importing the six new PNGs.
 - The same test fails when any monster source mode contains a pending fallback marker.
 
 ## Changelog
+
+- 1.2.0 — Added the authoritative combat animation priority gate and explicit hard-control presentation state.
 
 - 1.1.0 — Added authored damage/heal/shield/CC route layers while retaining the procedural hero-skill fallback.
 - 1.0.0 — Added the six missing Adventure boss cutouts and recorded the remaining authored VFX/audio gates.
