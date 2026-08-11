@@ -203,11 +203,19 @@ func _board() -> void:
 	divider.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(divider)
 	var board: Array = Array(_view.get("board", []))
+	var enemy_previews: Dictionary = {}
+	for preview_value in Array(_view.get("enemyPreview", [])):
+		if preview_value is Dictionary:
+			var preview := Dictionary(preview_value)
+			var preview_position := int(preview.get("position", -1))
+			if preview_position >= 0 and preview_position < PLAYER_BOARD_ROWS * BOARD_COLUMNS:
+				enemy_previews[preview_position] = preview
 	for row in BOARD_ROWS:
 		for column in BOARD_COLUMNS:
 			var rect := _board_cell_rect(row, column)
 			if row < PLAYER_BOARD_ROWS:
-				_enemy_tile("EnemyCell%02d" % (row * BOARD_COLUMNS + column), rect)
+				var enemy_index := row * BOARD_COLUMNS + column
+				_enemy_tile("EnemyCell%02d" % enemy_index, rect, Dictionary(enemy_previews.get(enemy_index, {})))
 				continue
 			var index := (row - PLAYER_BOARD_ROWS) * BOARD_COLUMNS + column
 			var hero = board[index] if index < board.size() else null
@@ -234,7 +242,7 @@ func _tutorial() -> void:
 func _dismiss_tutorial_round(round: int) -> void:
 	_dismissed_tutorial_round = round
 
-func _enemy_tile(node_name: String, rect: Rect2) -> void:
+func _enemy_tile(node_name: String, rect: Rect2, preview: Dictionary = {}) -> void:
 	var tile := Panel.new()
 	tile.name = node_name
 	tile.position = rect.position
@@ -243,6 +251,31 @@ func _enemy_tile(node_name: String, rect: Rect2) -> void:
 	tile.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(tile)
 	_add_diamond(tile, rect.size, ThemeTokensScript.ENEMY, false, false)
+	var monster_id := String(preview.get("monsterId", ""))
+	var texture := AssetManifestScript.resolve_monster_texture(monster_id)
+	if texture != null:
+		var monster := Sprite2D.new()
+		monster.name = "MonsterPreview"
+		monster.texture = texture
+		monster.position = Vector2(rect.size.x * 0.5, rect.size.y * 0.42)
+		monster.scale = Vector2(0.05, 0.05)
+		monster.modulate = Color(1.0, 1.0, 1.0, 0.96)
+		monster.z_index = 1
+		tile.add_child(monster)
+		var manifest: Dictionary = AssetManifestScript.load_manifest()
+		var record: Dictionary = manifest.get("monsters", {}).get(monster_id, {})
+		tile.tooltip_text = "%s enemy preview" % String(record.get("display_name", monster_id.capitalize()))
+		var badge := Label.new()
+		badge.name = "MonsterPreviewTier"
+		badge.text = String(record.get("tier", "normal")).to_upper()
+		badge.position = Vector2(8.0, rect.size.y - 24.0)
+		badge.size = Vector2(rect.size.x - 16.0, 18.0)
+		badge.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		badge.add_theme_font_size_override("font_size", 11)
+		badge.add_theme_color_override("font_color", Color(ThemeTokensScript.PARCHMENT, 0.9))
+		badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		tile.add_child(badge)
+		return
 	var mark := Label.new()
 	mark.text = "?"
 	mark.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER

@@ -32,6 +32,11 @@ func _init() -> void:
 		biome_origins[biome_id] = _texture_region_origin(biome_terrain.texture if biome_terrain != null else null)
 	_expect(biome_origins["meadow"] != biome_origins["ruins"] and biome_origins["ruins"] != biome_origins["frost_keep"] and biome_origins["frost_keep"] != biome_origins["ember_citadel"], "Prepare must select a distinct manifest board quadrant for each Adventure biome")
 	_expect(_texture_region_origin(AssetManifestScript.resolve_biome_texture("meadow")) != _texture_region_origin(AssetManifestScript.resolve_biome_texture("ruins")), "manifest biome board regions must remain distinct")
+	var preview_view := _prepare_view()
+	preview_view["enemyPreview"] = [{ "position": 3, "monsterId": "meadow" }, { "position": 5, "monsterId": "meadow" }]
+	screen.bind_run(preview_view)
+	var preview_sprite := screen.find_child("MonsterPreview", true, false) as Sprite2D
+	_expect(preview_sprite != null and preview_sprite.texture != null and preview_sprite.texture.resource_path == "res://assets/monsters/meadow-moss-goblin-scout-v1.png", "Prepare must render a manifest-backed enemy preview instead of a fog-of-war marker when encounter data is available")
 	var tutorial := screen.find_child("AdventureTutorial", true, false) as Control
 	var bottom_board_cell := _button(screen, "BoardCell15")
 	_expect(tutorial != null and bottom_board_cell != null and not tutorial.get_rect().intersects(bottom_board_cell.get_rect()), "Tutorial must not overlap or intercept the bottom formation row")

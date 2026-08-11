@@ -35,6 +35,8 @@ const COMBAT_NOTICE_VERTICAL_PADDING := 44.0
 const CONTENT_VERSION := "alpha-0.3.0"
 const MOBILE_CONTROLS_RECT := Rect2(24.0, 1110.0, 1032.0, 760.0)
 const ADVENTURE_BIOMES := ["meadow", "meadow", "ruins", "ruins", "frost_keep", "frost_keep", "ember_citadel", "ember_citadel"]
+const ADVENTURE_ENEMY_MONSTERS := ["meadow", "meadow", "ruins_elite", "ruins_boss", "frost_keep", "frost_keep_elite", "ember_citadel_elite", "ember_citadel_boss"]
+const ADVENTURE_ENEMY_POSITIONS := [[3, 5], [0, 4, 7], [0, 4, 8], [0, 4, 8, 10], [0, 1, 4, 8], [0, 4, 5, 8, 11], [0, 4, 5, 8, 11], [0, 1, 4, 5, 8, 11]]
 
 var unit_views: Dictionary = {}
 var status_text := "Waiting for replay"
@@ -1049,6 +1051,7 @@ func _build_prepare_screen(root: Control) -> void:
 func _prepare_screen_view() -> Dictionary:
 	var view := _public_run_view.duplicate(true)
 	view["biome"] = _biome_for_round(run_state.round)
+	view["enemyPreview"] = _enemy_preview_for_round(run_state.round)
 	view["selectedHeroInstanceId"] = formation_controller.selected_hero_instance_id
 	view["selectedItemInstanceId"] = _selected_item_instance_id
 	view["itemFeedback"] = _item_feedback
@@ -1061,6 +1064,17 @@ func _biome_for_round(round: int) -> String:
 		return "meadow"
 	var index := clampi(round - 1, 0, ADVENTURE_BIOMES.size() - 1)
 	return String(ADVENTURE_BIOMES[index])
+
+func _enemy_preview_for_round(round: int) -> Array:
+	if ADVENTURE_ENEMY_MONSTERS.is_empty() or ADVENTURE_ENEMY_POSITIONS.is_empty():
+		return []
+	var index := clampi(round - 1, 0, ADVENTURE_ENEMY_MONSTERS.size() - 1)
+	var monster_id := String(ADVENTURE_ENEMY_MONSTERS[index])
+	var positions: Array = ADVENTURE_ENEMY_POSITIONS[min(index, ADVENTURE_ENEMY_POSITIONS.size() - 1)]
+	var previews: Array = []
+	for position in positions:
+		previews.append({"position": int(position), "monsterId": monster_id})
+	return previews
 
 func _board_hero_count() -> int:
 	return run_state.board.filter(func(hero): return hero != null).size()

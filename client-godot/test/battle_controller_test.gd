@@ -16,10 +16,15 @@ func _init() -> void:
 
 	var controller = controller_script.new()
 	var expected_adventure_biomes := ["meadow", "meadow", "ruins", "ruins", "frost_keep", "frost_keep", "ember_citadel", "ember_citadel"]
+	var expected_preview_counts := [2, 3, 3, 4, 4, 5, 5, 6]
 	for index in expected_adventure_biomes.size():
 		controller.run_state.round = index + 1
 		var prepare_view: Dictionary = controller.call("_prepare_screen_view")
 		_expect(String(prepare_view.get("biome", "")) == expected_adventure_biomes[index], "round %d Prepare view must expose its Adventure biome" % (index + 1))
+		var previews: Array = Array(prepare_view.get("enemyPreview", []))
+		_expect(previews.size() == expected_preview_counts[index], "round %d Prepare view must expose all encounter enemy previews" % (index + 1))
+		if not previews.is_empty():
+			_expect(AssetManifestScript.resolve_monster_texture(String(previews[0].get("monsterId", ""))) is Texture2D, "round %d enemy preview must resolve a manifest monster texture" % (index + 1))
 	controller.run_state.items = [{ "itemId": "I02", "kind": "normal" }]
 	controller._ensure_manifest_hud_item_icon()
 	var normal_hud_icon = controller.get_node_or_null("ManifestHudItemIcon")

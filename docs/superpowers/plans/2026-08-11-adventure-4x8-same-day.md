@@ -86,4 +86,5 @@
 - [x] Route the authoritative Adventure round to the four registered board themes without changing combat authority.
 - [x] Prove Prepare selects four distinct atlas regions and the BattleController exposes the expected biome for all eight rounds.
 - [x] Keep the tutorial dismissal control at the shared 44px mobile touch target.
+- [x] Render encounter monster previews in the enemy half from the registered manifest, with a visible fallback for missing data.
 - [x] Run all 33 Godot headless tests and the full `pnpm run check` gate.
