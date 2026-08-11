@@ -8,7 +8,7 @@
     "pnpm": ">=11.0.0"
   },
   "scripts": {
-    "typecheck": "pnpm --recursive run typecheck",
+    "typecheck": "pnpm --filter @auto-battler/game-core build && pnpm --recursive run typecheck",
     "test": "pnpm --recursive run test",
     "check": "pnpm run typecheck && pnpm run test"
   },

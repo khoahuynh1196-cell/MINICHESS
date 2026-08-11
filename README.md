@@ -1,6 +1,6 @@
 # Auto-Battler 2D Mobile Alpha
 
-The current PvE demo is an eight-round, server-authoritative auto-battler:
+The current PvE demo is an eight-round, server-authoritative auto-battler on a 4×8 board (enemy rows 0–15, player formation rows 16–31):
 20 purchasable heroes (H01–H20), deterministic shop/pool/economy, formation,
 items, traits, replay combat, rewards, existing Unique items, recap, collection,
 English/Vietnamese UI, and Android debug export.
@@ -25,7 +25,9 @@ calculates combat, RNG, rewards, pool mutations, or outcomes.
 Controls include formation drag/tap fallback, shop buy/refresh/lock, XP, sell,
 item select/drag equip, pause/1x/2x combat replay, reward selection, and screen
 navigation. Settings persist sound, music, haptics, Vietnamese, reduced motion,
-and text scale.
+and text scale. Adventure shows a dismissible round-by-round tutorial that introduces
+buying and deployment, rolls and merges, traits, items, the Unique choice,
+positioning, a full team, and the final boss.
 
 ## Android debug build
 

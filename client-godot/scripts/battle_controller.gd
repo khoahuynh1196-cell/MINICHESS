@@ -24,7 +24,7 @@ const CombatHudScript = preload("res://scripts/ui/combat_hud.gd")
 const CombatVfxPoolScript = preload("res://scripts/combat_vfx_pool.gd")
 const RunRecapScreenScript = preload("res://scripts/ui/run_recap_screen.gd")
 const BOARD_COLUMNS := 4
-const BOARD_ROWS := 6
+const BOARD_ROWS := 8
 const CELL_WIDTH := 250.0
 const CELL_HEIGHT := 120.0
 const BOARD_ORIGIN := Vector2(40.0, 190.0)
@@ -413,7 +413,7 @@ func request_move_bench_hero(hero_instance_id: String, destination: int) -> void
 	request_move_hero(hero_instance_id, destination)
 
 func request_move_hero(hero_instance_id: String, destination: int) -> void:
-	if run_state.state != "PREPARE" or not ((destination >= 0 and destination < 8) or (destination >= 12 and destination < 24)) or not _has_hero_instance(hero_instance_id):
+	if run_state.state != "PREPARE" or not ((destination >= 0 and destination < 8) or (destination >= 16 and destination < 32)) or not _has_hero_instance(hero_instance_id):
 		return
 	command_requested.emit(build_command_payload("client-move-%s-%s" % [run_state.revision, hero_instance_id], "MOVE_HERO", { "hero_instance_id": hero_instance_id, "destination": destination }))
 
@@ -1060,7 +1060,7 @@ func _board_hero_count() -> int:
 func _place_first_bench_hero(board_index: int) -> void:
 	if run_state.bench.is_empty():
 		return
-	request_move_bench_hero(String(run_state.bench.front().get("instanceId", "")), 12 + board_index)
+	request_move_bench_hero(String(run_state.bench.front().get("instanceId", "")), 16 + board_index)
 
 func _place_hero_on_first_open_tile(hero_instance_id: String) -> void:
 	var destination := _first_open_board_destination()
@@ -1086,7 +1086,7 @@ func _build_combat_screen(root: Control) -> void:
 		reward_button.name = "ReviewRoundRewards"
 		reward_button.tooltip_text = "Open the authoritative rewards after watching this combat replay."
 		panel.add_child(reward_button)
-	var notice := _screen_panel(root, Rect2(layout.message), "4 x 6 ARENA")
+	var notice := _screen_panel(root, Rect2(layout.message), "4 x 8 ARENA")
 	notice.get_parent().name = "CombatBoardMessage"
 	var label := Label.new()
 	label.text = "Enemy ranks occupy the upper half. Your squad holds the lower half."
@@ -1331,7 +1331,7 @@ func _refresh_action_buttons() -> void:
 func _first_open_board_destination() -> int:
 	for board_index in run_state.board.size():
 		if run_state.board[board_index] == null:
-			return 12 + board_index
+			return 16 + board_index
 	return -1
 
 func _refresh_item_buttons() -> void:

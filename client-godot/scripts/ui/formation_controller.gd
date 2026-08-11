@@ -18,14 +18,15 @@ func has_selection() -> bool:
 	return not selected_hero_instance_id.is_empty()
 
 func request_selected_move(destination: int, run_state: String) -> bool:
-	if not request_move(selected_hero_instance_id, destination, run_state):
+	var requested := request_return_to_bench(selected_hero_instance_id, destination, run_state) if _is_bench_destination(destination) else request_move(selected_hero_instance_id, destination, run_state)
+	if not requested:
 		return false
 	clear_selection()
 	return true
 
 func request_drag_drop(hero_instance_id: String, destination: int, run_state: String) -> bool:
 	# Drag/drop and the keyboard/tap fallback share the same authoritative intent.
-	return request_move(hero_instance_id, destination, run_state)
+	return request_return_to_bench(hero_instance_id, destination, run_state) if _is_bench_destination(destination) else request_move(hero_instance_id, destination, run_state)
 
 func request_move(hero_instance_id: String, destination: int, run_state: String) -> bool:
 	if run_state != "PREPARE" or hero_instance_id.is_empty() or not _is_formation_destination(destination):
@@ -34,7 +35,13 @@ func request_move(hero_instance_id: String, destination: int, run_state: String)
 	return true
 
 func request_return_to_bench(hero_instance_id: String, bench_slot: int, run_state: String) -> bool:
-	return request_move(hero_instance_id, bench_slot, run_state)
+	if run_state != "PREPARE" or hero_instance_id.is_empty() or not _is_bench_destination(bench_slot):
+		return false
+	move_requested.emit(hero_instance_id, bench_slot)
+	return true
 
 func _is_formation_destination(destination: int) -> bool:
-	return (destination >= 0 and destination < 8) or (destination >= 12 and destination < 24)
+	return destination >= 16 and destination <= 31
+
+func _is_bench_destination(destination: int) -> bool:
+	return destination >= 0 and destination < 8

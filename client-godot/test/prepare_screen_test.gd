@@ -17,7 +17,14 @@ func _init() -> void:
 	for index in range(1, 8):
 		var bench_button := _button(screen, "BenchSlot%02d" % index)
 		_expect(bench_button.find_child("BenchEmpty", true, false) != null and bench_button.tooltip_text == "Empty bench slot %d" % (index + 1) and bench_button.get_rect().end.x <= 1080.0, "Empty bench controls must expose a compact, accessible empty-slot affordance")
-	_expect(_board_cell_count(screen) == 12 and _enemy_cell_count(screen) == 12 and _button(screen, "BoardCell11") != null and _button(screen, "BoardCell12") == null, "Prepare must render a 4x6 battlefield with 12 legal player-half board slots")
+	var board_terrain := screen.find_child("BoardTerrain", true, false) as TextureRect
+	_expect(_board_cell_count(screen) == 16 and _enemy_cell_count(screen) == 16 and _button(screen, "BoardCell15") != null and _button(screen, "BoardCell16") == null, "Prepare must render a 4x8 battlefield with 16 legal player-half board slots")
+	var final_board_cell := _button(screen, "BoardCell15")
+	_expect(final_board_cell != null and final_board_cell.destination == 31, "BoardCell15 must map to global player target 31")
+	_expect(board_terrain != null and board_terrain.texture != null, "Prepare must render registered board art or a visible fallback")
+	var tutorial := screen.find_child("AdventureTutorial", true, false) as Control
+	var bottom_board_cell := _button(screen, "BoardCell15")
+	_expect(tutorial != null and bottom_board_cell != null and not tutorial.get_rect().intersects(bottom_board_cell.get_rect()), "Tutorial must not overlap or intercept the bottom formation row")
 	_expect(screen.find_child("TraitBottomSheet", true, false) != null, "Prepare must render trait chips in a bottom sheet")
 	_expect(_trait_chip_texts(screen).any(func(text): return text.contains("Cat  1 / 6")), "trait chips must count board heroes only, never matching bench heroes")
 	var combined_view := _prepare_view()
@@ -50,13 +57,19 @@ func _init() -> void:
 		screen.connect("collection_requested", func() -> void: interaction_intents.append(["collection"]))
 	_expect(screen.has_signal("formation_hero_pressed") and screen.has_signal("formation_destination_selected") and screen.has_signal("item_selected") and screen.has_signal("collection_requested"), "Prepare must expose formation, item, and collection intents")
 	_button(screen, "BoardCell00").pressed.emit()
-	_button(screen, "BoardCell01").pressed.emit()
+	_button(screen, "BoardCell15").pressed.emit()
 	var item_button := _button(screen, "InventoryItem0")
 	_expect(item_button != null, "Prepare inventory must expose an accessible item action")
 	if item_button != null:
 		item_button.pressed.emit()
 	_button(screen, "ViewCollection").pressed.emit()
-	_expect(interaction_intents == [["hero", "board-h01", 12], ["destination", 13], ["item", "item-1"], ["collection"]], "Prepare interaction controls must emit typed intents without mutating the run")
+	_expect(interaction_intents == [["hero", "board-h01", 16], ["destination", 31], ["item", "item-1"], ["collection"]], "Prepare interaction controls must emit typed intents without mutating the run")
+	var dismiss_tutorial := _button(screen, "DismissTutorialCue")
+	if dismiss_tutorial != null:
+		dismiss_tutorial.pressed.emit()
+	screen.bind_run(_prepare_view())
+	tutorial = screen.find_child("AdventureTutorial", true, false) as Control
+	_expect(tutorial != null and not tutorial.visible, "Dismissing a tutorial cue must survive a same-round Prepare rebuild")
 	var sell_intents: Array[String] = []
 	screen.sell_hero.connect(func(instance_id: String) -> void: sell_intents.append(instance_id))
 	var selected_view := _prepare_view()
@@ -74,6 +87,7 @@ func _init() -> void:
 	var combat_view := _prepare_view()
 	combat_view["state"] = "COMBAT"
 	screen.bind_run(combat_view)
+	_expect(_button(screen, "DismissTutorialCue").disabled, "Tutorial dismissal must be disabled outside PREPARE")
 	_expect(_all_core_controls_disabled(screen), "Prepare controls must be disabled outside PREPARE")
 	screen.free()
 	if _failed:
@@ -84,7 +98,7 @@ func _init() -> void:
 
 func _prepare_view() -> Dictionary:
 	var board: Array = []
-	board.resize(12)
+	board.resize(16)
 	board.fill(null)
 	board[0] = { "instanceId": "board-h01", "heroId": "H01", "stars": 1 }
 	return {

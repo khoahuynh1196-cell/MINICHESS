@@ -3,7 +3,9 @@ import { validateEffectDefinition, type CombatEffect, type CombatStat } from "..
 import type { CombatTriggerKind } from "../content/types.js";
 
 export const SCALE = 1_000;
-const BOARD_CELL_COUNT = 24;
+const BOARD_COLUMNS = 4;
+const BOARD_ROWS = 8;
+const BOARD_CELL_COUNT = BOARD_COLUMNS * BOARD_ROWS;
 const MAX_COMBAT_TICKS = 700;
 
 export type CombatSide = "player" | "enemy";
@@ -227,7 +229,6 @@ function assertUnit(unit: CombatUnit): void {
   if (!Number.isSafeInteger(unit.position) || unit.position < 0 || unit.position >= BOARD_CELL_COUNT) {
     throw new Error(`Invalid board position for ${unit.id}`);
   }
-
   assertSafeInteger(unit.maxHp, `maxHp for ${unit.id}`, 1);
   assertSafeInteger(unit.attackDamage, `attackDamage for ${unit.id}`);
   assertSafeInteger(unit.attackSpeed, `attackSpeed for ${unit.id}`);
@@ -458,29 +459,29 @@ function readStat(unit: MutableRuntimeUnit, stat: CombatStat): number {
 }
 
 function manhattanDistance(left: number, right: number): number {
-  const leftRow = Math.floor(left / 3);
-  const leftColumn = left % 3;
-  const rightRow = Math.floor(right / 3);
-  const rightColumn = right % 3;
+  const leftRow = Math.floor(left / BOARD_COLUMNS);
+  const leftColumn = left % BOARD_COLUMNS;
+  const rightRow = Math.floor(right / BOARD_COLUMNS);
+  const rightColumn = right % BOARD_COLUMNS;
   return Math.abs(leftRow - rightRow) + Math.abs(leftColumn - rightColumn);
 }
 
 function sortedNeighbors(position: number): number[] {
-  const row = Math.floor(position / 3);
-  const column = position % 3;
+  const row = Math.floor(position / BOARD_COLUMNS);
+  const column = position % BOARD_COLUMNS;
   const neighbors: number[] = [];
 
   if (column > 0) {
     neighbors.push(position - 1);
   }
-  if (column < 2) {
+  if (column < BOARD_COLUMNS - 1) {
     neighbors.push(position + 1);
   }
   if (row > 0) {
-    neighbors.push(position - 3);
+    neighbors.push(position - BOARD_COLUMNS);
   }
-  if (row < 7) {
-    neighbors.push(position + 3);
+  if (row < BOARD_ROWS - 1) {
+    neighbors.push(position + BOARD_COLUMNS);
   }
 
   return neighbors.sort((left, right) => left - right);
@@ -613,7 +614,7 @@ function selectEffectTargets(
       return allies[0] === undefined ? [] : [allies[0]];
     }
     case "rear_ally": {
-      const direction = source.side === "player" ? 3 : -3;
+      const direction = source.side === "player" ? BOARD_COLUMNS : -BOARD_COLUMNS;
       const position = source.position + direction;
       const ally = livingUnits.find((unit) => unit.side === source.side && unit.position === position);
       return ally === undefined ? [] : [ally];
@@ -961,18 +962,18 @@ export function runHeadlessCombat(input: CombatSnapshot): CombatResult {
             if (target.immunities.has("knockback")) {
               break;
             }
-            const sourceRow = Math.floor(source.position / 3);
-            const targetRow = Math.floor(target.position / 3);
+            const sourceRow = Math.floor(source.position / BOARD_COLUMNS);
+            const targetRow = Math.floor(target.position / BOARD_COLUMNS);
             const direction = targetRow === sourceRow
-              ? Math.sign((target.position % 3) - (source.position % 3))
-              : Math.sign(targetRow - sourceRow) * 3;
+              ? Math.sign((target.position % BOARD_COLUMNS) - (source.position % BOARD_COLUMNS))
+              : Math.sign(targetRow - sourceRow) * BOARD_COLUMNS;
             let destination = target.position;
             for (let step = 1; step <= effect.distance!; step += 1) {
               const candidate = target.position + direction * step;
               const blocked = runtimeUnits.some(
                 (unit) => unit.currentHp > 0 && unit.id !== target.id && unit.position === candidate,
               );
-              const crossesRow = Math.floor(candidate / 3) !== targetRow && Math.abs(direction) === 1;
+              const crossesRow = Math.floor(candidate / BOARD_COLUMNS) !== targetRow && Math.abs(direction) === 1;
               if (candidate < 0 || candidate >= BOARD_CELL_COUNT || crossesRow || blocked) {
                 break;
               }

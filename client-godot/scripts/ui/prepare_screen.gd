@@ -7,17 +7,19 @@ const ItemInventoryScript = preload("res://scripts/ui/item_inventory.gd")
 const HeroVisualCatalogScript = preload("res://scripts/presentation/hero_visual_catalog.gd")
 const FormationSlotButtonScript = preload("res://scripts/ui/formation_slot_button.gd")
 const ShopPanelScript = preload("res://scripts/ui/shop_panel.gd")
+const AssetManifestScript = preload("res://scripts/presentation/asset_manifest.gd")
+const AdventureTutorialScript = preload("res://scripts/ui/adventure_tutorial.gd")
 
 const PORTRAIT_RECT := Rect2(0.0, 0.0, 1080.0, 1920.0)
 const BOARD_COLUMNS := 4
-const BOARD_ROWS := 6
-const PLAYER_BOARD_ROWS := 3
+const BOARD_ROWS := 8
+const PLAYER_BOARD_ROWS := 4
 const SHOP_SLOT_COUNT := 5
 const BENCH_SLOT_COUNT := 8
 const BOARD_PANEL_RECT := Rect2(24.0, 140.0, 1032.0, 708.0)
-const BOARD_CELL_SIZE := Vector2(216.0, 98.0)
-const BOARD_CELL_STEP := Vector2(198.0, 88.0)
-const BOARD_FIRST_CENTER := Vector2(243.0, 302.0)
+const BOARD_CELL_SIZE := Vector2(216.0, 74.0)
+const BOARD_CELL_STEP := Vector2(198.0, 68.0)
+const BOARD_FIRST_CENTER := Vector2(243.0, 263.0)
 
 signal buy_shop_slot(index: int)
 signal refresh_shop
@@ -41,6 +43,7 @@ var _sell_feedback := ""
 var _item_feedback := ""
 var _star_upgrade: Dictionary = {}
 var _reduced_motion := false
+var _dismissed_tutorial_round := -1
 
 func _init() -> void:
 	name = "PrepareScreen"
@@ -75,6 +78,7 @@ func _rebuild() -> void:
 	_background()
 	_header()
 	_board()
+	_tutorial()
 	_star_upgrade_presentation()
 	_bench()
 	_traits()
@@ -100,19 +104,28 @@ func _background() -> void:
 	add_child(horizon)
 
 func _add_board_art() -> void:
-	var atlas := AtlasTexture.new()
-	atlas.atlas = load("res://assets/biomes/combat-board-3x8-atlas-v2.png") as Texture2D
-	atlas.region = Rect2(0.0, 0.0, 512.0, 768.0)
 	var board_art := TextureRect.new()
 	board_art.name = "BoardTerrain"
-	board_art.texture = atlas
-	board_art.position = Vector2(112.0, 190.0)
-	board_art.size = Vector2(856.0, 620.0)
+	board_art.texture = _board_texture()
+	board_art.position = Vector2(112.0, 202.0)
+	board_art.size = Vector2(856.0, 606.0)
 	board_art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	board_art.stretch_mode = TextureRect.STRETCH_SCALE
 	board_art.modulate = Color(0.88, 0.96, 0.86, 0.9)
 	board_art.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(board_art)
+
+func _board_texture() -> Texture2D:
+	var texture := AssetManifestScript.resolve_biome_texture("meadow")
+	if texture != null:
+		return texture
+	var gradient := Gradient.new()
+	gradient.colors = PackedColorArray([Color("#315a57"), Color("#172338")])
+	var fallback := GradientTexture2D.new()
+	fallback.gradient = gradient
+	fallback.width = 32
+	fallback.height = 32
+	return fallback
 
 func _board_cell_rect(row: int, column: int) -> Rect2:
 	var center := BOARD_FIRST_CENTER + Vector2(column * BOARD_CELL_STEP.x, row * BOARD_CELL_STEP.y)
@@ -174,13 +187,13 @@ func _header() -> void:
 func _board() -> void:
 	_panel("BoardPanel", BOARD_PANEL_RECT, Color(ThemeTokensScript.BOARD_DARK, 0.88))
 	_add_board_art()
-	_label("BoardHeading", "BATTLEFIELD  4 x 6" , Rect2(52.0, 157.0, 310.0, 26.0), 18, ThemeTokensScript.PARCHMENT)
+	_label("BoardHeading", "BATTLEFIELD  4 x 8" , Rect2(52.0, 157.0, 310.0, 26.0), 18, ThemeTokensScript.PARCHMENT)
 	_label("DeployedCount", "%d / %d" % [_deployed_count(), int(_view.get("boardCap", 0))], Rect2(900.0, 157.0, 105.0, 26.0), 18, ThemeTokensScript.GOLD)
 	_label("EnemyTerritory", "FOG OF WAR", Rect2(737.0, 196.0, 220.0, 24.0), 15, Color(ThemeTokensScript.ENEMY, 0.9))
-	_label("PlayerTerritory", "YOUR FORMATION", Rect2(80.0, 696.0, 260.0, 24.0), 15, Color(ThemeTokensScript.PLAYER, 0.95))
+	_label("PlayerTerritory", "YOUR FORMATION", Rect2(80.0, 772.0, 260.0, 24.0), 15, Color(ThemeTokensScript.PLAYER, 0.95))
 	var divider := ColorRect.new()
 	divider.name = "FrontlineDivider"
-	divider.position = Vector2(154.0, 522.0)
+	divider.position = Vector2(154.0, 501.0)
 	divider.size = Vector2(772.0, 2.0)
 	divider.color = Color(ThemeTokensScript.GOLD, 0.6)
 	divider.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -195,14 +208,27 @@ func _board() -> void:
 			var index := (row - PLAYER_BOARD_ROWS) * BOARD_COLUMNS + column
 			var hero = board[index] if index < board.size() else null
 			var selected := hero != null and String(hero.get("instanceId", "")) == _selected_hero_instance_id
-			var cell := _formation_slot("BoardCell%02d" % index, "", rect, ThemeTokensScript.GOLD if selected else ThemeTokensScript.PLAYER, String(hero.get("instanceId", "")) if hero != null else "", 12 + index)
+			var cell := _formation_slot("BoardCell%02d" % index, "", rect, ThemeTokensScript.GOLD if selected else ThemeTokensScript.PLAYER, String(hero.get("instanceId", "")) if hero != null else "", 16 + index)
 			_style_board_cell(cell, hero, selected)
 			cell.move_dropped.connect(func(instance_id: String, destination: int) -> void: formation_drag_dropped.emit(instance_id, destination))
 			cell.item_equip_dropped.connect(func(item_instance_id: String, hero_instance_id: String) -> void: item_equip_requested.emit(item_instance_id, hero_instance_id))
 			if hero == null:
-				cell.pressed.connect(_emit_formation_destination.bind(12 + index))
+				cell.pressed.connect(_emit_formation_destination.bind(16 + index))
 			else:
-				cell.pressed.connect(_emit_formation_hero.bind(String(hero.get("instanceId", "")), 12 + index))
+				cell.pressed.connect(_emit_formation_hero.bind(String(hero.get("instanceId", "")), 16 + index))
+
+func _tutorial() -> void:
+	var tutorial = AdventureTutorialScript.new()
+	var round := int(_view.get("round", 1))
+	tutorial.position = Vector2(350.0, 800.0)
+	tutorial.size = Vector2(630.0, 48.0)
+	tutorial.bind_round(round, _dismissed_tutorial_round == round)
+	tutorial.set_dismiss_enabled(_prepare_enabled)
+	tutorial.dismissed.connect(_dismiss_tutorial_round.bind(round))
+	add_child(tutorial)
+
+func _dismiss_tutorial_round(round: int) -> void:
+	_dismissed_tutorial_round = round
 
 func _enemy_tile(node_name: String, rect: Rect2) -> void:
 	var tile := Panel.new()

@@ -140,7 +140,9 @@ export interface CreateRunSetup {
 const ALPHA_RULESET_VERSION = "alpha-rules-0.3.0";
 const INITIAL_PLAYER_LEVEL = 3;
 const MAX_PLAYER_LEVEL = 10;
-const MAX_PLAYER_BOARD_CAP = 6;
+const PLAYER_FORMATION_SIZE = 16;
+const PLAYER_GLOBAL_START = 16;
+const MAX_PLAYER_BOARD_CAP = 8;
 const XP_PER_PURCHASE = 4;
 const XP_TO_NEXT_BY_LEVEL = [0, 2, 6, 10, 20, 36, 56, 80, 100, 100, 0] as const;
 
@@ -163,6 +165,11 @@ export function progressionForRun(run: Pick<RunRecord, "level" | "experience" | 
     throw new Error("GAME_RULE_VIOLATION");
   }
   return Object.freeze({ level, experience, experienceToNext, boardCap: Math.min(level, MAX_PLAYER_BOARD_CAP) });
+}
+
+function playerBoardForRun(board: RunRecord["board"]): readonly (HeroInstance | null)[] {
+  if (board !== undefined && board.length > PLAYER_FORMATION_SIZE) throw new Error("GAME_RULE_VIOLATION");
+  return [...(board ?? []), ...Array(PLAYER_FORMATION_SIZE - (board?.length ?? 0)).fill(null)];
 }
 
 function buyExperience(progression: RunProgression): Pick<RunProgression, "level" | "experience"> {
@@ -312,7 +319,7 @@ export async function createRun(input: CreateRunInput, repository: RunRepository
     ...(preselectedUniqueId === undefined ? {} : { preselectedUniqueId, uniqueRevealed: false }),
     commandResponses: {},
     bench: [],
-    board: Array(12).fill(null),
+    board: Array(PLAYER_FORMATION_SIZE).fill(null),
     ...(shop === undefined ? {} : { shop }),
     ...(shopPool === undefined ? {} : { shopPool }),
   };
@@ -364,7 +371,7 @@ export async function applyRunCommand(input: RunCommandInput, repository: RunRep
   if (input.type === "BUY_XP" && (run.gold < 4 || progression.level === MAX_PLAYER_LEVEL)) throw new Error("GAME_RULE_VIOLATION");
   const purchasedSlot = input.type === "BUY_SHOP_HERO" ? run.shop?.[input.shopSlotIndex ?? -1] : undefined;
   if (input.type === "BUY_SHOP_HERO" && (purchasedSlot === undefined || purchasedSlot === null || run.gold < purchasedSlot.cost || (run.bench?.length ?? 0) >= 8)) throw new Error("GAME_RULE_VIOLATION");
-  const currentBoard = run.board ?? Array(12).fill(null);
+  const currentBoard = playerBoardForRun(run.board);
   const currentBench = run.bench ?? [];
   const currentItems = run.items ?? [];
   const claimedRewardHero = input.type === "CLAIM_REWARD_HERO" ? run.rewardHeroes?.find((hero) => hero.instanceId === input.heroInstanceId) : undefined;
@@ -385,8 +392,8 @@ export async function applyRunCommand(input: RunCommandInput, repository: RunRep
   const benchSourceIndex = input.type === "MOVE_HERO" ? currentBench.findIndex((hero) => hero.instanceId === input.heroInstanceId) : -1;
   const boardSourceIndex = input.type === "MOVE_HERO" ? currentBoard.findIndex((hero) => hero?.instanceId === input.heroInstanceId) : -1;
   const destination = input.type === "MOVE_HERO" ? input.destination ?? -1 : -1;
-  const destinationIndex = destination - 12;
-  const destinationIsBoard = destinationIndex >= 0 && destinationIndex < 12;
+  const destinationIndex = destination - PLAYER_GLOBAL_START;
+  const destinationIsBoard = destinationIndex >= 0 && destinationIndex < PLAYER_FORMATION_SIZE;
   const destinationIsBench = destination >= 0 && destination < 8;
   if (input.type === "MOVE_HERO" && (
     !Number.isInteger(input.destination)
@@ -418,7 +425,7 @@ export async function applyRunCommand(input: RunCommandInput, repository: RunRep
       : currentBoard.map((hero, index) => index === boardSourceIndex ? null : hero)
     : input.type === "SELL_HERO" && run.board !== undefined
       ? currentBoard.map((hero) => hero?.instanceId === input.heroInstanceId ? null : hero)
-      : run.board;
+      : currentBoard;
   const bench = input.type === "BUY_SHOP_HERO"
     ? [...(run.bench ?? []), { instanceId: `hero:${run.id}:${input.commandId}`, heroId: purchasedSlot!.heroId, cost: purchasedSlot!.cost, stars: 1 as const, poolCopies: 1 }]
     : input.type === "CLAIM_REWARD_HERO" ? [...currentBench, claimedRewardHero!]

@@ -6,6 +6,7 @@ import {
   canonicalizeSnapshot,
   compileContentBundle,
   createSeededRng,
+  findPathToRange,
   runHeadlessCombat,
   resolveDamage,
   selectNearestTarget,
@@ -142,13 +143,13 @@ describe("deterministic combat kernel", () => {
 
   it("executes Alpha dash skill S_H02 toward its locked target", () => {
     expect(runContentSkill("S_H02", 10).events).toContainEqual(expect.objectContaining({
-      type: "UNIT_DISPLACED", sourceUnitId: "enemy:E01:1", targetUnitId: "enemy:E01:1", payload: { from: 1, to: 7 },
+      type: "UNIT_DISPLACED", sourceUnitId: "enemy:E01:1", targetUnitId: "enemy:E01:1", payload: { from: 1, to: 6 },
     }));
   });
 
   it("executes Alpha knockback skill S_H16 against its locked target", () => {
     expect(runContentSkill("S_H16").events).toContainEqual(expect.objectContaining({
-      type: "UNIT_DISPLACED", sourceUnitId: "enemy:E01:1", targetUnitId: "player:H01:1", payload: { from: 4, to: 10 },
+      type: "UNIT_DISPLACED", sourceUnitId: "enemy:E01:1", targetUnitId: "player:H01:1", payload: { from: 4, to: 12 },
     }));
   });
 
@@ -197,6 +198,40 @@ describe("deterministic combat kernel", () => {
       "player:H01:1",
     ]);
     expect(snapshot.units[0]?.id).toBe("enemy:E01:1");
+  });
+
+  it("accepts every global combat cell from 0 through 31 and rejects cell 32", () => {
+    for (let position = 0; position < 32; position += 1) {
+      expect(() => canonicalizeSnapshot({
+        ...snapshot,
+        units: [{ ...snapshot.units[0]!, position }],
+      })).not.toThrow();
+    }
+
+    expect(() => canonicalizeSnapshot({
+      ...snapshot,
+      units: [{ ...snapshot.units[0]!, position: 32 }],
+    })).toThrow(/Invalid board position/);
+  });
+
+  it("does not wrap paths from the end of one four-column row to the start of the next", () => {
+    expect(findPathToRange(3, 4, 1, [3, 4])).toEqual([2, 1, 0]);
+  });
+
+  it("moves players from the player half toward enemies in deterministic four-column steps", () => {
+    const result = runHeadlessCombat({
+      ...snapshot,
+      maxTicks: 1,
+      units: [
+        { ...snapshot.units[0]!, position: 0 },
+        { ...snapshot.units[1]!, position: 16 },
+      ],
+    });
+
+    expect(result.events.filter((event) => event.type === "UNIT_MOVED")).toEqual([
+      expect.objectContaining({ sourceUnitId: "enemy:E01:1", payload: { from: 0, to: 4 } }),
+      expect.objectContaining({ sourceUnitId: "player:H01:1", payload: { from: 16, to: 12 } }),
+    ]);
   });
 
   it("emits the exact same event log and result hash for identical input", () => {
@@ -601,10 +636,10 @@ describe("deterministic combat kernel", () => {
     const target = selectNearestTarget(
       { id: "player:H01:1", side: "player", position: 13, currentHp: 100, attackRange: 1 },
       [
-        { id: "enemy:E02:1", side: "enemy", position: 9, currentHp: 100, attackRange: 1 },
-        { id: "enemy:E01:1", side: "enemy", position: 7, currentHp: 100, attackRange: 1 },
+        { id: "enemy:E02:1", side: "enemy", position: 10, currentHp: 100, attackRange: 1 },
+        { id: "enemy:E01:1", side: "enemy", position: 8, currentHp: 100, attackRange: 1 },
       ],
-      [7, 9, 13],
+      [8, 10, 13],
     );
 
     expect(target?.id).toBe("enemy:E01:1");
@@ -621,8 +656,8 @@ describe("deterministic combat kernel", () => {
     });
 
     expect(result.events.filter((event) => event.type === "UNIT_MOVED")).toEqual([
-      expect.objectContaining({ sourceUnitId: "enemy:E01:1", payload: { from: 1, to: 4 } }),
-      expect.objectContaining({ sourceUnitId: "player:H01:1", payload: { from: 22, to: 19 } }),
+      expect.objectContaining({ sourceUnitId: "enemy:E01:1", payload: { from: 1, to: 2 } }),
+      expect.objectContaining({ sourceUnitId: "player:H01:1", payload: { from: 22, to: 18 } }),
     ]);
   });
 
@@ -1067,7 +1102,7 @@ describe("deterministic combat kernel", () => {
       expect.objectContaining({
         type: "UNIT_DISPLACED",
         targetUnitId: "player:H01:1",
-        payload: expect.objectContaining({ from: 4, to: 7 }),
+        payload: expect.objectContaining({ from: 4, to: 8 }),
       }),
     ]));
   });
@@ -1128,7 +1163,7 @@ describe("deterministic combat kernel", () => {
             } as CombatEffect],
           },
         },
-        { ...snapshot.units[1]!, position: 4, moveSpeed: 1, attackSpeed: 0 },
+        { ...snapshot.units[1]!, position: 5, moveSpeed: 1, attackSpeed: 0 },
       ],
     });
 
@@ -1193,11 +1228,11 @@ describe("deterministic combat kernel", () => {
       ...snapshot,
       maxTicks: 2,
       units: [
-        { ...snapshot.units[0]!, position: 19, attackSpeed: 20_000 },
-        { ...snapshot.units[1]!, position: 16, attackSpeed: 0, passives: [dogMarker] },
-        { ...snapshot.units[1]!, id: "player:H02:1", position: 13, attackSpeed: 0, passives: [dogPassive("dog:13")] },
-        { ...snapshot.units[1]!, id: "player:H03:1", position: 15, attackSpeed: 0, passives: [dogPassive("dog:15")] },
-        { ...snapshot.units[1]!, id: "player:H04:1", position: 17, attackSpeed: 0, passives: [dogPassive("dog:17")] },
+        { ...snapshot.units[0]!, position: 25, attackSpeed: 20_000 },
+        { ...snapshot.units[1]!, position: 21, attackSpeed: 0, passives: [dogMarker] },
+        { ...snapshot.units[1]!, id: "player:H02:1", position: 17, attackSpeed: 0, passives: [dogPassive("dog:17")] },
+        { ...snapshot.units[1]!, id: "player:H03:1", position: 20, attackSpeed: 0, passives: [dogPassive("dog:20")] },
+        { ...snapshot.units[1]!, id: "player:H04:1", position: 22, attackSpeed: 0, passives: [dogPassive("dog:22")] },
       ],
     });
 
@@ -1324,8 +1359,8 @@ describe("deterministic combat kernel", () => {
             effects: [{ id: "E_EXOTIC_FIRST_BOUNCE", primitive: "deal_damage", target: "nearest_other_enemy", baseValue: 500, scalesWithAttackDamage: true, damageType: "physical" }],
           }],
         },
-        { ...snapshot.units[1]!, position: 4, maxHp: 100_000, attackSpeed: 0 },
-        { ...snapshot.units[1]!, id: "player:H02:1", position: 5, maxHp: 100_000, attackSpeed: 0 },
+        { ...snapshot.units[1]!, position: 5, maxHp: 100_000, attackSpeed: 0 },
+        { ...snapshot.units[1]!, id: "player:H02:1", position: 6, maxHp: 100_000, attackSpeed: 0 },
       ],
     });
 
@@ -1391,7 +1426,7 @@ describe("deterministic combat kernel", () => {
             effects: [{ id: "E_GUARDIAN_REAR_SHIELD", primitive: "shield", target: "rear_ally", baseValue: 10_000, durationTicks: 100 } as CombatEffect],
           }],
         },
-        { ...snapshot.units[1]!, id: "player:H02:1", position: 19, attackSpeed: 0 },
+        { ...snapshot.units[1]!, id: "player:H02:1", position: 20, attackSpeed: 0 },
       ],
     });
 
@@ -1574,7 +1609,7 @@ describe("deterministic combat kernel", () => {
       expect.objectContaining({
         type: "UNIT_DISPLACED",
         sourceUnitId: "enemy:E01:1",
-        payload: expect.objectContaining({ from: 1, to: 7 }),
+        payload: expect.objectContaining({ from: 1, to: 6 }),
       }),
     ]));
   });
@@ -1604,7 +1639,7 @@ describe("deterministic combat kernel", () => {
       expect.objectContaining({
         type: "UNIT_DISPLACED",
         targetUnitId: "player:H01:1",
-        payload: expect.objectContaining({ from: 4, to: 10 }),
+        payload: expect.objectContaining({ from: 4, to: 12 }),
       }),
     ]));
   });

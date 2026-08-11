@@ -300,7 +300,11 @@ function toCombatUnit(content: CompiledContentBundle, heroId: string, id: string
   };
 }
 
+const PLAYER_FORMATION_SIZE = 16;
+const PLAYER_GLOBAL_START = 16;
+
 export function buildCombatSnapshot(input: BuildCombatSnapshotInput): CombatSnapshot {
+  if (input.lockedSnapshot.board.length > PLAYER_FORMATION_SIZE) throw new Error("GAME_RULE_VIOLATION");
   const encounter = input.content.encounters.find((candidate) => candidate.round === input.lockedSnapshot.round);
   if (encounter === undefined || encounter.enemy_composition === undefined) throw new Error(`ENCOUNTER_MISSING:${input.lockedSnapshot.round}`);
   const traitModifiers = traitModifiersByHero(input.content, input.lockedSnapshot.board);
@@ -309,7 +313,7 @@ export function buildCombatSnapshot(input: BuildCombatSnapshotInput): CombatSnap
   const traitHealShieldPower = traitHealShieldPowerByHero(input.content, input.lockedSnapshot.board);
   const playerUnits = input.lockedSnapshot.board.flatMap((hero, localPosition) => hero === null
     ? []
-    : [toCombatUnit(input.content, hero.heroId, `player:${hero.instanceId}`, "player", 12 + localPosition, SCALE, hero.stars ?? 1, [...(traitModifiers.get(hero.instanceId) ?? []), ...itemModifiers(input.content, input.lockedSnapshot.items ?? [], hero.instanceId)], [...(traitPassives.get(hero.instanceId) ?? []), ...itemPassives(input.content, input.lockedSnapshot.items ?? [], hero.instanceId)], 0, traitImmunities.get(hero.instanceId) ?? [], traitHealShieldPower.get(hero.instanceId) ?? 0)]);
+    : [toCombatUnit(input.content, hero.heroId, `player:${hero.instanceId}`, "player", PLAYER_GLOBAL_START + localPosition, SCALE, hero.stars ?? 1, [...(traitModifiers.get(hero.instanceId) ?? []), ...itemModifiers(input.content, input.lockedSnapshot.items ?? [], hero.instanceId)], [...(traitPassives.get(hero.instanceId) ?? []), ...itemPassives(input.content, input.lockedSnapshot.items ?? [], hero.instanceId)], 0, traitImmunities.get(hero.instanceId) ?? [], traitHealShieldPower.get(hero.instanceId) ?? 0)]);
   const enemyUnits = encounter.enemy_composition.map((enemy, index) => toCombatUnit(
     input.content,
     enemy.hero_id,

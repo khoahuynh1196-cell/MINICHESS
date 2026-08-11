@@ -115,12 +115,12 @@ func _init() -> void:
 		return
 	emitted_commands.clear()
 	main_scene.request_buy_shop_slot(0)
-	main_scene.request_move_bench_hero("hero-bench", 12)
+	main_scene.request_move_bench_hero("hero-bench", 16)
 	main_scene.request_refresh_shop()
 	main_scene.request_sell_hero("hero-bench")
 	main_scene.request_equip_item("item-normal", "hero-bench")
 	main_scene.request_unequip_item("item-unique")
-	if not _expect(emitted_commands.size() == 6 and emitted_commands[0] == { "command_id": "client-buy-0-0", "expected_run_revision": 0, "type": "BUY_SHOP_HERO", "shop_slot_index": 0 } and emitted_commands[1] == { "command_id": "client-move-0-hero-bench", "expected_run_revision": 0, "type": "MOVE_HERO", "hero_instance_id": "hero-bench", "destination": 12 } and emitted_commands[2] == { "command_id": "client-refresh-0", "expected_run_revision": 0, "type": "REFRESH_SHOP" } and emitted_commands[3] == { "command_id": "client-sell-0-hero-bench", "expected_run_revision": 0, "type": "SELL_HERO", "hero_instance_id": "hero-bench" } and emitted_commands[4] == { "command_id": "client-equip-0-item-normal-hero-bench", "expected_run_revision": 0, "type": "EQUIP_ITEM", "item_instance_id": "item-normal", "hero_instance_id": "hero-bench" } and emitted_commands[5] == { "command_id": "client-unequip-0-item-unique", "expected_run_revision": 0, "type": "UNEQUIP_ITEM", "item_instance_id": "item-unique" }, "shop, bench, and item actions must emit server command payloads without local mutation"):
+	if not _expect(emitted_commands.size() == 6 and emitted_commands[0] == { "command_id": "client-buy-0-0", "expected_run_revision": 0, "type": "BUY_SHOP_HERO", "shop_slot_index": 0 } and emitted_commands[1] == { "command_id": "client-move-0-hero-bench", "expected_run_revision": 0, "type": "MOVE_HERO", "hero_instance_id": "hero-bench", "destination": 16 } and emitted_commands[2] == { "command_id": "client-refresh-0", "expected_run_revision": 0, "type": "REFRESH_SHOP" } and emitted_commands[3] == { "command_id": "client-sell-0-hero-bench", "expected_run_revision": 0, "type": "SELL_HERO", "hero_instance_id": "hero-bench" } and emitted_commands[4] == { "command_id": "client-equip-0-item-normal-hero-bench", "expected_run_revision": 0, "type": "EQUIP_ITEM", "item_instance_id": "item-normal", "hero_instance_id": "hero-bench" } and emitted_commands[5] == { "command_id": "client-unequip-0-item-unique", "expected_run_revision": 0, "type": "UNEQUIP_ITEM", "item_instance_id": "item-unique" }, "shop, bench, and item actions must emit server command payloads without local mutation"):
 		main_scene.free()
 		_finish()
 		return

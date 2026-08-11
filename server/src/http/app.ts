@@ -7,6 +7,7 @@ import type { RewardSelection } from "../application/reward-selection.js";
 import { resolveRunCombat } from "../application/resolve-run-combat.js";
 
 type PublicRunView = Pick<RunRecord, "id" | "contentVersion" | "state" | "round" | "revision" | "gold" | "health" | "shop" | "shopLocked" | "bench" | "board" | "items" | "freeRefreshes" | "roundRewardPlan" | "rewardHeroes" | "recap"> & ReturnType<typeof progressionForRun> & { readonly shopOdds: ShopTierOdds };
+const PLAYER_FORMATION_SIZE = 16;
 
 export interface ContentManifestRepository {
   getByVersion(version: string): Promise<CompiledContentBundle | undefined>;
@@ -58,6 +59,10 @@ function parseRewardSelections(value: unknown): readonly RewardSelection[] | und
   }));
 }
 
+function publicBoard(board: NonNullable<RunRecord["board"]>): NonNullable<RunRecord["board"]> {
+  return [...board.slice(0, PLAYER_FORMATION_SIZE), ...Array(Math.max(0, PLAYER_FORMATION_SIZE - board.length)).fill(null)];
+}
+
 function toPublicRunView(run: RunRecord): PublicRunView {
   const progression = progressionForRun(run);
   return {
@@ -73,7 +78,7 @@ function toPublicRunView(run: RunRecord): PublicRunView {
     ...(run.health === undefined ? {} : { health: run.health }),
     ...(run.shop === undefined ? {} : { shop: run.shop }),
     ...(run.bench === undefined ? {} : { bench: run.bench }),
-    ...(run.board === undefined ? {} : { board: run.board }),
+    ...(run.board === undefined ? {} : { board: publicBoard(run.board) }),
     ...(run.items === undefined ? {} : { items: run.items }),
     ...(run.freeRefreshes === undefined ? {} : { freeRefreshes: run.freeRefreshes }),
     ...(run.roundRewardPlan === undefined ? {} : { roundRewardPlan: run.roundRewardPlan }),
