@@ -1374,7 +1374,7 @@
       ]
     },
     "monsters/meadow/boss_family": {
-      "path": "res://assets/monsters/meadow-moss-goblin-scout-v1.png",
+      "path": "res://assets/monsters/meadow-briar-warden-family-v1.png",
       "frames": [
         {
           "x": 0,
@@ -1407,7 +1407,7 @@
       ]
     },
     "monsters/ruins/boss_family": {
-      "path": "res://assets/monsters/ruins-rune-sentinel-v1.png",
+      "path": "res://assets/monsters/ruins-crypt-warden-family-v1.png",
       "frames": [
         {
           "x": 0,
@@ -1429,7 +1429,7 @@
       ]
     },
     "monsters/frost_keep/boss": {
-      "path": "res://assets/monsters/frost-yeti-guard-v1.png",
+      "path": "res://assets/monsters/frost-glacier-tyrant-v1.png",
       "frames": [
         {
           "x": 0,
@@ -1440,7 +1440,7 @@
       ]
     },
     "monsters/frost_keep/boss_family": {
-      "path": "res://assets/monsters/frost-yeti-guard-v1.png",
+      "path": "res://assets/monsters/frost-icebound-warden-family-v1.png",
       "frames": [
         {
           "x": 0,
@@ -1462,7 +1462,7 @@
       ]
     },
     "monsters/ember_citadel/boss": {
-      "path": "res://assets/monsters/ember-imp-knight-v1.png",
+      "path": "res://assets/monsters/ember-cinder-lord-v1.png",
       "frames": [
         {
           "x": 0,
@@ -1473,7 +1473,7 @@
       ]
     },
     "monsters/ember_citadel/boss_family": {
-      "path": "res://assets/monsters/ember-imp-knight-v1.png",
+      "path": "res://assets/monsters/ember-furnace-warden-family-v1.png",
       "frames": [
         {
           "x": 0,
@@ -2141,7 +2141,7 @@
       "sprite": "monsters/meadow/boss_family",
       "display_name": "Meadow Warden",
       "tier": "boss_family",
-      "source_mode": "engine_marker_over_base_pending_cutout"
+      "source_mode": "generated_cutout"
     },
     "ruins": {
       "sprite": "monsters/ruins/base",
@@ -2165,7 +2165,7 @@
       "sprite": "monsters/ruins/boss_family",
       "display_name": "Crypt Warden",
       "tier": "boss_family",
-      "source_mode": "engine_marker_over_base_pending_cutout"
+      "source_mode": "generated_cutout"
     },
     "frost_keep": {
       "sprite": "monsters/frost_keep/base",
@@ -2183,13 +2183,13 @@
       "sprite": "monsters/frost_keep/boss",
       "display_name": "Glacier Tyrant",
       "tier": "boss",
-      "source_mode": "engine_marker_over_base_pending_cutout"
+      "source_mode": "generated_cutout"
     },
     "frost_keep_boss_family": {
       "sprite": "monsters/frost_keep/boss_family",
       "display_name": "Icebound Warden",
       "tier": "boss_family",
-      "source_mode": "engine_marker_over_base_pending_cutout"
+      "source_mode": "generated_cutout"
     },
     "ember_citadel": {
       "sprite": "monsters/ember_citadel/base",
@@ -2207,13 +2207,13 @@
       "sprite": "monsters/ember_citadel/boss",
       "display_name": "Cinder Lord",
       "tier": "boss",
-      "source_mode": "engine_marker_over_base_pending_cutout"
+      "source_mode": "generated_cutout"
     },
     "ember_citadel_boss_family": {
       "sprite": "monsters/ember_citadel/boss_family",
       "display_name": "Furnace Warden",
       "tier": "boss_family",
-      "source_mode": "engine_marker_over_base_pending_cutout"
+      "source_mode": "generated_cutout"
     }
   }
 }

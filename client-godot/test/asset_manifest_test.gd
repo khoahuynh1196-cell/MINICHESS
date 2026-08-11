@@ -21,6 +21,8 @@ func _init() -> void:
 	_expect(Dictionary(manifest.get("monsters", {})).size() == 16, "the manifest must register all sixteen biome monster variants")
 	for monster_id in monster_ids:
 		_expect(manifest_runtime.call("resolve_monster_texture", monster_id) is Texture2D, "%s monster must resolve a runtime cutout" % monster_id)
+		var monster_record: Dictionary = manifest.get("monsters", {}).get(monster_id, {})
+		_expect(String(monster_record.get("source_mode", "")) == "generated_cutout", "%s must use a generated cutout source" % monster_id)
 	for biome_id in ["meadow", "ruins", "frost_keep", "ember_citadel"]:
 		_expect(AssetManifestScript.resolve_biome_texture(biome_id) is Texture2D, "%s biome layer must resolve for its live board consumer" % biome_id)
 	_expect(AssetManifestScript.resolve_item_texture("I01") is Texture2D, "declared item icon art must resolve for its HUD consumer")

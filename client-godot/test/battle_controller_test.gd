@@ -65,7 +65,7 @@ func _init() -> void:
 	controller.apply_event(_event("UNIT_SPAWNED", "enemy:PVE_08:0", "", { "side": "enemy", "position": 7, "max_hp": 300000 }))
 	var ember_boss = controller.unit_views["enemy:PVE_08:0"]
 	_expect(ember_boss.get("monster_id") == "ember_citadel_boss", "production PVE_08 IDs must select the Ember boss monster key")
-	_expect(ember_boss.get_node_or_null("Cutout").texture.resource_path == "res://assets/monsters/ember-imp-knight-v1.png", "PVE_08 must resolve the Ember boss texture")
+	_expect(ember_boss.get_node_or_null("Cutout").texture.resource_path == "res://assets/monsters/ember-cinder-lord-v1.png", "PVE_08 must resolve the Ember boss texture")
 	var portrait = controller.unit_views["player:H01:1"].get_node_or_null("Portrait")
 	_expect(portrait != null and portrait.texture != null and portrait.texture.resource_path == "res://assets/sprites/h01-cotton-shield-cat-chibi-v2.png", "H01 spawn must render the chibi full-body character texture")
 	controller.apply_event(_event("UNIT_SPAWNED", "player:H02:1", "", { "side": "player", "position": 21, "max_hp": 100000 }))
