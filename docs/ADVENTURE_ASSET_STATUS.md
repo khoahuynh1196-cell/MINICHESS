@@ -1,5 +1,5 @@
 # Adventure Asset Production Status
-**Version 1.8.0** · Client presentation milestone · 2026-08-11 · `codex/adventure-4x8-today`
+**Version 1.9.0** · Client presentation milestone · 2026-08-11 · `codex/adventure-4x8-today`
 
 ---
 
@@ -54,6 +54,7 @@ The full 20-skill authored VFX pack is now generated as centered 1254×1254 RGBA
 - Eleven designed one-shot `.wav` cues are shipped under `client-godot/assets/audio/cues`, covering every approved `AudioFeedback.CUE_IDS` entry at 22.05 kHz, 16-bit mono PCM.
 - `AudioFeedback` validates the approved cue IDs and haptic requests.
 - `HeroSfxBus` resolves the shipped WAV first and keeps its short 16-bit, 22.05 kHz procedural stream as a missing-asset fallback.
+- `client-godot/tools/capture_adventure_frame.gd` boots the real scene at 1080 × 1920, advances to the authored cast cue, and writes a deterministic inspection frame without mutating authoritative state.
 
 **[?]**
 
@@ -90,9 +91,12 @@ This state gate is the Gate 2 preparation slice, not the complete combat present
 - Hero VFX manifest regression: `Godot --headless --path client-godot --script res://test/hero_vfx_manifest_test.gd --quit`
 - The focused asset and hero VFX manifest tests pass after importing the generated PNGs.
 - The same test fails when any monster source mode contains a pending fallback marker.
+- Visual evidence command (desktop GL): `Godot --path client-godot --script res://tools/capture_adventure_frame.gd`
+- Latest visual evidence: `tmp/adventure-combat-frame-1080x1920.png` (1080 × 1920; 8 replay units; 4 × 8 arena, monster layer, combat HUD, VFX and replay controls inspected).
 
 ## Changelog
 
+- 1.9.0 — Added the deterministic 1080 × 1920 Adventure frame capture harness and inspected the full combat presentation stack.
 - 1.8.0 — Added all eleven designed Adventure audio cues, manifest resolution, asset-first HeroSfxBus playback, and a procedural fallback regression.
 - 1.7.0 — Added the validated H17-H20 authored hero skill VFX batch; all 20 hero skill keys now resolve authored alpha sprites.
 - 1.6.0 — Added the validated H13-H16 authored hero skill VFX batch; H17-H20 remain procedural until their own assets pass QA.
