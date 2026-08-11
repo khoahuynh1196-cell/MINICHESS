@@ -302,14 +302,14 @@
       ]
     },
     "heroes/h05/skill_vfx": {
-      "path": "res://assets/vfx/vfx-atlas-v1.png",
-      "render_mode": "procedural",
+      "path": "res://assets/vfx/hero-h05-heal-bloom-skill-v1.png",
+      "render_mode": "authored",
       "frames": [
         {
-          "x": 1024,
-          "y": 768,
-          "width": 256,
-          "height": 256
+          "x": 0,
+          "y": 0,
+          "width": 1254,
+          "height": 1254
         }
       ]
     },
@@ -358,14 +358,14 @@
       ]
     },
     "heroes/h06/skill_vfx": {
-      "path": "res://assets/vfx/vfx-atlas-v1.png",
-      "render_mode": "procedural",
+      "path": "res://assets/vfx/hero-h06-moonbarrier-skill-v1.png",
+      "render_mode": "authored",
       "frames": [
         {
-          "x": 1280,
-          "y": 768,
-          "width": 256,
-          "height": 256
+          "x": 0,
+          "y": 0,
+          "width": 1254,
+          "height": 1254
         }
       ]
     },
@@ -414,14 +414,14 @@
       ]
     },
     "heroes/h07/skill_vfx": {
-      "path": "res://assets/vfx/vfx-atlas-v1.png",
-      "render_mode": "procedural",
+      "path": "res://assets/vfx/hero-h07-impact-burst-skill-v1.png",
+      "render_mode": "authored",
       "frames": [
         {
           "x": 0,
-          "y": 768,
-          "width": 256,
-          "height": 256
+          "y": 0,
+          "width": 1254,
+          "height": 1254
         }
       ]
     },
@@ -470,14 +470,14 @@
       ]
     },
     "heroes/h08/skill_vfx": {
-      "path": "res://assets/vfx/vfx-atlas-v1.png",
-      "render_mode": "procedural",
+      "path": "res://assets/vfx/hero-h08-shadow-arrow-skill-v1.png",
+      "render_mode": "authored",
       "frames": [
         {
-          "x": 256,
-          "y": 768,
-          "width": 256,
-          "height": 256
+          "x": 0,
+          "y": 0,
+          "width": 1254,
+          "height": 1254
         }
       ]
     },

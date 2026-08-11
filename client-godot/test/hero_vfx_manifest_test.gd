@@ -6,7 +6,7 @@ const HeroVisualCatalogScript = preload("res://scripts/presentation/hero_visual_
 
 func _init() -> void:
 	var manifest := AssetManifestScript.load_manifest()
-	var authored_heroes := ["H01", "H02", "H03", "H04"]
+	var authored_heroes := ["H01", "H02", "H03", "H04", "H05", "H06", "H07", "H08"]
 	for hero_id in HeroVisualCatalogScript.hero_ids():
 		var profile: Dictionary = manifest.get("visual_profiles", {}).get("VP_%s" % hero_id, {})
 		var vfx_key := String(profile.get("vfx", ""))
