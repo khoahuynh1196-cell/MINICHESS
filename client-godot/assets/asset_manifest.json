@@ -1651,6 +1651,34 @@
         { "x": 627, "y": 627, "width": 627, "height": 627 }
       ]
     },
+    "combat_vfx/damage": {
+      "path": "res://assets/vfx/combat-damage-impact-v1.png",
+      "render_mode": "authored",
+      "frames": [
+        { "x": 0, "y": 0, "width": 256, "height": 256 }
+      ]
+    },
+    "combat_vfx/heal": {
+      "path": "res://assets/vfx/combat-heal-bloom-v1.png",
+      "render_mode": "authored",
+      "frames": [
+        { "x": 0, "y": 0, "width": 256, "height": 256 }
+      ]
+    },
+    "combat_vfx/shield": {
+      "path": "res://assets/vfx/combat-shield-barrier-v1.png",
+      "render_mode": "authored",
+      "frames": [
+        { "x": 0, "y": 0, "width": 256, "height": 256 }
+      ]
+    },
+    "combat_vfx/cc": {
+      "path": "res://assets/vfx/combat-cc-bind-v1.png",
+      "render_mode": "authored",
+      "frames": [
+        { "x": 0, "y": 0, "width": 256, "height": 256 }
+      ]
+    },
     "transformations/lion_crown/accessory": {
       "path": "res://assets/items/item-vfx-ui-atlas-v1.png",
       "frames": [

@@ -2,6 +2,7 @@ class_name CombatVfxPool
 extends Node2D
 
 const CombatVfxScript = preload("res://scripts/presentation/combat_vfx_2d.gd")
+const AssetManifestScript = preload("res://scripts/presentation/asset_manifest.gd")
 
 var unit_position_resolver: Callable
 var last_route := ""
@@ -22,7 +23,7 @@ func present(event):
 	var target_id := str(event.get("target_unit_id", event.get("source_unit_id", "")) if event is Dictionary else (event.target_unit_id if not event.target_unit_id.is_empty() else event.source_unit_id))
 	vfx.position = _position_for(target_id)
 	var payload: Dictionary = Dictionary(event.get("payload", {}) if event is Dictionary else event.payload)
-	vfx.activate(route, _route_color(route), _floating_text(route, payload), _reduced_motion)
+	vfx.activate(route, _route_color(route), _floating_text(route, payload), _reduced_motion, AssetManifestScript.resolve_vfx_texture("combat_vfx/%s" % route))
 	_active[vfx.get_instance_id()] = vfx
 	return vfx
 

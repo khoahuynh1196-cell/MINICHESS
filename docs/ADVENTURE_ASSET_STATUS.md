@@ -1,5 +1,5 @@
 # Adventure Asset Production Status
-**Version 1.0.0** · Client presentation milestone · 2026-08-11 · `codex/adventure-4x8-today`
+**Version 1.1.0** · Client presentation milestone · 2026-08-11 · `codex/adventure-4x8-today`
 
 ---
 
@@ -37,13 +37,15 @@ The six files were generated as centered full-body chroma-key art and converted 
 **[SPEC]**
 
 - All 20 hero skill VFX manifest entries are truthfully marked `render_mode=procedural`.
+- Four combat routes now have authored alpha layers: `combat_vfx/damage`, `combat_vfx/heal`, `combat_vfx/shield`, and `combat_vfx/cc`.
+- `CombatVfxPool` resolves those route layers through the manifest and passes them into the pooled effect; a missing layer still falls back to the procedural draw path.
 - `CombatVfx2D` supplies the live runtime cues (damage flash, hit spark, shield/barrier, heal bloom, crowd-control, elemental waves, dash and related telegraphs).
 - `CombatVfxPool` recycles effect layers between combat events; it does not allocate one permanent layer per event.
 - Transformation VFX keys resolve from `assets/vfx/vfx-atlas-v1.png` where an authored manifest layer is declared.
 
 **[?]**
 
-Per-hero authored skill VFX (dedicated alpha sprites/particle scenes) are not complete. The current build is production-safe as a procedural readability pass, but it is not the final authored VFX pack.
+Per-hero authored skill VFX (dedicated alpha sprites/particle scenes) are not complete. The current build has an authored route foundation plus a production-safe procedural readability fallback, but it is not the final 20-skill authored VFX pack.
 
 ## 3. Audio coverage
 
@@ -76,4 +78,5 @@ The final audio pack (recorded or designed one-shot cues, mix variants, and devi
 
 ## Changelog
 
+- 1.1.0 — Added authored damage/heal/shield/CC route layers while retaining the procedural hero-skill fallback.
 - 1.0.0 — Added the six missing Adventure boss cutouts and recorded the remaining authored VFX/audio gates.

@@ -31,10 +31,10 @@ func play(next_cue_id: String, next_color: Color, next_direction: float = 1.0, l
 		add_child(layer)
 	queue_redraw()
 
-func activate(next_cue_id: String, next_color: Color, floating_text: String, use_reduced_motion: bool) -> void:
+func activate(next_cue_id: String, next_color: Color, floating_text: String, use_reduced_motion: bool, layer_texture: Texture2D = null) -> void:
 	reduced_motion = use_reduced_motion
 	visible = true
-	play(next_cue_id, next_color)
+	play(next_cue_id, next_color, 1.0, layer_texture)
 	duration = 1.5 if reduced_motion else duration
 	if combat_label == null:
 		combat_label = Label.new()
