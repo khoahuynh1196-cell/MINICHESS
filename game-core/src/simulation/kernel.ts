@@ -229,6 +229,10 @@ function assertUnit(unit: CombatUnit): void {
   if (!Number.isSafeInteger(unit.position) || unit.position < 0 || unit.position >= BOARD_CELL_COUNT) {
     throw new Error(`Invalid board position for ${unit.id}`);
   }
+  if ((unit.side === "player" && unit.position < BOARD_CELL_COUNT / 2)
+    || (unit.side === "enemy" && unit.position >= BOARD_CELL_COUNT / 2)) {
+    throw new Error(`Invalid board position for ${unit.id}`);
+  }
   assertSafeInteger(unit.maxHp, `maxHp for ${unit.id}`, 1);
   assertSafeInteger(unit.attackDamage, `attackDamage for ${unit.id}`);
   assertSafeInteger(unit.attackSpeed, `attackSpeed for ${unit.id}`);

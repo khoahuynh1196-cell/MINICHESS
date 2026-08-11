@@ -64,12 +64,12 @@ function contentPassive(ownerId: string, trigger: (typeof content.normalItems)[n
   };
 }
 
-function runContentSkill(skillId: string, targetPosition = 4) {
+function runContentSkill(skillId: string, targetPosition = 16) {
   return runHeadlessCombat({
     ...snapshot,
     maxTicks: 11,
     units: [
-      { ...snapshot.units[0]!, position: 1, attackSpeed: 0, startingMana: 100_000, maxMana: 100_000, skill: contentSkill(skillId) },
+      { ...snapshot.units[0]!, position: 13, attackSpeed: 0, startingMana: 100_000, maxMana: 100_000, skill: contentSkill(skillId) },
       { ...snapshot.units[1]!, position: targetPosition, attackSpeed: 0, attackRange: 20, maxHp: 1_000_000 },
     ],
   });
@@ -86,7 +86,7 @@ const snapshot: CombatSnapshot = {
     {
       id: "enemy:E01:1",
       side: "enemy",
-      position: 1,
+      position: 13,
       maxHp: 100_000,
       attackDamage: 5_000,
       attackSpeed: 1_000,
@@ -101,7 +101,7 @@ const snapshot: CombatSnapshot = {
     {
       id: "player:H01:1",
       side: "player",
-      position: 22,
+      position: 17,
       maxHp: 100_000,
       attackDamage: 5_000,
       attackSpeed: 1_000,
@@ -142,14 +142,14 @@ describe("deterministic combat kernel", () => {
   });
 
   it("executes Alpha dash skill S_H02 toward its locked target", () => {
-    expect(runContentSkill("S_H02", 10).events).toContainEqual(expect.objectContaining({
-      type: "UNIT_DISPLACED", sourceUnitId: "enemy:E01:1", targetUnitId: "enemy:E01:1", payload: { from: 1, to: 6 },
+    expect(runContentSkill("S_H02", 18).events).toContainEqual(expect.objectContaining({
+      type: "UNIT_DISPLACED", sourceUnitId: "enemy:E01:1", targetUnitId: "enemy:E01:1", payload: { from: 13, to: 14 },
     }));
   });
 
   it("executes Alpha knockback skill S_H16 against its locked target", () => {
     expect(runContentSkill("S_H16").events).toContainEqual(expect.objectContaining({
-      type: "UNIT_DISPLACED", sourceUnitId: "enemy:E01:1", targetUnitId: "player:H01:1", payload: { from: 4, to: 12 },
+      type: "UNIT_DISPLACED", sourceUnitId: "enemy:E01:1", targetUnitId: "player:H01:1", payload: { from: 16, to: 24 },
     }));
   });
 
@@ -158,16 +158,16 @@ describe("deterministic combat kernel", () => {
       ...snapshot,
       maxTicks: 11,
       units: [
-        { ...snapshot.units[0]!, position: 1, attackSpeed: 0, startingMana: 100_000, skill: contentSkill("S_H04") },
-        { ...snapshot.units[1]!, position: 4, attackSpeed: 0 },
+        { ...snapshot.units[0]!, position: 13, attackSpeed: 0, startingMana: 100_000, skill: contentSkill("S_H04") },
+        { ...snapshot.units[1]!, position: 16, attackSpeed: 0 },
       ],
     });
     const summon = runHeadlessCombat({
       ...snapshot,
       maxTicks: 11,
       units: [
-        { ...snapshot.units[0]!, position: 1, attackSpeed: 0, startingMana: 100_000, skill: contentSkill("S_H15") },
-        { ...snapshot.units[1]!, position: 4, attackSpeed: 0 },
+        { ...snapshot.units[0]!, position: 13, attackSpeed: 0, startingMana: 100_000, skill: contentSkill("S_H15") },
+        { ...snapshot.units[1]!, position: 16, attackSpeed: 0 },
       ],
     });
     const cleanse = runHeadlessCombat({
@@ -175,13 +175,13 @@ describe("deterministic combat kernel", () => {
       maxTicks: 11,
       units: [
         {
-          ...snapshot.units[0]!, position: 1, attackSpeed: 0, startingMana: 100_000, skill: contentSkill("S_H17"),
+          ...snapshot.units[0]!, position: 13, attackSpeed: 0, startingMana: 100_000, skill: contentSkill("S_H17"),
           passives: [{
             ownerId: "test", triggerId: "test:debuff", trigger: "on_combat_start",
             effects: [{ id: "E_TEST_CLEANSEABLE_DEBUFF", primitive: "debuff_stat", target: "self", stat: "attack_damage", modifierMode: "flat", baseValue: 1_000, durationTicks: 20, cleanseable: true }],
           }],
         },
-        { ...snapshot.units[1]!, position: 4, attackSpeed: 0 },
+        { ...snapshot.units[1]!, position: 16, attackSpeed: 0 },
       ],
     });
 
@@ -200,17 +200,36 @@ describe("deterministic combat kernel", () => {
     expect(snapshot.units[0]?.id).toBe("enemy:E01:1");
   });
 
-  it("accepts every global combat cell from 0 through 31 and rejects cell 32", () => {
-    for (let position = 0; position < 32; position += 1) {
+  it("accepts every globally valid cell for each combat side and rejects cell 32", () => {
+    for (let position = 0; position < 16; position += 1) {
       expect(() => canonicalizeSnapshot({
         ...snapshot,
         units: [{ ...snapshot.units[0]!, position }],
       })).not.toThrow();
     }
 
+    for (let position = 16; position < 32; position += 1) {
+      expect(() => canonicalizeSnapshot({
+        ...snapshot,
+        units: [{ ...snapshot.units[1]!, position }],
+      })).not.toThrow();
+    }
+
     expect(() => canonicalizeSnapshot({
       ...snapshot,
       units: [{ ...snapshot.units[0]!, position: 32 }],
+    })).toThrow(/Invalid board position/);
+  });
+
+  it("rejects units placed on the opposing side of the combat board", () => {
+    expect(() => canonicalizeSnapshot({
+      ...snapshot,
+      units: [{ ...snapshot.units[1]!, position: 15 }],
+    })).toThrow(/Invalid board position/);
+
+    expect(() => canonicalizeSnapshot({
+      ...snapshot,
+      units: [{ ...snapshot.units[0]!, position: 16 }],
     })).toThrow(/Invalid board position/);
   });
 
@@ -298,10 +317,10 @@ describe("deterministic combat kernel", () => {
       maxTicks: 2,
       units: [
         {
-          ...snapshot.units[0]!, position: 1, attackSpeed: 20_000,
+          ...snapshot.units[0]!, position: 13, attackSpeed: 20_000,
           passives: [contentPassive(frostSigil.id, frostSigil.triggers[0]!)],
         },
-        { ...snapshot.units[1]!, position: 4, maxHp: 1_000_000 },
+        { ...snapshot.units[1]!, position: 16, maxHp: 1_000_000 },
       ],
     });
 
@@ -315,14 +334,14 @@ describe("deterministic combat kernel", () => {
       maxTicks: 2,
       units: [
         {
-          ...snapshot.units[0]!, position: 1, attackSpeed: 0, startingMana: 100_000,
+          ...snapshot.units[0]!, position: 13, attackSpeed: 0, startingMana: 100_000,
           skill: { id: "S_CAST", castTimeTicks: 1, effects: [] },
           passives: [{
             ownerId: "I11", triggerId: "I11:trigger:0", trigger: "on_cast_resolve",
             effects: [{ id: "E_I11", primitive: "deal_damage", target: "locked_target", baseValue: 6_000, damageType: "magic" }],
           }],
         },
-        { ...snapshot.units[1]!, position: 4, maxHp: 1_000_000, attackSpeed: 0 },
+        { ...snapshot.units[1]!, position: 16, maxHp: 1_000_000, attackSpeed: 0 },
       ],
     });
 
@@ -340,10 +359,10 @@ describe("deterministic combat kernel", () => {
       maxTicks: 2,
       units: [
         {
-          ...snapshot.units[0]!, position: 1, attackSpeed: 0,
+          ...snapshot.units[0]!, position: 13, attackSpeed: 0,
           passives: [contentPassive(lionCrown.id, lionCrown.triggers[0]!)],
         },
-        { ...snapshot.units[1]!, position: 4, attackDamage: 60_000, attackSpeed: 20_000 },
+        { ...snapshot.units[1]!, position: 16, attackDamage: 60_000, attackSpeed: 20_000 },
       ],
     });
 
@@ -357,13 +376,13 @@ describe("deterministic combat kernel", () => {
       maxTicks: 1,
       units: [
         {
-          ...snapshot.units[0]!, position: 1,
+          ...snapshot.units[0]!, position: 13,
           passives: [{
             ownerId: "safe", triggerId: "safe:threshold", trigger: "on_hp_below", thresholdPercent: 500, oncePerCombat: true,
             effects: [{ id: "E_SAFE", primitive: "deal_damage", target: "self", baseValue: 1, damageType: "true" }],
           }],
         },
-        { ...snapshot.units[1]!, position: 4, attackDamage: 60_000, attackSpeed: 20_000 },
+        { ...snapshot.units[1]!, position: 16, attackDamage: 60_000, attackSpeed: 20_000 },
       ],
     });
 
@@ -376,13 +395,13 @@ describe("deterministic combat kernel", () => {
       maxTicks: 3,
       units: [
         {
-          ...snapshot.units[0]!, position: 1, attackSpeed: 20_000,
+          ...snapshot.units[0]!, position: 13, attackSpeed: 20_000,
           passives: [{
             ownerId: "U02", triggerId: "U02:trigger:0", trigger: "on_every_nth_basic_attack", attackCount: 3,
             effects: [{ id: "E_U02", primitive: "deal_damage", target: "locked_target", baseValue: 350, damageType: "physical" }],
           }],
         },
-        { ...snapshot.units[1]!, position: 4, maxHp: 1_000_000, attackSpeed: 0 },
+        { ...snapshot.units[1]!, position: 16, maxHp: 1_000_000, attackSpeed: 0 },
       ],
     });
 
@@ -395,13 +414,13 @@ describe("deterministic combat kernel", () => {
       maxTicks: 1,
       units: [
         {
-          ...snapshot.units[0]!, position: 1, attackDamage: 8_000, attackSpeed: 20_000, critChance: 1_000,
+          ...snapshot.units[0]!, position: 13, attackDamage: 8_000, attackSpeed: 20_000, critChance: 1_000,
           passives: [{
             ownerId: "R_CAT", triggerId: "R_CAT:crit", trigger: "on_critical_basic_attack" as "on_basic_attack", oncePerCombat: true,
             effects: [{ id: "E_R_CAT_CRIT", primitive: "deal_damage", target: "locked_target", baseValue: 250, damageType: "physical", scalesWithAttackDamage: true } as CombatEffect],
           }],
         },
-        { ...snapshot.units[1]!, position: 4, maxHp: 1_000_000, attackSpeed: 0 },
+        { ...snapshot.units[1]!, position: 16, maxHp: 1_000_000, attackSpeed: 0 },
       ],
     });
 
@@ -416,12 +435,12 @@ describe("deterministic combat kernel", () => {
       maxTicks: 1,
       units: [
         {
-          ...snapshot.units[0]!, position: 1, attackDamage: 5_000, attackSpeed: 20_000,
+          ...snapshot.units[0]!, position: 13, attackDamage: 5_000, attackSpeed: 20_000,
           passives: [{
             ownerId: "I09", triggerId: "I09:trigger:0", trigger: "on_damage_dealt", basicOnly: true, lifestealPerThousand: 150, effects: [],
           }],
         },
-        { ...snapshot.units[1]!, position: 4, maxHp: 1_000_000, attackSpeed: 0 },
+        { ...snapshot.units[1]!, position: 16, maxHp: 1_000_000, attackSpeed: 0 },
       ],
     });
 
@@ -434,14 +453,14 @@ describe("deterministic combat kernel", () => {
       maxTicks: 2,
       units: [
         {
-          ...snapshot.units[0]!, position: 1, attackSpeed: 0, startingMana: 100_000,
+          ...snapshot.units[0]!, position: 13, attackSpeed: 0, startingMana: 100_000,
           skill: { id: "S_CAST", castTimeTicks: 1, effects: [] },
           passives: [{
             ownerId: "U05", triggerId: "U05:trigger:0", trigger: "on_cast_resolve", oncePerCombat: true,
             effects: [{ id: "E_U05", primitive: "summon", target: "self", scalesWithMaxHp: true, summon: { id: "decoy", maxHp: 250, durationTicks: 80 } }],
           }],
         },
-        { ...snapshot.units[1]!, position: 4, attackSpeed: 0 },
+        { ...snapshot.units[1]!, position: 16, attackSpeed: 0 },
       ],
     });
 
@@ -453,7 +472,7 @@ describe("deterministic combat kernel", () => {
       maxTicks: 4,
       units: [
         {
-          ...snapshot.units[0]!, position: 1, attackSpeed: 20_000, attackDamage: 20_000,
+          ...snapshot.units[0]!, position: 13, attackSpeed: 20_000, attackDamage: 20_000,
         },
         {
           ...snapshot.units[1]!, id: "player:H02:1", position: 16, attackSpeed: 0, maxHp: 100_000,
@@ -465,7 +484,7 @@ describe("deterministic combat kernel", () => {
           }],
         },
         {
-          ...snapshot.units[1]!, id: "player:H03:1", position: 13, attackSpeed: 0, maxHp: 100_000,
+          ...snapshot.units[1]!, id: "player:H03:1", position: 17, attackSpeed: 0, maxHp: 100_000,
           startingMana: 0, maxMana: 1,
         },
       ],
@@ -483,10 +502,10 @@ describe("deterministic combat kernel", () => {
       maxTicks: 2,
       units: [
         {
-          ...snapshot.units[0]!, position: 1, attackDamage: 71_000, attackSpeed: 20_000,
+          ...snapshot.units[0]!, position: 13, attackDamage: 71_000, attackSpeed: 20_000,
         },
         {
-          ...snapshot.units[1]!, position: 4, attackSpeed: 0, maxHp: 100_000, armor: 0,
+          ...snapshot.units[1]!, position: 16, attackSpeed: 0, maxHp: 100_000, armor: 0,
           passives: [{
             ownerId: "U06", triggerId: "U06:trigger:0", trigger: "on_hp_below", thresholdPercent: 300, oncePerCombat: true,
             effects: [
@@ -543,8 +562,8 @@ describe("deterministic combat kernel", () => {
       ...snapshot,
       maxTicks: 1,
       units: [
-        { ...snapshot.units[0]!, position: 1, attackDamage: 10_000, attackSpeed: 20_000 },
-        { ...snapshot.units[1]!, position: 4, attackDamage: 50_000, attackSpeed: 20_000 },
+        { ...snapshot.units[0]!, position: 13, attackDamage: 10_000, attackSpeed: 20_000 },
+        { ...snapshot.units[1]!, position: 16, attackDamage: 50_000, attackSpeed: 20_000 },
       ],
     });
 
@@ -557,8 +576,8 @@ describe("deterministic combat kernel", () => {
       ...snapshot,
       maxTicks: 1,
       units: [
-        { ...snapshot.units[0]!, position: 1, attackDamage: 50_000, attackSpeed: 20_000 },
-        { ...snapshot.units[1]!, position: 4, attackDamage: 10_000, attackSpeed: 20_000 },
+        { ...snapshot.units[0]!, position: 13, attackDamage: 50_000, attackSpeed: 20_000 },
+        { ...snapshot.units[1]!, position: 16, attackDamage: 10_000, attackSpeed: 20_000 },
       ],
     });
 
@@ -572,10 +591,10 @@ describe("deterministic combat kernel", () => {
       ...snapshot,
       maxTicks: 1,
       units: [
-        { ...snapshot.units[0]!, id: "enemy:E01:1", position: 0, maxHp, attackDamage: 1, attackSpeed: 20_000 },
-        { ...snapshot.units[0]!, id: "enemy:E02:1", position: 3, maxHp, attackDamage: 0, attackSpeed: 0 },
-        { ...snapshot.units[1]!, id: "player:H01:1", position: 1, maxHp, attackDamage: 2, attackSpeed: 20_000 },
-        { ...snapshot.units[1]!, id: "player:H02:1", position: 4, maxHp, attackDamage: 0, attackSpeed: 0 },
+        { ...snapshot.units[0]!, id: "enemy:E01:1", position: 14, maxHp, attackDamage: 1, attackSpeed: 20_000 },
+        { ...snapshot.units[0]!, id: "enemy:E02:1", position: 15, maxHp, attackDamage: 0, attackSpeed: 0 },
+        { ...snapshot.units[1]!, id: "player:H01:1", position: 18, maxHp, attackDamage: 2, attackSpeed: 20_000 },
+        { ...snapshot.units[1]!, id: "player:H02:1", position: 19, maxHp, attackDamage: 0, attackSpeed: 0 },
       ],
     });
 
@@ -591,7 +610,7 @@ describe("deterministic combat kernel", () => {
       units: [
         {
           ...snapshot.units[0]!,
-          position: 1,
+          position: 13,
           attackDamage: 0,
           attackSpeed: 0,
           startingMana: 100_000,
@@ -607,7 +626,7 @@ describe("deterministic combat kernel", () => {
             }],
           },
         },
-        { ...snapshot.units[1]!, position: 4, attackDamage: 10_000, attackSpeed: 20_000 },
+        { ...snapshot.units[1]!, position: 16, attackDamage: 10_000, attackSpeed: 20_000 },
       ],
     });
 
@@ -627,7 +646,7 @@ describe("deterministic combat kernel", () => {
     expect(() =>
       canonicalizeSnapshot({
         ...snapshot,
-        units: [snapshot.units[0]!, { ...snapshot.units[1]!, position: 1 }],
+        units: [snapshot.units[1]!, { ...snapshot.units[1]!, id: "player:H02:1", position: 17 }],
       }),
     ).toThrow(/occupied/);
   });
@@ -650,14 +669,13 @@ describe("deterministic combat kernel", () => {
       ...snapshot,
       maxTicks: 1,
       units: [
-        { ...snapshot.units[0]!, position: 1 },
-        { ...snapshot.units[1]!, position: 22 },
+        { ...snapshot.units[0]!, position: 13 },
+        { ...snapshot.units[1]!, position: 18 },
       ],
     });
 
     expect(result.events.filter((event) => event.type === "UNIT_MOVED")).toEqual([
-      expect.objectContaining({ sourceUnitId: "enemy:E01:1", payload: { from: 1, to: 2 } }),
-      expect.objectContaining({ sourceUnitId: "player:H01:1", payload: { from: 22, to: 18 } }),
+      expect.objectContaining({ sourceUnitId: "enemy:E01:1", payload: { from: 13, to: 14 } }),
     ]);
   });
 
@@ -673,12 +691,12 @@ describe("deterministic combat kernel", () => {
       units: [
         {
           ...snapshot.units[0]!,
-          position: 1,
+          position: 13,
           maxHp: 100_000,
           attackDamage: 100_000,
           attackSpeed: 20_000,
         },
-        { ...snapshot.units[1]!, position: 4, maxHp: 80_000 },
+        { ...snapshot.units[1]!, position: 16, maxHp: 80_000 },
       ],
     });
 
@@ -698,10 +716,10 @@ describe("deterministic combat kernel", () => {
       ...snapshot,
       maxTicks: 2,
       units: [
-        { ...snapshot.units[0]!, position: 1, attackSpeed: 0 },
+        { ...snapshot.units[0]!, position: 13, attackSpeed: 0 },
         {
           ...snapshot.units[1]!,
-          position: 4,
+          position: 16,
           startingMana: 10_000,
           maxMana: 10_000,
           skill: { id: "S_TEST", castTimeTicks: 1 },
@@ -725,7 +743,7 @@ describe("deterministic combat kernel", () => {
       units: [
         {
           ...snapshot.units[0]!,
-          position: 1,
+          position: 13,
           startingMana: 10_000,
           maxMana: 10_000,
           attackSpeed: 0,
@@ -741,7 +759,7 @@ describe("deterministic combat kernel", () => {
             }],
           },
         },
-        { ...snapshot.units[1]!, position: 4, maxHp: 80_000, magicResist: 20_000, attackSpeed: 0 },
+        { ...snapshot.units[1]!, position: 16, maxHp: 80_000, magicResist: 20_000, attackSpeed: 0 },
       ],
     });
 
@@ -761,7 +779,7 @@ describe("deterministic combat kernel", () => {
       units: [
         {
           ...snapshot.units[0]!,
-          position: 1,
+          position: 13,
           startingMana: 10_000,
           maxMana: 10_000,
           attackSpeed: 0,
@@ -771,7 +789,7 @@ describe("deterministic combat kernel", () => {
             effects: [{ id: "E_SHIELD", primitive: "shield", target: "self", baseValue: 15_000, durationTicks: 20 }],
           },
         },
-        { ...snapshot.units[1]!, position: 4, attackDamage: 20_000, attackSpeed: 20_000 },
+        { ...snapshot.units[1]!, position: 16, attackDamage: 20_000, attackSpeed: 20_000 },
       ],
     });
 
@@ -790,7 +808,7 @@ describe("deterministic combat kernel", () => {
       units: [
         {
           ...snapshot.units[0]!,
-          position: 1,
+          position: 13,
           startingMana: 10_000,
           maxMana: 10_000,
           attackSpeed: 0,
@@ -800,7 +818,7 @@ describe("deterministic combat kernel", () => {
             effects: [{ id: "E_HEAL", primitive: "heal", target: "self", baseValue: 15_000 }],
           },
         },
-        { ...snapshot.units[1]!, position: 4, attackDamage: 20_000, attackSpeed: 20_000 },
+        { ...snapshot.units[1]!, position: 16, attackDamage: 20_000, attackSpeed: 20_000 },
       ],
     });
 
@@ -818,7 +836,7 @@ describe("deterministic combat kernel", () => {
       units: [
         {
           ...snapshot.units[0]!,
-          position: 1,
+          position: 13,
           startingMana: 10_000,
           maxMana: 10_000,
           attackSpeed: 0,
@@ -828,7 +846,7 @@ describe("deterministic combat kernel", () => {
             effects: [{ id: "E_STUN", primitive: "stun", target: "locked_target", durationTicks: 20 }],
           },
         },
-        { ...snapshot.units[1]!, position: 4, attackSpeed: 20_000 },
+        { ...snapshot.units[1]!, position: 16, attackSpeed: 20_000 },
       ],
     });
 
@@ -843,7 +861,7 @@ describe("deterministic combat kernel", () => {
       units: [
         {
           ...snapshot.units[0]!,
-          position: 1,
+          position: 13,
           startingMana: 10_000,
           maxMana: 10_000,
           attackSpeed: 0,
@@ -861,7 +879,7 @@ describe("deterministic combat kernel", () => {
             }],
           },
         },
-        { ...snapshot.units[1]!, position: 4, maxHp: 80_000, attackSpeed: 0 },
+        { ...snapshot.units[1]!, position: 16, maxHp: 80_000, attackSpeed: 0 },
       ],
     });
 
@@ -879,12 +897,12 @@ describe("deterministic combat kernel", () => {
       maxTicks: 3,
       units: [
         {
-          ...snapshot.units[0]!, position: 1, startingMana: 10_000, maxMana: 10_000, attackSpeed: 20_000,
+          ...snapshot.units[0]!, position: 13, startingMana: 10_000, maxMana: 10_000, attackSpeed: 20_000,
           skill: { id: "S_BUFF", castTimeTicks: 1, effects: [{
             id: "E_BUFF", primitive: "buff_stat", target: "self", stat: "attack_damage", modifierMode: "flat", baseValue: 100_000, durationTicks: 10,
           }] },
         },
-        { ...snapshot.units[1]!, position: 4, maxHp: 80_000, attackSpeed: 0 },
+        { ...snapshot.units[1]!, position: 16, maxHp: 80_000, attackSpeed: 0 },
       ],
     });
 
@@ -900,12 +918,12 @@ describe("deterministic combat kernel", () => {
       maxTicks: 2,
       units: [
         {
-          ...snapshot.units[0]!, position: 1, startingMana: 10_000, maxMana: 10_000, attackSpeed: 0,
+          ...snapshot.units[0]!, position: 13, startingMana: 10_000, maxMana: 10_000, attackSpeed: 0,
           skill: { id: "S_SLOW", castTimeTicks: 1, effects: [{
             id: "E_SLOW", primitive: "slow", target: "locked_target", baseValue: 500, durationTicks: 20,
           }] },
         },
-        { ...snapshot.units[1]!, position: 22, attackSpeed: 0 },
+        { ...snapshot.units[1]!, position: 18, attackSpeed: 0 },
       ],
     });
 
@@ -918,8 +936,8 @@ describe("deterministic combat kernel", () => {
       ...snapshot,
       maxTicks: 2,
       units: [
-        { ...snapshot.units[0]!, position: 1, startingMana: 10_000, maxMana: 10_000, attackSpeed: 0, skill: { id: "S_DASH", castTimeTicks: 1, effects: [{ id: "E_DASH", primitive: "dash", target: "self", distance: 1 }] } },
-        { ...snapshot.units[1]!, position: 10, moveSpeed: 1, attackSpeed: 0 },
+        { ...snapshot.units[0]!, position: 13, startingMana: 10_000, maxMana: 10_000, attackSpeed: 0, skill: { id: "S_DASH", castTimeTicks: 1, effects: [{ id: "E_DASH", primitive: "dash", target: "self", distance: 1 }] } },
+        { ...snapshot.units[1]!, position: 18, moveSpeed: 1, attackSpeed: 0 },
       ],
     });
     expect(result.events).toEqual(expect.arrayContaining([expect.objectContaining({ type: "UNIT_DISPLACED", sourceUnitId: "enemy:E01:1" })]));
@@ -932,7 +950,7 @@ describe("deterministic combat kernel", () => {
       units: [
         {
           ...snapshot.units[0]!,
-          position: 1,
+          position: 13,
           startingMana: 10_000,
           maxMana: 10_000,
           attackSpeed: 0,
@@ -947,7 +965,7 @@ describe("deterministic combat kernel", () => {
             }],
           },
         },
-        { ...snapshot.units[1]!, position: 10, moveSpeed: 1, attackSpeed: 0 },
+        { ...snapshot.units[1]!, position: 18, moveSpeed: 1, attackSpeed: 0 },
       ],
     });
 
@@ -984,7 +1002,7 @@ describe("deterministic combat kernel", () => {
         enemy("enemy:E02:1", 2),
         enemy("enemy:E03:1", 6),
         enemy("enemy:E04:1", 8),
-        { ...snapshot.units[1]!, position: 22, moveSpeed: 1, attackSpeed: 0 },
+        { ...snapshot.units[1]!, position: 18, moveSpeed: 1, attackSpeed: 0 },
       ],
     });
 
@@ -998,7 +1016,7 @@ describe("deterministic combat kernel", () => {
       units: [
         {
           ...snapshot.units[0]!,
-          position: 1,
+          position: 13,
           startingMana: 10_000,
           maxMana: 10_000,
           attackSpeed: 0,
@@ -1020,7 +1038,7 @@ describe("deterministic combat kernel", () => {
             ],
           },
         },
-        { ...snapshot.units[1]!, position: 10, moveSpeed: 1, attackSpeed: 0 },
+        { ...snapshot.units[1]!, position: 18, moveSpeed: 1, attackSpeed: 0 },
       ],
     });
 
@@ -1037,7 +1055,7 @@ describe("deterministic combat kernel", () => {
       units: [
         {
           ...snapshot.units[0]!,
-          position: 1,
+          position: 13,
           startingMana: 10_000,
           maxMana: 10_000,
           attackSpeed: 0,
@@ -1059,7 +1077,7 @@ describe("deterministic combat kernel", () => {
             ],
           },
         },
-        { ...snapshot.units[1]!, position: 10, moveSpeed: 1, attackSpeed: 0 },
+        { ...snapshot.units[1]!, position: 18, moveSpeed: 1, attackSpeed: 0 },
       ],
     });
 
@@ -1079,7 +1097,7 @@ describe("deterministic combat kernel", () => {
       units: [
         {
           ...snapshot.units[0]!,
-          position: 1,
+          position: 13,
           startingMana: 10_000,
           maxMana: 10_000,
           attackSpeed: 0,
@@ -1094,7 +1112,7 @@ describe("deterministic combat kernel", () => {
             }],
           },
         },
-        { ...snapshot.units[1]!, position: 4, moveSpeed: 1, attackSpeed: 0 },
+        { ...snapshot.units[1]!, position: 16, moveSpeed: 1, attackSpeed: 0 },
       ],
     });
 
@@ -1102,7 +1120,7 @@ describe("deterministic combat kernel", () => {
       expect.objectContaining({
         type: "UNIT_DISPLACED",
         targetUnitId: "player:H01:1",
-        payload: expect.objectContaining({ from: 4, to: 8 }),
+        payload: expect.objectContaining({ from: 16, to: 20 }),
       }),
     ]));
   });
@@ -1114,7 +1132,7 @@ describe("deterministic combat kernel", () => {
       units: [
         {
           ...snapshot.units[0]!,
-          position: 1,
+          position: 13,
           startingMana: 10_000,
           maxMana: 10_000,
           attackSpeed: 0,
@@ -1129,7 +1147,7 @@ describe("deterministic combat kernel", () => {
             }],
           },
         },
-        { ...snapshot.units[1]!, position: 4, moveSpeed: 1, attackSpeed: 0, immunities: ["knockback"] },
+        { ...snapshot.units[1]!, position: 16, moveSpeed: 1, attackSpeed: 0, immunities: ["knockback"] },
       ],
     });
 
@@ -1137,7 +1155,7 @@ describe("deterministic combat kernel", () => {
       type: "UNIT_DISPLACED",
       targetUnitId: "player:H01:1",
     }));
-    expect(result.units.find((unit) => unit.id === "player:H01:1")?.position).toBe(4);
+    expect(result.units.find((unit) => unit.id === "player:H01:1")?.position).toBe(16);
   });
 
   it("retreats one legal cell only when the caster is engaged with its locked target", () => {
@@ -1147,7 +1165,7 @@ describe("deterministic combat kernel", () => {
       units: [
         {
           ...snapshot.units[0]!,
-          position: 1,
+          position: 13,
           startingMana: 10_000,
           maxMana: 10_000,
           attackSpeed: 0,
@@ -1163,7 +1181,7 @@ describe("deterministic combat kernel", () => {
             } as CombatEffect],
           },
         },
-        { ...snapshot.units[1]!, position: 5, moveSpeed: 1, attackSpeed: 0 },
+        { ...snapshot.units[1]!, position: 17, moveSpeed: 1, attackSpeed: 0 },
       ],
     });
 
@@ -1171,7 +1189,7 @@ describe("deterministic combat kernel", () => {
       type: "UNIT_DISPLACED",
       sourceUnitId: "enemy:E01:1",
       targetUnitId: "enemy:E01:1",
-      payload: { from: 1, to: 0 },
+      payload: { from: 13, to: 9 },
     }));
   });
 
@@ -1181,13 +1199,13 @@ describe("deterministic combat kernel", () => {
       maxTicks: 2,
       units: [
         {
-          ...snapshot.units[0]!, position: 1, startingMana: 10_000, maxMana: 10_000, attackSpeed: 0,
+          ...snapshot.units[0]!, position: 13, startingMana: 10_000, maxMana: 10_000, attackSpeed: 0,
           skill: {
             id: "S_MANA_RETURN", castTimeTicks: 1,
             effects: [{ id: "E_MANA_RETURN", primitive: "restore_mana", target: "self", baseValue: 20_000 } as CombatEffect],
           },
         },
-        { ...snapshot.units[1]!, position: 4, attackSpeed: 0 },
+        { ...snapshot.units[1]!, position: 16, attackSpeed: 0 },
       ],
     });
 
@@ -1202,13 +1220,13 @@ describe("deterministic combat kernel", () => {
       maxTicks: 2,
       units: [
         {
-          ...snapshot.units[0]!, position: 1, startingMana: 10_000, maxMana: 10_000, attackSpeed: 0,
+          ...snapshot.units[0]!, position: 13, startingMana: 10_000, maxMana: 10_000, attackSpeed: 0,
           skill: {
             id: "S_DAMAGE_REDUCTION", castTimeTicks: 1,
             effects: [{ id: "E_DAMAGE_REDUCTION", primitive: "damage_reduction", target: "self", baseValue: 500, durationTicks: 20 } as CombatEffect],
           },
         },
-        { ...snapshot.units[1]!, position: 4, attackSpeed: 20_000 },
+        { ...snapshot.units[1]!, position: 16, attackSpeed: 20_000 },
       ],
     });
 
@@ -1228,9 +1246,9 @@ describe("deterministic combat kernel", () => {
       ...snapshot,
       maxTicks: 2,
       units: [
-        { ...snapshot.units[0]!, position: 25, attackSpeed: 20_000 },
-        { ...snapshot.units[1]!, position: 21, attackSpeed: 0, passives: [dogMarker] },
-        { ...snapshot.units[1]!, id: "player:H02:1", position: 17, attackSpeed: 0, passives: [dogPassive("dog:17")] },
+        { ...snapshot.units[0]!, position: 13, attackSpeed: 20_000 },
+        { ...snapshot.units[1]!, position: 17, attackSpeed: 0, passives: [dogMarker] },
+        { ...snapshot.units[1]!, id: "player:H02:1", position: 18, attackSpeed: 0, passives: [dogPassive("dog:17")] },
         { ...snapshot.units[1]!, id: "player:H03:1", position: 20, attackSpeed: 0, passives: [dogPassive("dog:20")] },
         { ...snapshot.units[1]!, id: "player:H04:1", position: 22, attackSpeed: 0, passives: [dogPassive("dog:22")] },
       ],
@@ -1256,15 +1274,15 @@ describe("deterministic combat kernel", () => {
       maxTicks: 1,
       units: [
         {
-          ...snapshot.units[0]!, position: 19, attackSpeed: 0,
+          ...snapshot.units[0]!, position: 15, attackSpeed: 0,
           passives: [{
             ownerId: "enemy:opening-strike", triggerId: "enemy:opening-strike", trigger: "on_combat_start",
             effects: [{ id: "E_ENEMY_OPENING_STRIKE", primitive: "deal_damage", target: "all_enemies", baseValue: 100_000, damageType: "true" }],
           }],
         },
         { ...snapshot.units[1]!, position: 16, maxHp: 50_000, attackSpeed: 0, passives: [dogDeathPassive] },
-        { ...snapshot.units[1]!, id: "player:H02:1", position: 13, maxHp: 50_000, attackSpeed: 0, passives: [dogDeathPassive] },
-        { ...snapshot.units[1]!, id: "player:H03:1", position: 10, maxHp: 200_000, attackSpeed: 0, passives: [dogMarker] },
+        { ...snapshot.units[1]!, id: "player:H02:1", position: 17, maxHp: 50_000, attackSpeed: 0, passives: [dogDeathPassive] },
+        { ...snapshot.units[1]!, id: "player:H03:1", position: 18, maxHp: 200_000, attackSpeed: 0, passives: [dogMarker] },
       ],
     });
 
@@ -1281,13 +1299,13 @@ describe("deterministic combat kernel", () => {
       maxTicks: 1,
       units: [
         {
-          ...snapshot.units[0]!, position: 1, attackDamage: 100_000, attackSpeed: 20_000,
+          ...snapshot.units[0]!, position: 13, attackDamage: 100_000, attackSpeed: 20_000,
           passives: [{
             ownerId: "C_FIGHTER", triggerId: "fighter:kill-speed", trigger: "on_kill" as "on_cast_resolve",
             effects: [{ id: "E_FIGHTER_KILL_SPEED", primitive: "buff_stat", target: "self", stat: "attack_speed", modifierMode: "percent", baseValue: 150, durationTicks: 80 }],
           }],
         },
-        { ...snapshot.units[1]!, position: 4, maxHp: 50_000, attackSpeed: 0 },
+        { ...snapshot.units[1]!, position: 16, maxHp: 50_000, attackSpeed: 0 },
       ],
     });
 
@@ -1310,8 +1328,8 @@ describe("deterministic combat kernel", () => {
       ...snapshot,
       maxTicks: 6,
       units: [
-        { ...snapshot.units[0]!, position: 1, attackSpeed: 0 },
-        { ...snapshot.units[1]!, position: 4, attackSpeed: 0, attackRange: 1, passives: [stationaryRangerPassive] },
+        { ...snapshot.units[0]!, position: 13, attackSpeed: 0 },
+        { ...snapshot.units[1]!, position: 16, attackSpeed: 0, attackRange: 1, passives: [stationaryRangerPassive] },
       ],
     });
 
@@ -1334,10 +1352,10 @@ describe("deterministic combat kernel", () => {
       maxTicks: 2,
       units: [
         {
-          ...snapshot.units[0]!, position: 1, attackSpeed: 0, startingMana: 100_000, maxMana: 100_000,
+          ...snapshot.units[0]!, position: 13, attackSpeed: 0, startingMana: 100_000, maxMana: 100_000,
           skill: { id: "S_KNOCKBACK", castTimeTicks: 1, effects: [{ id: "E_KNOCKBACK", primitive: "knockback", target: "locked_target", distance: 1 }] },
         },
-        { ...snapshot.units[1]!, position: 4, attackRange: 3, attackSpeed: 20_000, passives: [stationaryRangerPassive] },
+        { ...snapshot.units[1]!, position: 16, attackRange: 3, attackSpeed: 20_000, passives: [stationaryRangerPassive] },
       ],
     });
 
@@ -1353,14 +1371,14 @@ describe("deterministic combat kernel", () => {
       maxTicks: 1,
       units: [
         {
-          ...snapshot.units[0]!, position: 1, attackDamage: 10_000, attackSpeed: 20_000,
+          ...snapshot.units[0]!, position: 13, attackDamage: 10_000, attackSpeed: 20_000,
           passives: [{
             ownerId: "R_EXOTIC", triggerId: "exotic:first-bounce", trigger: "on_basic_attack", oncePerCombat: true,
             effects: [{ id: "E_EXOTIC_FIRST_BOUNCE", primitive: "deal_damage", target: "nearest_other_enemy", baseValue: 500, scalesWithAttackDamage: true, damageType: "physical" }],
           }],
         },
-        { ...snapshot.units[1]!, position: 5, maxHp: 100_000, attackSpeed: 0 },
-        { ...snapshot.units[1]!, id: "player:H02:1", position: 6, maxHp: 100_000, attackSpeed: 0 },
+        { ...snapshot.units[1]!, position: 17, maxHp: 100_000, attackSpeed: 0 },
+        { ...snapshot.units[1]!, id: "player:H02:1", position: 18, maxHp: 100_000, attackSpeed: 0 },
       ],
     });
 
@@ -1376,14 +1394,14 @@ describe("deterministic combat kernel", () => {
       maxTicks: 2,
       units: [
         {
-          ...snapshot.units[0]!, position: 1, startingMana: 10_000, maxMana: 10_000, attackSpeed: 0,
+          ...snapshot.units[0]!, position: 13, startingMana: 10_000, maxMana: 10_000, attackSpeed: 0,
           skill: { id: "S_SUPPORT_HEAL", castTimeTicks: 1, effects: [{ id: "E_SUPPORT_HEAL", primitive: "heal", target: "locked_target", baseValue: 1 }], },
           passives: [{
             ownerId: "C_SUPPORT", triggerId: "support:recipient-protection", trigger: "on_heal_or_shield" as "on_cast_resolve",
             effects: [{ id: "E_SUPPORT_PROTECTION", primitive: "damage_reduction", target: "locked_target", baseValue: 100, durationTicks: 60 }],
           }],
         },
-        { ...snapshot.units[1]!, position: 4, attackSpeed: 0 },
+        { ...snapshot.units[1]!, position: 16, attackSpeed: 0 },
       ],
     });
 
@@ -1399,10 +1417,10 @@ describe("deterministic combat kernel", () => {
       maxTicks: 2,
       units: [
         {
-          ...snapshot.units[0]!, position: 1, startingMana: 10_000, maxMana: 10_000, attackSpeed: 0, healShieldPower: 150,
+          ...snapshot.units[0]!, position: 13, startingMana: 10_000, maxMana: 10_000, attackSpeed: 0, healShieldPower: 150,
           skill: { id: "S_AMPLIFIED_HEAL", castTimeTicks: 1, effects: [{ id: "E_AMPLIFIED_HEAL", primitive: "heal", target: "locked_target", baseValue: 10_000 }], },
         },
-        { ...snapshot.units[1]!, position: 4, attackSpeed: 0 },
+        { ...snapshot.units[1]!, position: 16, attackSpeed: 0 },
       ],
     });
 
@@ -1416,7 +1434,7 @@ describe("deterministic combat kernel", () => {
       ...snapshot,
       maxTicks: 1,
       units: [
-        { ...snapshot.units[0]!, position: 1, attackSpeed: 0 },
+        { ...snapshot.units[0]!, position: 13, attackSpeed: 0 },
         {
           ...snapshot.units[1]!,
           position: 16,
@@ -1443,7 +1461,7 @@ describe("deterministic combat kernel", () => {
       ...snapshot,
       maxTicks: 1,
       units: [
-        { ...snapshot.units[0]!, position: 1, attackSpeed: 0 },
+        { ...snapshot.units[0]!, position: 13, attackSpeed: 0 },
         {
           ...snapshot.units[1]!, position: 16, attackSpeed: 0,
           passives: [{
@@ -1473,7 +1491,7 @@ describe("deterministic combat kernel", () => {
       units: [
         {
           ...snapshot.units[0]!,
-          position: 1,
+          position: 13,
           startingMana: 10_000,
           maxMana: 10_000,
           attackSpeed: 20_000,
@@ -1491,7 +1509,7 @@ describe("deterministic combat kernel", () => {
             }],
           },
         },
-        { ...snapshot.units[1]!, position: 4, maxHp: 300_000, attackSpeed: 0 },
+        { ...snapshot.units[1]!, position: 16, maxHp: 300_000, attackSpeed: 0 },
       ],
     });
 
@@ -1511,7 +1529,7 @@ describe("deterministic combat kernel", () => {
       units: [
         {
           ...snapshot.units[0]!,
-          position: 1,
+          position: 13,
           startingMana: 10_000,
           maxMana: 10_000,
           attackSpeed: 20_000,
@@ -1533,7 +1551,7 @@ describe("deterministic combat kernel", () => {
             ],
           },
         },
-        { ...snapshot.units[1]!, position: 4, maxHp: 100_000, attackSpeed: 0 },
+        { ...snapshot.units[1]!, position: 16, maxHp: 100_000, attackSpeed: 0 },
       ],
     });
 
@@ -1553,7 +1571,7 @@ describe("deterministic combat kernel", () => {
       units: [
         {
           ...snapshot.units[0]!,
-          position: 1,
+          position: 13,
           startingMana: 10_000,
           maxMana: 10_000,
           attackSpeed: 20_000,
@@ -1571,7 +1589,7 @@ describe("deterministic combat kernel", () => {
             }],
           },
         },
-        { ...snapshot.units[1]!, position: 4, maxHp: 100_000, attackSpeed: 0 },
+        { ...snapshot.units[1]!, position: 16, maxHp: 100_000, attackSpeed: 0 },
       ],
     });
 
@@ -1591,7 +1609,7 @@ describe("deterministic combat kernel", () => {
       units: [
         {
           ...snapshot.units[0]!,
-          position: 1,
+          position: 13,
           startingMana: 10_000,
           maxMana: 10_000,
           attackSpeed: 0,
@@ -1601,7 +1619,7 @@ describe("deterministic combat kernel", () => {
             effects: [{ id: "E_LONG_DASH", primitive: "dash", target: "self", distance: 2 }],
           },
         },
-        { ...snapshot.units[1]!, position: 10, moveSpeed: 1, attackSpeed: 0 },
+        { ...snapshot.units[1]!, position: 18, moveSpeed: 1, attackSpeed: 0 },
       ],
     });
 
@@ -1609,7 +1627,7 @@ describe("deterministic combat kernel", () => {
       expect.objectContaining({
         type: "UNIT_DISPLACED",
         sourceUnitId: "enemy:E01:1",
-        payload: expect.objectContaining({ from: 1, to: 6 }),
+        payload: expect.objectContaining({ from: 13, to: 14 }),
       }),
     ]));
   });
@@ -1621,7 +1639,7 @@ describe("deterministic combat kernel", () => {
       units: [
         {
           ...snapshot.units[0]!,
-          position: 1,
+          position: 13,
           startingMana: 10_000,
           maxMana: 10_000,
           attackSpeed: 0,
@@ -1631,7 +1649,7 @@ describe("deterministic combat kernel", () => {
             effects: [{ id: "E_LONG_KNOCKBACK", primitive: "knockback", target: "locked_target", distance: 2 }],
           },
         },
-        { ...snapshot.units[1]!, position: 4, moveSpeed: 1, attackSpeed: 0 },
+        { ...snapshot.units[1]!, position: 16, moveSpeed: 1, attackSpeed: 0 },
       ],
     });
 
@@ -1639,7 +1657,7 @@ describe("deterministic combat kernel", () => {
       expect.objectContaining({
         type: "UNIT_DISPLACED",
         targetUnitId: "player:H01:1",
-        payload: expect.objectContaining({ from: 4, to: 12 }),
+        payload: expect.objectContaining({ from: 16, to: 24 }),
       }),
     ]));
   });
@@ -1651,7 +1669,7 @@ describe("deterministic combat kernel", () => {
       units: [
         {
           ...snapshot.units[0]!,
-          position: 1,
+          position: 13,
           startingMana: 10_000,
           maxMana: 10_000,
           attackSpeed: 20_000,
@@ -1680,7 +1698,7 @@ describe("deterministic combat kernel", () => {
             ],
           },
         },
-        { ...snapshot.units[1]!, position: 4, maxHp: 100_000, attackSpeed: 0 },
+        { ...snapshot.units[1]!, position: 16, maxHp: 100_000, attackSpeed: 0 },
       ],
     });
 

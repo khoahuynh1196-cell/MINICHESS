@@ -27,10 +27,10 @@
 **Interfaces:**
 - Produces player-safe 4×8 movement, targeting, and position validation for server snapshots.
 
-- [ ] Write tests proving 32 valid cells, no row wrapping across four columns, and deterministic player-to-enemy movement from positions `16..31`.
-- [ ] Run the focused kernel test and verify it fails because the legacy 3×8 geometry is still active.
-- [ ] Replace hard-coded 3×8 dimensions with the fixed 4×8 geometry and preserve stable event ordering.
-- [ ] Run `pnpm --filter @auto-battler/game-core test` and confirm all core tests pass.
+- [x] Write tests proving 32 valid cells, no row wrapping across four columns, and deterministic player-to-enemy movement from positions `16..31`.
+- [x] Run the focused kernel test and verify it fails because the legacy 3×8 geometry is still active.
+- [x] Replace hard-coded 3×8 dimensions with the fixed 4×8 geometry and preserve stable event ordering.
+- [x] Run `pnpm --filter @auto-battler/game-core test` and confirm all core tests pass.
 
 ### Task 2: Authoritative Adventure formation migration
 
@@ -45,10 +45,10 @@
 - Consumes 4×8 global positions from Task 1.
 - Produces a 16-slot player board mapped to global positions `16..31`.
 
-- [ ] Write server tests that accept player destinations `16` and `31`, reject `15` and `32`, and enforce an eight-hero cap.
-- [ ] Run those tests and verify the legacy 12-slot mapping fails.
-- [ ] Migrate formation storage, command validation, snapshots, fixtures, and all affected assertions to the fixed player half.
-- [ ] Run `pnpm --filter @auto-battler/server test` and confirm all server tests pass.
+- [x] Write server tests that accept player destinations `16` and `31`, reject `15` and `32`, and enforce an eight-hero cap.
+- [x] Run those tests and verify the legacy 12-slot mapping fails.
+- [x] Migrate formation storage, command validation, snapshots, fixtures, and all affected assertions to the fixed player half.
+- [x] Run `pnpm --filter @auto-battler/server test` and confirm all server tests pass.
 
 ### Task 3: Godot 4×8 board and Adventure tutorial
 
@@ -63,10 +63,10 @@
 - Consumes server board positions `16..31` and round `1..8`.
 - Produces one dismissible tutorial cue per round and a four-column, eight-row rendered board.
 
-- [ ] Write tests for 32 rendered combat cells, 16 player formation cells, a board-art fallback, and the round-1/round-8 tutorial messages.
-- [ ] Run focused Godot tests and verify failure before implementation.
-- [ ] Render the shared 4×8 layout, remove the missing board asset reference, and add progressive text-only tutorial cues without changing authority.
-- [ ] Import once, then run focused Godot tests plus `main_scene_smoke_test.gd`.
+- [x] Write tests for 32 rendered combat cells, 16 player formation cells, a board-art fallback, and the round-1/round-8 tutorial messages.
+- [x] Run focused Godot tests and verify failure before implementation.
+- [x] Render the shared 4×8 layout, remove the missing board asset reference, and add progressive text-only tutorial cues without changing authority.
+- [x] Import once, then run focused Godot tests plus `main_scene_smoke_test.gd`.
 
 ### Task 4: Workspace verification and handoff
 
@@ -75,11 +75,11 @@
 - Modify: `README.md`
 - Modify: `docs/superpowers/specs/2026-08-11-adventure-4x8-cutline-design.md`
 
-- [ ] Write a test or command-level regression check showing workspace typecheck builds game-core before server resolution.
-- [ ] Repair the root check script’s build order without changing package versions.
-- [ ] Document the exact Adventure cutline, targeted commands, and deferred production scope.
-- [ ] Run `pnpm run check`, focused Godot smoke verification, and `git diff --check`.
-- [ ] Commit all approved implementation and documentation on `codex/adventure-4x8-today` at 17:30 Asia/Bangkok, then push that branch.
+- [x] Write a test or command-level regression check showing workspace typecheck builds game-core before server resolution.
+- [x] Repair the root check script’s build order without changing package versions.
+- [x] Document the exact Adventure cutline, targeted commands, and deferred production scope.
+- [x] Run `pnpm run check`, focused Godot smoke verification, and `git diff --check`.
+- [x] Commit all approved implementation and documentation on `codex/adventure-4x8-today` at 17:30 Asia/Bangkok, then push that branch.
 
 ### Follow-up milestone: biome presentation and onboarding hardening
 

@@ -27,7 +27,7 @@ describe("combat snapshot adapter", () => {
       maxTicks: 11,
       units: snapshot.units.map((unit) => {
         if (unit.id === "player:h15") {
-          return { ...unit, position: 1, attackSpeed: 0, startingMana: 100_000, maxMana: 100_000 };
+          return { ...unit, position: 16, attackSpeed: 0, startingMana: 100_000, maxMana: 100_000 };
         }
         const position = enemyIndex === 0 ? 4 : 7;
         enemyIndex += 1;
