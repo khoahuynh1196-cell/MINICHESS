@@ -2,33 +2,30 @@ class_name EncounterMapScreen
 extends Control
 
 const ThemeTokensScript = preload("res://scripts/ui/theme_tokens.gd")
-const DEFAULT_ENCOUNTERS := [
-	{ "name": "Meadow Skirmish" }, { "name": "Meadow Crossroads" },
-	{ "name": "Ruins Ambush" }, { "name": "Ruins Gate", "marker": "MINIBOSS" },
-	{ "name": "Frost Keep Affix" }, { "name": "Frost Keep Siege" },
-	{ "name": "Ember March" }, { "name": "Ember Citadel", "marker": "BOSS" },
-]
+const AdventureEncounterCatalogScript = preload("res://scripts/presentation/adventure_encounter_catalog.gd")
 
 signal encounter_selected(round: int)
 signal back_requested
 
 var encounter_nodes: Array[Button] = []
-var _encounters: Array = DEFAULT_ENCOUNTERS.duplicate(true)
+var _encounters: Array = []
 var _current_round := 1
 
 func _init() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_STOP
+	_encounters = AdventureEncounterCatalogScript.encounters()
 	_rebuild()
 
 func set_encounters(encounters: Array, current_round: int) -> void:
+	var defaults := AdventureEncounterCatalogScript.encounters()
 	_encounters = []
 	for encounter in encounters:
 		if _encounters.size() >= 8:
 			break
 		_encounters.append(encounter if encounter is Dictionary else {})
 	while _encounters.size() < 8:
-		_encounters.append(DEFAULT_ENCOUNTERS[_encounters.size()].duplicate(true))
+		_encounters.append(defaults[_encounters.size()].duplicate(true))
 	_current_round = clampi(current_round, 1, 8)
 	_rebuild()
 
@@ -69,11 +66,15 @@ func _rebuild() -> void:
 	for index in 8:
 		var encounter: Dictionary = _encounters[index]
 		var marker := String(encounter.get("marker", "")).to_upper()
-		var label := "%d  %s%s" % [index + 1, String(encounter.get("name", "Unknown encounter")), "  •  %s" % marker if not marker.is_empty() else ""]
+		var biome := String(encounter.get("biome", "")).replace("_", " ").to_upper()
+		var kind := String(encounter.get("kind", "")).to_upper()
+		var suffix := " | %s" % marker if not marker.is_empty() else ""
+		var label := "%d  %s  |  %s  |  %s%s" % [index + 1, String(encounter.get("name", "Unknown encounter")), biome if not biome.is_empty() else "ADVENTURE", kind if not kind.is_empty() else "ENCOUNTER", suffix]
 		var node := Button.new()
 		node.name = "Encounter%d" % (index + 1)
 		node.text = label
 		node.focus_mode = Control.FOCUS_ALL
+		node.tooltip_text = "%s encounter in the %s biome" % [String(encounter.get("name", "Unknown encounter")), biome.to_lower() if not biome.is_empty() else "Adventure"]
 		ThemeTokensScript.apply_button_style(node, ThemeTokensScript.GOLD if index + 1 == _current_round else ThemeTokensScript.STONE_RAISED)
 		node.disabled = index + 1 != _current_round
 		node.pressed.connect(func() -> void: encounter_selected.emit(index + 1))

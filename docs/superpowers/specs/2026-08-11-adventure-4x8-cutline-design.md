@@ -23,7 +23,8 @@ Deliver a testable Adventure PvE slice on one 4 columns × 8 rows board before t
 5. Prepare shows the content-versioned encounter's manifest monster previews in the enemy half; preview art is presentation-only and never resolves combat outcomes.
 6. Replayed VFX cues replace pooled manifest layers instead of accumulating render nodes across a combat.
 7. Prepare exposes level progression as both authoritative XP text and a bounded visual progress bar.
-8. Targeted core, server, and Godot tests run without regressions; `pnpm run check` has a correct build order.
+8. The Map, Prepare, and preview tests consume one Adventure encounter catalog so biome/name/preview drift is caught before release.
+9. Targeted core, server, and Godot tests run without regressions; `pnpm run check` has a correct build order.
 
 ## Explicitly deferred
 
