@@ -1422,7 +1422,7 @@ func _draw() -> void:
 	draw_rect(BOARD_RECT, board_base_color(), true)
 	for row in BOARD_ROWS:
 		for column in BOARD_COLUMNS:
-			var cell := Rect2(column * CELL_WIDTH, row * CELL_HEIGHT, CELL_WIDTH, CELL_HEIGHT)
+			var cell := Rect2(BOARD_ORIGIN.x + column * CELL_WIDTH, BOARD_ORIGIN.y + row * CELL_HEIGHT, CELL_WIDTH, CELL_HEIGHT)
 			draw_rect(cell.grow(-6.0), board_tile_fill_color(), true)
 			draw_rect(cell.grow(-6.0), Color("#334155"), false, 2.0)
 	draw_string(ThemeDB.fallback_font, Vector2(24.0, 176.0), "AUTO BATTLER ALPHA  •  REPLAY BOARD", HORIZONTAL_ALIGNMENT_LEFT, -1, 22, Color("#93c5fd"))

@@ -1664,6 +1664,41 @@
         { "x": 627, "y": 627, "width": 627, "height": 627 }
       ]
     },
+    "biomes/shared/arena-4x6-master-v2": {
+      "path": "res://assets/biomes/arena-4x6-master-symmetric-v2.png",
+      "render_mode": "authored",
+      "frames": [
+        { "x": 0, "y": 0, "width": 1035, "height": 1520 }
+      ]
+    },
+    "biomes/meadow/arena-4x6": {
+      "path": "res://assets/biomes/arena-4x6-meadow-v2.png",
+      "render_mode": "authored",
+      "frames": [
+        { "x": 0, "y": 0, "width": 1035, "height": 1520 }
+      ]
+    },
+    "biomes/ruins/arena-4x6": {
+      "path": "res://assets/biomes/arena-4x6-ruins-v2.png",
+      "render_mode": "authored",
+      "frames": [
+        { "x": 0, "y": 0, "width": 1035, "height": 1520 }
+      ]
+    },
+    "biomes/frost_keep/arena-4x6": {
+      "path": "res://assets/biomes/arena-4x6-frost_keep-v2.png",
+      "render_mode": "authored",
+      "frames": [
+        { "x": 0, "y": 0, "width": 1035, "height": 1520 }
+      ]
+    },
+    "biomes/ember_citadel/arena-4x6": {
+      "path": "res://assets/biomes/arena-4x6-ember-v2.png",
+      "render_mode": "authored",
+      "frames": [
+        { "x": 0, "y": 0, "width": 1035, "height": 1520 }
+      ]
+    },
     "combat_vfx/damage": {
       "path": "res://assets/vfx/combat-damage-impact-v1.png",
       "render_mode": "authored",

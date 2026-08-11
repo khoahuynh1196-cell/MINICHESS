@@ -1,6 +1,11 @@
 # Adventure Asset Production Status
 **Version 1.9.0** · Client presentation milestone · 2026-08-11 · `codex/adventure-4x8-today`
 
+> Follow-up asset checkpoint: the canonical art pack now includes four
+> mirrored 4×6 arena themes. Runtime 4×6 source migration is tracked in
+> [ARENA_4X6_SOURCE_MIGRATION_PLAN.md](./ARENA_4X6_SOURCE_MIGRATION_PLAN.md)
+> and is intentionally separate from this asset-only checkpoint.
+
 ---
 
 ## AI READING INSTRUCTION

@@ -81,6 +81,10 @@ static func resolve_biome_texture(biome_id: String) -> Texture2D:
 	var layers: Array = biome.get("layers", [])
 	return resolve_asset_texture(String(layers.front())) if not layers.is_empty() else null
 
+static func resolve_arena_4x6_texture(biome_id: String) -> Texture2D:
+	var normalized := biome_id if biome_id in ["meadow", "ruins", "frost_keep", "ember_citadel"] else "ember_citadel"
+	return resolve_asset_texture("biomes/%s/arena-4x6" % normalized)
+
 static func resolve_item_texture(item_id: String) -> Texture2D:
 	var items: Dictionary = load_manifest().get("items", {})
 	var item: Dictionary = items.get(item_id, {})
