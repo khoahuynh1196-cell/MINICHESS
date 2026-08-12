@@ -1,6 +1,6 @@
 # Arena 4x6 source migration plan
 
-**Status:** source migration complete; final verification and push checkpoint
+**Status:** canonical contract and compatibility boundary complete; device gate open
 **Date:** 2026-08-12
 **Target:** portrait mobile arena, 4 columns x 6 rows (24 global cells)
 
@@ -66,8 +66,10 @@ Godot --headless --path client-godot --script res://test/prepare_interaction_tes
 Godot --headless --path client-godot --script res://test/task15_visual_contract_test.gd
 ```
 
-## Remaining release gate
+## Release gate status
 
-- Legacy persisted 4x8 data must be explicitly migrated or rejected at the
-  repository boundary; it must never silently mix with a 4x6 replay.
-- Run the full device visual QA/capture gate before release packaging.
+- Legacy persisted 4x8 data is explicitly migrated or rejected at the
+  repository boundary; see [4x8-to-4x6.md](./migrations/4x8-to-4x6.md).
+- Desktop Godot capture and the full 38-script headless suite are green.
+- Physical Android export/device QA remains open because this workstation lacks
+  Android SDK build-tools, export templates, Java, and a configured `adb`.

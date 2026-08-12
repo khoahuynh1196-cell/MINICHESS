@@ -23,6 +23,21 @@ export {
   isEnemyPosition,
   isPlayerPosition,
 } from "./simulation/board.js";
+export {
+  CANONICAL_ASSET_MANIFEST_VERSION,
+  CANONICAL_CONTENT_VERSION,
+  CANONICAL_RULESET_VERSION,
+  loadCanonicalBoardContract,
+  type BoardContract,
+} from "./rules/board-contract.js";
+export {
+  migrateLegacyBoard4x8,
+  migrateLegacyPosition4x8,
+  type BoardMigrationResult,
+  type LegacyCell,
+  type PositionMigrationResult,
+} from "./compatibility/legacy-board-migration.js";
+export { readVersionedRunState, type VersionedStateResult } from "./compatibility/versioned-state.js";
 export { createSeededRng, type SeededRng } from "./simulation/seeded-rng.js";
 export {
   validateEffectDefinition,

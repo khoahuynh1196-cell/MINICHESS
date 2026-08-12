@@ -102,6 +102,10 @@ flowchart LR
 Không port nào nhận `tenant_id` từ raw client payload. `tenant_id` luôn là thuộc
 tính của `AuthContext` đã qua authentication và membership check.
 
+## Canonical board/version boundary (2026-08-12)
+
+The active presentation and simulation contract is production-4x6-0.1.0: 4x6 global cells (0..23), player cells 12..23, content alpha-0.4.0, and asset manifest asset-4x6-0.1.0. Persistence uses a versioned {schema_version, view} envelope. Legacy 4x8 state is handled only by the explicit mapper documented in docs/migrations/4x8-to-4x6.md; unsupported or ambiguous state is rejected at the persistence/replay boundary.
+
 ## Aggregate và transaction
 
 - `Run` là aggregate gốc cho prepare command, roster, inventory trong run,

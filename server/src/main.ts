@@ -11,8 +11,8 @@ function port(value: string | undefined): number {
 
 function defaultContentPath(): string {
   const candidates = [
-    resolve(process.cwd(), "content", "alpha-0.3.0", "bundle.json"),
-    resolve(process.cwd(), "..", "content", "alpha-0.3.0", "bundle.json"),
+    resolve(process.cwd(), "content", "alpha-0.4.0", "bundle.json"),
+    resolve(process.cwd(), "..", "content", "alpha-0.4.0", "bundle.json"),
   ];
   const existing = candidates.find((candidate) => existsSync(candidate));
   if (existing === undefined) throw new Error("CONTENT_BUNDLE_PATH must point to bundle.json");

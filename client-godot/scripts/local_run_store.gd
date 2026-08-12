@@ -1,6 +1,8 @@
 extends RefCounted
 
-const SCHEMA_VERSION := 1
+const SCHEMA_VERSION := 2
+const CANONICAL_RULESET_VERSION := "production-4x6-0.1.0"
+const CANONICAL_CONTENT_VERSION := "alpha-0.4.0"
 const SAVE_PATH := "user://local_pve_run.json"
 const PUBLIC_FIELDS := [
 	"id", "contentVersion", "state", "round", "revision", "gold", "health", "level",
@@ -20,7 +22,7 @@ func save_run(view: Dictionary) -> void:
 	var file := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
 	if file == null:
 		return
-	file.store_string(JSON.stringify({ "schema_version": SCHEMA_VERSION, "view": public_view }))
+	file.store_string(JSON.stringify({ "schema_version": SCHEMA_VERSION, "ruleset_version": CANONICAL_RULESET_VERSION, "view": public_view }))
 	file.close()
 
 func load_run() -> Dictionary:
@@ -43,10 +45,16 @@ func load_run() -> Dictionary:
 		return {}
 	if schema_version != SCHEMA_VERSION:
 		return {}
+	if String(envelope.get("ruleset_version", "")) != CANONICAL_RULESET_VERSION:
+		return {}
 	var stored_view = envelope.get("view", {})
 	if typeof(stored_view) != TYPE_DICTIONARY:
 		return {}
 	var public_view := _public_view(_normalize_json_numbers(stored_view))
+	if not public_view.has("board"):
+		return {}
+	if public_view.get("board", []).size() > 12:
+		return {}
 	return public_view if _is_valid_public_view(public_view) else {}
 
 func clear_run() -> void:
@@ -61,7 +69,7 @@ func _public_view(view: Dictionary) -> Dictionary:
 	return public_view.duplicate(true)
 
 func _is_valid_public_view(view: Dictionary) -> bool:
-	if String(view.get("id", "")).is_empty() or not RESUMABLE_STATES.has(String(view.get("state", ""))):
+	if String(view.get("id", "")).is_empty() or String(view.get("contentVersion", "")) != CANONICAL_CONTENT_VERSION or not RESUMABLE_STATES.has(String(view.get("state", ""))):
 		return false
 	return _uses_current_roster(view)
 

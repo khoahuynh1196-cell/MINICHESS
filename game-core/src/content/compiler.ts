@@ -16,6 +16,7 @@ import type {
   RawUniqueItem,
   RawVisualProfile,
 } from "./types.js";
+import { CANONICAL_CONTENT_VERSION } from "../rules/board-contract.js";
 
 const REQUIRED_STATS = [
   "max_hp", "attack_damage", "attack_speed", "armor", "magic_resist", "attack_range",
@@ -370,7 +371,7 @@ function validateAlphaV03Cardinality(input: {
   readonly transformations: readonly RawIdentifiedContent[];
   readonly encounters: readonly RawEncounter[];
 }): void {
-  if (input.version !== "alpha-0.3.0") return;
+  if (input.version !== "alpha-0.3.0" && input.version !== CANONICAL_CONTENT_VERSION) return;
   const speciesTraits = input.traits.filter((trait) => (trait as Record<string, unknown>).kind === "species").length;
   const classTraits = input.traits.filter((trait) => (trait as Record<string, unknown>).kind === "class").length;
   const shopHeroes = input.heroes.filter((hero) => !hero.is_unique_hero).length;

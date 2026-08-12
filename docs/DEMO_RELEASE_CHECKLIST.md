@@ -1,23 +1,23 @@
 # Demo Release Checklist
 
-Last audited: 2026-08-04
+Last audited: 2026-08-12
 
 ## Verified in this workspace
 
-- [x] TypeScript typecheck and test suites pass: 100 `game-core` tests and 142 `server` tests.
-- [x] Godot replay, run, UI, asset-manifest, feedback, and accessibility suite passes: 32 headless tests.
+- [x] TypeScript typecheck and test suites pass: 115 `game-core` tests and 150 `server` tests.
+- [x] Godot replay, run, UI, asset-manifest, feedback, accessibility, and Gate 2 stress suite passes: 38 headless tests.
 - [x] Portrait mobile flow reaches Lobby, Map, Prepare, Combat, Reward, Recap, Collection, and Settings.
 - [x] Prepare supports tap-select formation moves, board swaps, board-to-bench moves, item selection/equip feedback, sell, XP, five-card shop, tier odds, authoritative shop lock, and start-round intents.
 - [x] Combat presentation uses the hero rig when a source texture is supplied; reduced-motion reaches that rig.
 - [x] Collection provides 20 roster entries and species/role filtering.
 - [x] English and Vietnamese UI catalog infrastructure, sound/haptic settings, and reduced-motion settings are covered by tests.
-- [x] Android Debug APK export, alignment, debug signing, and verification complete locally.
-- [x] The signed debug APK installs and renders the portrait Lobby on an Android x86_64 AVD using the Compatibility renderer.
+- [ ] Android Debug export/device QA: blocked on missing SDK/build-tools/export templates; see `docs/evidence/2026-08-12-4x6-capture-and-device-qa.md`.
+- [ ] Physical-device install, touch, audio, and performance evidence: not available in this environment.
 - [x] CI runs the TypeScript gate, whitespace gate, and all Godot headless tests.
 
 ## Required before calling this a production release
 
-- [ ] Replace full-body preview art with reviewed cutout layers, 20 portrait crops, ability icons, item icons, biome layers, and recorded audio. The checked-in rig documents the required contract; its current procedural weapon/VFX/audio remain a temporary presentation path.
+- [x] Generated and manifest-validated hero, monster, biome, item, VFX, and audio presentation assets are present for the Adventure slice; recorded/mastered device mix remains a release follow-up.
 - [ ] Complete real-device touch QA and capture/review portrait screenshots for every primary game state. The AVD launch screenshot is evidence of install/render only; its injected touch path did not pass.
 - [ ] Install the exported APK on the agreed reference device and record 60 FPS frame-time and texture-memory results in `ANDROID_QA.md`.
 - [ ] Decide whether server authentication, Supabase persistence, and RLS are required for this offline-first Alpha. Adding them needs a provisioned Supabase project and environment secrets; they are not safely inferable from source code alone.

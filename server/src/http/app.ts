@@ -1,7 +1,7 @@
 import Fastify from "fastify";
 import { randomUUID } from "node:crypto";
 import { PLAYER_FORMATION_SIZE, type CompiledContentBundle } from "@auto-battler/game-core";
-import { applyRunCommand, createInMemoryRunRepository, createRun, progressionForRun, type RunRecord, type RunRecap, type RunRepository, type ShopGenerator } from "../application/run-commands.js";
+import { applyRunCommand, assertCanonicalContentVersion, createInMemoryRunRepository, createRun, progressionForRun, type RunRecord, type RunRecap, type RunRepository, type ShopGenerator } from "../application/run-commands.js";
 import { shopOddsForLevel, type ShopTierOdds } from "../application/shop-pool.js";
 import type { RewardSelection } from "../application/reward-selection.js";
 import { resolveRunCombat } from "../application/resolve-run-combat.js";
@@ -32,6 +32,7 @@ function errorMessage(code: string): string {
     INVALID_COMMAND: "Command payload is invalid.",
     ACTIVE_RUN_EXISTS: "Tenant already has an active run.",
     CONTENT_VERSION_NOT_FOUND: "Content version is not supported.",
+    INCOMPATIBLE_LEGACY_STATE: "Saved run is incompatible with the canonical 4x6 ruleset.",
   } as Readonly<Record<string, string>>)[code] ?? "Internal server error.";
 }
 
@@ -90,7 +91,7 @@ export function createHttpApp(context = { actorId: "anonymous", tenantId: "defau
   const app = Fastify();
   app.setErrorHandler((error, _request, reply) => {
     const code = error.message;
-    const statusCode = code === "RUN_REVISION_CONFLICT" || code === "COMMAND_NOT_ALLOWED" || code === "IDEMPOTENCY_KEY_REUSED" || code === "ACTIVE_RUN_EXISTS" ? 409 : code === "RUN_NOT_FOUND" ? 404 : code === "GAME_RULE_VIOLATION" || code === "REWARD_SELECTION_REQUIRED" || code === "REWARD_SELECTION_INVALID" ? 422 : code === "INVALID_COMMAND" ? 400 : 500;
+    const statusCode = code === "RUN_REVISION_CONFLICT" || code === "COMMAND_NOT_ALLOWED" || code === "IDEMPOTENCY_KEY_REUSED" || code === "ACTIVE_RUN_EXISTS" || code === "INCOMPATIBLE_LEGACY_STATE" ? 409 : code === "RUN_NOT_FOUND" || code === "CONTENT_VERSION_NOT_FOUND" ? 404 : code === "GAME_RULE_VIOLATION" || code === "REWARD_SELECTION_REQUIRED" || code === "REWARD_SELECTION_INVALID" ? 422 : code === "INVALID_COMMAND" ? 400 : 500;
     const responseCode = statusCode === 500 ? "INTERNAL_ERROR" : code;
     return reply.code(statusCode).send(failure(responseCode, code === "RUN_REVISION_CONFLICT"));
   });
@@ -101,6 +102,7 @@ export function createHttpApp(context = { actorId: "anonymous", tenantId: "defau
     return success({ content_version: content.version, content_hash: content.contentHash, manifest: content.manifest });
   });
   app.post<{ Body: { id: string; content_version: string } }>("/v1/runs", async (request, reply) => {
+    assertCanonicalContentVersion(request.body.content_version);
     const content = contentRepository === undefined ? undefined : await contentRepository.getByVersion(request.body.content_version);
     if (contentRepository !== undefined && content === undefined) return reply.code(404).send(failure("CONTENT_VERSION_NOT_FOUND"));
     const run = await createRun(

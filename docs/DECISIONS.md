@@ -115,3 +115,12 @@ from becoming client assets.
   selected when the client and release pipeline are created.
 - PvP transport, matchmaking, ranking, payments, guilds, and marketplace are
   explicitly outside Alpha scope.
+
+## ADR-008 — Canonical 4x6 and online sequencing
+
+**Status:** Accepted — 2026-08-12
+
+- New content, runs, saves, replays, and future room protocols use
+  `production-4x6-0.1.0` / `alpha-0.4.0` / `asset-4x6-0.1.0`.
+- Legacy 4x8 state is migrated only when every occupied cell maps to the canonical three-row player half; otherwise it is rejected without mutation.
+- Online PvP work is sequenced after the offline canonical, capture, device, and Gate 2 evidence. A desktop pass cannot substitute for physical-device performance evidence.

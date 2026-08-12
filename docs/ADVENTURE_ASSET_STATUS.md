@@ -1,5 +1,5 @@
 # Adventure Asset Production Status
-**Version 2.0.0** - Client presentation milestone - 2026-08-12 - `codex/arena-4x6-runtime`
+**Version 2.1.0** - Canonical 4x6 Gate 2 evidence - 2026-08-12 - `codex/canonical-4x6-release`
 
 > The canonical Adventure presentation now uses four symmetry-normalized 4x6
 > arena themes with a footer-safe mobile composition. Runtime migration is
@@ -49,7 +49,7 @@ The six files were generated as centered full-body chroma-key art and converted 
 
 **[?]**
 
-The full 20-skill authored VFX pack is now generated as centered 1254×1254 RGBA sprites and runtime-validated through the manifest. H17 purifying bloom, H18 exotic ricochet, H19 prismatic burst, and H20 last stand shell complete the final four keys. Timeline-authored frame timing, device visual QA, and recorded audio remain open release gates.
+The full 20-skill authored VFX pack is now generated as centered 1254×1254 RGBA sprites and runtime-validated through the manifest. H17 purifying bloom, H18 exotic ricochet, H19 prismatic burst, and H20 last stand shell complete the final four keys. Animation priority, VFX routing, and deterministic pooling stress are now evidence-backed; physical device visual/audio/performance QA remains open.
 
 ## 3. Audio coverage
 
@@ -75,7 +75,7 @@ The designed cue pack is complete for the Adventure demo. Recorded mix variants,
 
 **[?]**
 
-This state gate is the Gate 2 preparation slice, not the complete combat presentation gate. Timeline-authored release/impact frames, per-hero skill layers, recorded audio and device performance evidence remain open.
+The desktop Gate 2 combat presentation gate is closed by the focused animation/VFX/audio tests, fresh capture, and gate2 stress harness. Physical-device performance, loudness/latency, and final recorded mix verification remain open.
 
 ## 5. Completion gates
 
@@ -96,10 +96,11 @@ This state gate is the Gate 2 preparation slice, not the complete combat present
 - The focused asset and hero VFX manifest tests pass after importing the generated PNGs.
 - The same test fails when any monster source mode contains a pending fallback marker.
 - Visual evidence command (desktop GL): `Godot --path client-godot --script res://tools/capture_adventure_frame.gd`
-- Latest visual evidence target: `tmp/adventure-combat-frame-1080x1920.png` (1080 x 1920; the existing file is historical 4 x 8 output and must be regenerated after the capture harness timeout is resolved).
+- Latest visual evidence target: `tmp/adventure-combat-frame-1080x1920.png` plus `tmp/adventure-combat-frame-1080x1920.json` (fresh 1080 x 1920 canonical 4 x 6 capture).
 
 ## Changelog
 
+- 2.1.0 - Locked the canonical rules/content/asset versions, added explicit 4x8 save/replay migration or rejection, and recorded Gate 2 desktop evidence plus the Android prerequisite blocker.
 - 2.0.0 - Rebuilt the Adventure arena contract as 4x6/24 cells, added a shared TFT-style perspective projection and footer-safe mobile composition, and generated four matched v3 theme backgrounds.
 
 - 1.9.0 — Added the deterministic 1080 × 1920 Adventure frame capture harness and inspected the full combat presentation stack.

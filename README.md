@@ -1,6 +1,6 @@
 # Auto-Battler 2D Mobile Alpha
 
-The current PvE demo is an eight-round, server-authoritative auto-battler on a 4×8 board (enemy rows 0–15, player formation rows 16–31):
+The current PvE demo is an eight-round, server-authoritative auto-battler on the canonical 4×6 board (enemy cells 0–11, player formation cells 12–23):
 20 purchasable heroes (H01–H20), deterministic shop/pool/economy, formation,
 items, traits, replay combat, rewards, existing Unique items, recap, collection,
 English/Vietnamese UI, and Android debug export.
@@ -42,8 +42,10 @@ for the current build hash and the remaining physical-device performance gate.
 
 ## Content and architecture
 
-- `content/alpha-0.3.0/bundle.json` is the authored gameplay/content source.
+- `content/alpha-0.4.0/bundle.json` is the active canonical gameplay/content source; `alpha-0.3.0` is retained only for explicit legacy migration.
+- `rules/production-4x6-0.1.0/ruleset.json` is the canonical board/shop/progression contract.
 - `client-godot/assets/asset_manifest.json` maps approved runtime visuals.
+- [Canonical 4x6 contract](docs/CANONICAL_4X6_CONTRACT.md) and [4x8 migration policy](docs/migrations/4x8-to-4x6.md) are the versioning source of truth.
 - [Architecture](docs/ARCHITECTURE.md), [decisions](docs/DECISIONS.md), and the
   [release checklist](docs/DEMO_RELEASE_CHECKLIST.md) define boundaries and
   verification evidence.

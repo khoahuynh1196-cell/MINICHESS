@@ -33,7 +33,7 @@ const BOARD_RECT := Rect2(Vector2(132.0, 176.0), Vector2(816.0, 652.0))
 const COMBAT_NOTICE_BODY_FONT_SIZE := 20.0
 const COMBAT_NOTICE_BODY_LINES := 4.0
 const COMBAT_NOTICE_VERTICAL_PADDING := 44.0
-const CONTENT_VERSION := "alpha-0.3.0"
+const CONTENT_VERSION := "alpha-0.4.0"
 const MOBILE_CONTROLS_RECT := Rect2(24.0, 1110.0, 1032.0, 760.0)
 
 var unit_views: Dictionary = {}

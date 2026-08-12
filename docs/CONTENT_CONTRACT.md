@@ -48,13 +48,18 @@ Mỗi bundle content là immutable và có manifest:
 
 ```json
 {
-  "content_version": "alpha-0.3.0",
-  "ruleset_version": "alpha-0.3.0",
-  "asset_manifest_version": "alpha-0.3.0",
+  "content_version": "alpha-0.4.0",
+  "ruleset_version": "production-4x6-0.1.0",
+  "asset_manifest_version": "asset-4x6-0.1.0",
   "published_at": "2026-08-03T00:00:00.000Z",
   "sha256": "hex-digest"
 }
 ```
+
+The active bundle is `alpha-0.4.0`, paired with the canonical
+`production-4x6-0.1.0` ruleset and `asset-4x6-0.1.0` manifest. The former
+`alpha-0.3.0` bundle is retained only as a legacy compatibility input; it is
+never the default for a new run.
 
 Một run persist đúng `content_version` đã chọn khi tạo. Content compiler đọc toàn
 bộ bundle, validate, sắp theo ID và tạo digest trước khi publish.

@@ -1,6 +1,5 @@
 # Đặc tả luật game Alpha
-
-**Trạng thái:** Khóa cho implementation — 2026-08-03  
+**Trạng thái:** Canonical `production-4x6-0.1.0` — 2026-08-12
 **Nguồn:** Kế hoạch Auto-Battler 2D Mobile v0.3  
 **Phạm vi:** luật mô phỏng và PvE Alpha. Mọi thay đổi cần tăng
 `ruleset_version` và bổ sung test hồi quy.
@@ -19,13 +18,13 @@
 
 ## 2. Bàn đấu và đơn vị
 
-- Bàn logic chung là 3 cột × 8 hàng. Phe địch dùng hàng `0..3`; phe người chơi
-  dùng hàng `4..7`. Cột là `0..2`.
-- Grid index là `row * 3 + column`, tăng từ trái sang phải rồi từ trên xuống.
+- Bàn logic canonical là 4 cột × 6 hàng. Phe địch dùng ô `0..11`; phe người chơi
+  dùng ô `12..23`. Cột là `0..3`.
+- Grid index là `row * 4 + column`, tăng từ trái sang phải rồi từ trên xuống.
 - Mỗi ô chứa tối đa một unit. Unit chỉ di chuyển bốn hướng (không chéo).
 - Tướng, quái và summon có `unit_id` duy nhất trong combat. Tướng/summon không
   được cùng một unit ID sau reconnect hoặc replay.
-- Sức chứa người chơi theo vòng là 3, 4, 5, 6, 6, 6, 6, 6. Bench có 8 ô và
+- Sức chứa người chơi theo vòng là 3, 4, 5, 6, 7, 8, 8, 8. Bench có 8 ô và
   không tham gia combat.
 
 ## 3. Snapshot và state machine
@@ -171,9 +170,10 @@ Các primitive hợp lệ là `deal_damage`, `heal`, `shield`, `stun`, `slow`,
 
 ## 11. Shop, sao, trait và item
 
-- Run bắt đầu với 8 gold; sau mỗi vòng nhận 5 gold cơ bản. Không có interest,
-  streak hoặc XP trong Alpha.
-- Shop có 4 hero; refresh giá 2 gold. Hero cost nằm trong `[1, 3]`.
+- Run bắt đầu với 8 gold; sau mỗi vòng nhận 5 gold cơ bản. Interest và streak
+  chưa thuộc canonical Alpha; XP được bật với 4 XP mỗi lần mua và progression
+  từ level 3 đến level 9 theo ruleset `production-4x6-0.1.0`.
+- Shop có 5 hero; refresh giá 2 gold. Hero cost nằm trong `[1, 3]`.
 - Ba bản sao cùng hero và cùng sao ghép thành sao tiếp theo. Chín bản sao tổng
   cộng thành ba sao. Item của các bản sao được trả về run inventory trước khi
   merge; item không tự nhân bản.

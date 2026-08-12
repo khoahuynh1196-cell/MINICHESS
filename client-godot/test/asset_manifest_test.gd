@@ -8,7 +8,7 @@ var _failed := false
 func _init() -> void:
 	var manifest := AssetManifestScript.load_manifest()
 	var manifest_runtime = AssetManifestScript.new()
-	_expect(String(manifest.get("version", "")) == "alpha-0.3.0", "asset manifest must declare the active content version")
+	_expect(String(manifest.get("version", "")) == "asset-4x6-0.1.0", "asset manifest must declare the active canonical asset version")
 	_expect(AssetManifestScript.validate_hero_assets(HeroVisualCatalogScript.hero_ids()).is_empty(), "every roster hero must resolve to a declared sprite asset")
 	_expect(AssetManifestScript.validate_all_assets().is_empty(), "every declared manifest asset must be runtime-loadable")
 	for hero_id in HeroVisualCatalogScript.hero_ids():

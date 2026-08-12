@@ -1,0 +1,19 @@
+{
+  "version": "production-4x6-0.1.0",
+  "content_version": "alpha-0.4.0",
+  "asset_manifest_version": "asset-4x6-0.1.0",
+  "board": {
+    "columns": 4,
+    "rows": 6,
+    "cell_count": 24,
+    "enemy_cell_count": 12,
+    "player_start": 12,
+    "player_cell_count": 12
+  },
+  "roster": { "bench_slots": 8, "deployment_cap": 8 },
+  "shop": {
+    "slots": 5,
+    "refresh_cost": 2
+  },
+  "progression": { "initial_level": 3, "max_level": 9, "deployment_cap": 8, "xp_per_purchase": 4 }
+}

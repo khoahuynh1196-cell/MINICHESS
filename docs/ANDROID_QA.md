@@ -28,3 +28,15 @@ Run this checklist on the agreed physical Android device before publishing an AP
 5. Record device, Android version, build hash, frame-time percentile, texture memory, and any failures in the release evidence.
 
 The remaining Android evidence requires a physical reference device for install, input, and performance measurements.
+
+## 2026-08-12 canonical 4x6 checkpoint
+
+- Desktop Godot capture and all 38 headless client tests pass against the
+  canonical `production-4x6-0.1.0` ruleset.
+- Android export was attempted with Godot 4.7.1 and failed before APK creation:
+  the configured SDK has no `platform-tools`/`build-tools`, the Java SDK path is
+  invalid, and matching Godot Android export templates are absent. An LDPlayer
+  `adb.exe` is present but reports no connected device. No device result is claimed.
+- Follow-up must install those prerequisites, export the canonical APK, then
+  record physical-device touch, renderer, frame-time, texture-memory, audio,
+  and build-hash evidence here.
