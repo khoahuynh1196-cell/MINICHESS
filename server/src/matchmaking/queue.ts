@@ -1,10 +1,12 @@
 export interface MatchTicket { readonly ticketId: string; readonly playerId: string; readonly region: string; readonly mode: string; }
 export function createMatchmakingQueue() {
   const pending: MatchTicket[] = [];
+  let nextTicketNumber = 1;
   return Object.freeze({
     enqueue(input: { readonly playerId: string; readonly region: string; readonly mode: string }): MatchTicket {
       if (!input.playerId || !input.region?.trim() || !input.mode?.trim()) throw new Error("MATCHMAKING_INPUT_REQUIRED");
-      const ticket = Object.freeze({ ticketId: `ticket_${pending.length + 1}_${input.playerId}`, ...input });
+      if (pending.some((ticket) => ticket.playerId === input.playerId)) throw new Error("MATCH_TICKET_EXISTS");
+      const ticket = Object.freeze({ ticketId: `ticket_${nextTicketNumber++}_${input.playerId}`, ...input });
       pending.push(ticket);
       return ticket;
     },

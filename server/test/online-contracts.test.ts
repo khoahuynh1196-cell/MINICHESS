@@ -44,6 +44,25 @@ describe("online PvP contract surface", () => {
     expect(() => queue.enqueue({ playerId: "p0", region: "", mode: "ranked" })).toThrow("MATCHMAKING_INPUT_REQUIRED");
   });
 
+  it("keeps ticket ids monotonic and rejects duplicate active tickets", async () => {
+    const { createMatchmakingQueue } = await import("../src/matchmaking/queue.js");
+    const queue = createMatchmakingQueue();
+    const first = queue.enqueue({ playerId: "p0", region: "sea", mode: "ranked" });
+    expect(() => queue.enqueue({ playerId: "p0", region: "sea", mode: "ranked" })).toThrow("MATCH_TICKET_EXISTS");
+    expect(queue.cancel(first.ticketId)).toBe(true);
+    const next = queue.enqueue({ playerId: "p0", region: "sea", mode: "ranked" });
+    expect(next.ticketId).not.toBe(first.ticketId);
+  });
+
+  it("rejects malformed realtime envelopes before advancing the sequence", async () => {
+    const { createRealtimeSession } = await import("../src/realtime/session.js");
+    const session = createRealtimeSession({ playerId: "player-a", now: () => 1000 });
+    expect(() => session.accept({ type: "COMMAND", sequence: 1, commandId: "", payload: {} })).toThrow("INVALID_REALTIME_ENVELOPE");
+    expect(session.snapshot().lastSequence).toBe(0);
+    expect(() => session.accept({ type: "COMMAND", sequence: 1, commandId: "cmd-1", payload: [] as unknown as Record<string, unknown> })).toThrow("INVALID_REALTIME_ENVELOPE");
+    expect(session.accept({ type: "COMMAND", sequence: 1, commandId: "cmd-1", payload: { type: "READY" } })).toMatchObject({ accepted: true });
+  });
+
   it("creates a fenced canonical room and recovers without duplicate combat results", async () => {
     const { createRoomRegistry } = await import("../src/rooms/registry.js");
     const registry = createRoomRegistry({ now: () => 2_000 });

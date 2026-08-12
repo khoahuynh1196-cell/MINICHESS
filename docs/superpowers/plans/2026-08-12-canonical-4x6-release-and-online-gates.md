@@ -123,7 +123,9 @@
 - [x] Run RED tests and verify no online implementation is accidentally reachable from the offline client.
 - [x] Implement identity and versioned realtime protocol first; require canonical 4x6/rules/content/asset versions in every room.
 - [x] Implement the in-memory matchmaking and room lifecycle with deterministic server authority; Godot Queue/Match HUD now covers queue polling, ready, reconnect, and room status.
-- [ ] Run multi-client/bot tests, chaos-at-phase-boundary tests, and security boundary tests before calling online gates ready.
+- [x] Run multi-client isolation, lease/reconnect chaos, malformed-envelope, duplicate-ticket, and Postgres transaction contract tests.
+- [x] Add HTTP rate limiting with retryable 429 responses and security-boundary coverage.
+- [ ] Wire the Postgres/Redis adapter into the production runtime and run eight-client/bot soak before calling online gates ready.
 
 ### Final verification and handoff
 

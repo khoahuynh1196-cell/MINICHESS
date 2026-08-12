@@ -6,6 +6,7 @@ import { shopOddsForLevel, type ShopTierOdds } from "../application/shop-pool.js
 import type { RewardSelection } from "../application/reward-selection.js";
 import { resolveRunCombat } from "../application/resolve-run-combat.js";
 import type { OnlineRuntime } from "../online/runtime.js";
+import { createRateLimiter } from "../security/rate-limit.js";
 
 type PublicRunView = Pick<RunRecord, "id" | "contentVersion" | "state" | "round" | "revision" | "gold" | "health" | "shop" | "shopLocked" | "bench" | "board" | "items" | "freeRefreshes" | "roundRewardPlan" | "rewardHeroes" | "recap"> & ReturnType<typeof progressionForRun> & { readonly shopOdds: ShopTierOdds };
 
@@ -37,6 +38,13 @@ function errorMessage(code: string): string {
      DEVICE_ID_REQUIRED: "A device identifier is required.",
      MATCHMAKING_INPUT_REQUIRED: "Region and mode are required for matchmaking.",
      TICKET_NOT_FOUND: "Match ticket was not found.",
+     MATCH_TICKET_EXISTS: "Player already has an active match ticket.",
+     INVALID_REALTIME_ENVELOPE: "Realtime envelope is invalid.",
+     ROOM_COMMAND_INPUT_REQUIRED: "Room command fields are required.",
+     ROOM_RECOVERY_INPUT_REQUIRED: "Room recovery fields are required.",
+     REFRESH_PLAYER_MISMATCH: "Refresh session does not belong to this player.",
+     INVALID_COMBAT_RESULT: "Combat result fields are required.",
+     DUPLICATE_COMBAT_RESULT: "Combat result was already recorded.",
   } as Readonly<Record<string, string>>)[code] ?? "Internal server error.";
 }
 
@@ -103,11 +111,26 @@ function toPublicRunView(run: RunRecord): PublicRunView {
 
 export function createHttpApp(context = { actorId: "anonymous", tenantId: "default" }, repository: RunRepository = createInMemoryRunRepository(), shopGenerator?: ShopGenerator, contentRepository?: ContentManifestRepository, onlineRuntime?: OnlineRuntime) {
   const app = Fastify();
+  const onlineRateLimiter = createRateLimiter({ limit: 120, windowMs: 60_000 });
+  const onlineRequestGuard = (request: { readonly ip?: string; readonly headers: { readonly authorization?: string | string[] | undefined } }) => {
+    const authorization = request.headers.authorization;
+    const key = typeof authorization === "string" && authorization.startsWith("Bearer ") ? authorization.slice("Bearer ".length, 64) : request.ip ?? "anonymous";
+    const result = onlineRateLimiter.allow(key);
+    if (!result.allowed) {
+      const error = new Error("RATE_LIMITED");
+      Object.defineProperty(error, "retryAfterMs", { value: result.retryAfterMs, enumerable: false });
+      throw error;
+    }
+  };
   app.setErrorHandler((error, _request, reply) => {
     const code = error.message;
-    const statusCode = code === "AUTH_REQUIRED" || code === "INVALID_TOKEN" || code === "TOKEN_EXPIRED" || code === "IDENTITY_REVOKED" || code === "REFRESH_TOKEN_REVOKED" ? 401 : code === "RUN_REVISION_CONFLICT" || code === "COMMAND_NOT_ALLOWED" || code === "IDEMPOTENCY_KEY_REUSED" || code === "ACTIVE_RUN_EXISTS" || code === "INCOMPATIBLE_LEGACY_STATE" || code === "FENCING_TOKEN_STALE" ? 409 : code === "RUN_NOT_FOUND" || code === "CONTENT_VERSION_NOT_FOUND" || code === "ROOM_NOT_FOUND" || code === "TICKET_NOT_FOUND" || code === "TICKET_NOT_OWNED" ? 404 : code === "GAME_RULE_VIOLATION" || code === "REWARD_SELECTION_REQUIRED" || code === "REWARD_SELECTION_INVALID" ? 422 : code === "INVALID_COMMAND" || code === "MATCHMAKING_INPUT_REQUIRED" || code === "DEVICE_ID_REQUIRED" ? 400 : 500;
+    const statusCode = code === "AUTH_REQUIRED" || code === "INVALID_TOKEN" || code === "TOKEN_EXPIRED" || code === "IDENTITY_REVOKED" || code === "REFRESH_TOKEN_REVOKED" || code === "REFRESH_PLAYER_MISMATCH" ? 401 : code === "RUN_REVISION_CONFLICT" || code === "COMMAND_NOT_ALLOWED" || code === "IDEMPOTENCY_KEY_REUSED" || code === "ACTIVE_RUN_EXISTS" || code === "INCOMPATIBLE_LEGACY_STATE" || code === "FENCING_TOKEN_STALE" || code === "MATCH_TICKET_EXISTS" ? 409 : code === "RUN_NOT_FOUND" || code === "CONTENT_VERSION_NOT_FOUND" || code === "ROOM_NOT_FOUND" || code === "TICKET_NOT_FOUND" || code === "TICKET_NOT_OWNED" ? 404 : code === "GAME_RULE_VIOLATION" || code === "REWARD_SELECTION_REQUIRED" || code === "REWARD_SELECTION_INVALID" ? 422 : code === "INVALID_COMMAND" || code === "MATCHMAKING_INPUT_REQUIRED" || code === "DEVICE_ID_REQUIRED" || code === "INVALID_REALTIME_ENVELOPE" || code === "ROOM_COMMAND_INPUT_REQUIRED" || code === "ROOM_RECOVERY_INPUT_REQUIRED" ? 400 : code === "RATE_LIMITED" ? 429 : 500;
     const responseCode = statusCode === 500 ? "INTERNAL_ERROR" : code;
-    return reply.code(statusCode).send(failure(responseCode, code === "RUN_REVISION_CONFLICT"));
+    if (code === "RATE_LIMITED") reply.header("retry-after", Math.ceil(((error as Error & { retryAfterMs?: number }).retryAfterMs ?? 1_000) / 1_000));
+    return reply.code(statusCode).send(failure(responseCode, code === "RUN_REVISION_CONFLICT" || code === "RATE_LIMITED"));
+  });
+  app.addHook("onRequest", async (request) => {
+    if (onlineRuntime !== undefined && /^\/v1\/(auth|matchmaking|rooms)(?:\/|$)/.test(request.url)) onlineRequestGuard(request);
   });
   app.get("/health", async () => ({ status: "ok" }));
   if (onlineRuntime !== undefined) {
@@ -118,10 +141,11 @@ export function createHttpApp(context = { actorId: "anonymous", tenantId: "defau
      app.delete<{ Params: { ticketId: string } }>("/v1/matchmaking/tickets/:ticketId", async (request, reply) => { const identity = bearer(request, onlineRuntime); return reply.code(onlineRuntime.cancel(identity.playerId, request.params.ticketId) ? 204 : 404).send(); });
      app.get<{ Params: { ticketId: string } }>("/v1/matchmaking/tickets/:ticketId", async (request, reply) => { const identity = bearer(request, onlineRuntime); const status = onlineRuntime.ticketStatus(identity.playerId, request.params.ticketId); if (status === undefined) return reply.code(404).send(failure("TICKET_NOT_FOUND")); return success({ ticket_id: status.ticketId, status: status.status, ...(status.room === undefined ? {} : { room: publicRoom(status.room) }) }); });
     app.get<{ Params: { roomId: string } }>("/v1/rooms/:roomId", async (request, reply) => { const identity = bearer(request, onlineRuntime); const room = onlineRuntime.roomForPlayer(request.params.roomId, identity.playerId); if (room === undefined) return reply.code(404).send(failure("ROOM_NOT_FOUND")); return success(publicRoom(room)); });
-    app.post<{ Params: { roomId: string }; Body: { fencing_token: number; command_id: string; type: "READY" } }>("/v1/rooms/:roomId/commands", async (request, reply) => { const identity = bearer(request, onlineRuntime); const result = onlineRuntime.command(request.params.roomId, identity.playerId, { fencingToken: request.body.fencing_token, commandId: request.body.command_id, type: request.body.type }); if (!result.accepted) { if (result.reason === "ROOM_NOT_FOUND") return reply.code(404).send(failure("ROOM_NOT_FOUND")); return reply.code(409).send(failure(result.reason ?? "COMMAND_NOT_ALLOWED")); } return success(result); });
-    app.post<{ Params: { roomId: string }; Body: { fencing_token: number } }>("/v1/rooms/:roomId/recover", async (request) => { const identity = bearer(request, onlineRuntime); return success(publicRoom(onlineRuntime.recover(request.params.roomId, identity.playerId, request.body.fencing_token))); });
-    app.post<{ Params: { roomId: string }; Body: { type: "PING" | "COMMAND"; sequence: number; sent_at?: number; command_id?: string; payload?: Record<string, unknown> } }>("/v1/rooms/:roomId/realtime", async (request) => { const identity = bearer(request, onlineRuntime); const body = request.body; const envelope = body.type === "PING" ? { type: "PING" as const, sequence: body.sequence, sentAt: body.sent_at ?? Date.now() } : { type: "COMMAND" as const, sequence: body.sequence, commandId: body.command_id ?? "", payload: body.payload ?? {} }; return success(onlineRuntime.realtime(request.params.roomId, identity.playerId, envelope)); });
+    app.post<{ Params: { roomId: string }; Body: { fencing_token: number; command_id: string; type: "READY" } }>("/v1/rooms/:roomId/commands", async (request, reply) => { const identity = bearer(request, onlineRuntime); const body = request.body; if (!body || !Number.isSafeInteger(body.fencing_token) || typeof body.command_id !== "string" || !body.command_id.trim() || body.type !== "READY") throw new Error("ROOM_COMMAND_INPUT_REQUIRED"); const result = onlineRuntime.command(request.params.roomId, identity.playerId, { fencingToken: body.fencing_token, commandId: body.command_id, type: body.type }); if (!result.accepted) { if (result.reason === "ROOM_NOT_FOUND") return reply.code(404).send(failure("ROOM_NOT_FOUND")); return reply.code(409).send(failure(result.reason ?? "COMMAND_NOT_ALLOWED")); } return success(result); });
+    app.post<{ Params: { roomId: string }; Body: { fencing_token: number } }>("/v1/rooms/:roomId/recover", async (request) => { const identity = bearer(request, onlineRuntime); const fencingToken = request.body?.fencing_token; if (!Number.isSafeInteger(fencingToken)) throw new Error("ROOM_RECOVERY_INPUT_REQUIRED"); return success(publicRoom(onlineRuntime.recover(request.params.roomId, identity.playerId, fencingToken))); });
+    app.post<{ Params: { roomId: string }; Body: { type: "PING" | "COMMAND"; sequence: number; sent_at?: number; command_id?: string; payload?: Record<string, unknown> } }>("/v1/rooms/:roomId/realtime", async (request) => { const identity = bearer(request, onlineRuntime); const body = request.body; if (!body || (body.type !== "PING" && body.type !== "COMMAND") || !Number.isSafeInteger(body.sequence)) throw new Error("INVALID_REALTIME_ENVELOPE"); if (body.type === "PING" && !Number.isSafeInteger(body.sent_at)) throw new Error("INVALID_REALTIME_ENVELOPE"); if (body.type === "COMMAND" && (typeof body.command_id !== "string" || !body.command_id.trim() || typeof body.payload !== "object" || body.payload === null || Array.isArray(body.payload))) throw new Error("INVALID_REALTIME_ENVELOPE"); const envelope = body.type === "PING" ? { type: "PING" as const, sequence: body.sequence, sentAt: body.sent_at! } : { type: "COMMAND" as const, sequence: body.sequence, commandId: body.command_id!, payload: body.payload! }; return success(onlineRuntime.realtime(request.params.roomId, identity.playerId, envelope)); });
     app.get<{ Params: { roomId: string } }>("/v1/rooms/:roomId/realtime/snapshot", async (request) => { const identity = bearer(request, onlineRuntime); const room = onlineRuntime.roomForPlayer(request.params.roomId, identity.playerId); if (room === undefined) throw new Error("ROOM_NOT_FOUND"); return success({ room_id: request.params.roomId, room: publicRoom(room), realtime: onlineRuntime.realtimeSnapshot(request.params.roomId, identity.playerId) }); });
+    app.post<{ Params: { roomId: string }; Body: { combat_id: string; result_hash: string } }>("/v1/rooms/:roomId/combat-results", async (request, reply) => { const identity = bearer(request, onlineRuntime); const body = request.body; if (!body || typeof body.combat_id !== "string" || typeof body.result_hash !== "string" || !body.combat_id.trim() || !body.result_hash.trim()) throw new Error("INVALID_COMBAT_RESULT"); const result = onlineRuntime.combatResult(request.params.roomId, identity.playerId, { combatId: body.combat_id, resultHash: body.result_hash }); if (result.reason === "ROOM_NOT_FOUND") return reply.code(404).send(failure("ROOM_NOT_FOUND")); if (result.reason === "INVALID_COMBAT_RESULT") throw new Error("INVALID_COMBAT_RESULT"); if (result.reason === "DUPLICATE_COMBAT_RESULT") return success(result); return success(result.accepted ? result : { accepted: false, reason: "DUPLICATE_COMBAT_RESULT" }); });
   }
   app.get<{ Params: { contentVersion: string } }>("/v1/content/:contentVersion/manifest", async (request, reply) => {
     const content = await contentRepository?.getByVersion(request.params.contentVersion);

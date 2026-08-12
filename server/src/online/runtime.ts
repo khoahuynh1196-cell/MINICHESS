@@ -19,6 +19,7 @@ export interface OnlineRuntime {
   readonly ticketStatus: (playerId: string, ticketId: string) => { readonly ticketId: string; readonly status: "QUEUED" | "MATCHED" | "CANCELLED"; readonly room?: ReturnType<ReturnType<typeof createRoomRegistry>["create"]> } | undefined;
   readonly roomForPlayer: (roomId: string, playerId: string) => ReturnType<ReturnType<typeof createRoomRegistry>["get"]> | undefined;
   readonly command: (roomId: string, playerId: string, input: { readonly fencingToken: number; readonly commandId: string; readonly type: "READY" }) => { readonly accepted: boolean; readonly reason?: string };
+  readonly combatResult: (roomId: string, playerId: string, input: { readonly combatId: string; readonly resultHash: string }) => { readonly accepted: boolean; readonly reason?: string };
   readonly recover: (roomId: string, playerId: string, fencingToken: number) => ReturnType<ReturnType<typeof createRoomRegistry>["recover"]>;
   readonly realtime: (roomId: string, playerId: string, envelope: RealtimeEnvelope) => Record<string, unknown>;
   readonly realtimeSnapshot: (roomId: string, playerId: string) => Record<string, unknown>;
@@ -45,6 +46,8 @@ export function createOnlineRuntime(options: OnlineRuntimeOptions): OnlineRuntim
     verifyAccess: (accessToken: string) => identity.verifyAccess(accessToken),
     revoke: (playerId: string) => identity.revoke(playerId),
     enqueue(playerId: string, region: string, mode: string) {
+      const activeTicket = [...ticketStatuses.values()].find((status) => status.ticket.playerId === playerId && status.status !== "CANCELLED");
+      if (activeTicket !== undefined) throw new Error("MATCH_TICKET_EXISTS");
       const ticket = queue.enqueue({ playerId, region, mode });
       tickets.set(ticket.ticketId, ticket);
       ticketStatuses.set(ticket.ticketId, { ticket, status: "QUEUED" });
@@ -81,6 +84,11 @@ export function createOnlineRuntime(options: OnlineRuntimeOptions): OnlineRuntim
     command(roomId: string, playerId: string, input: { readonly fencingToken: number; readonly commandId: string; readonly type: "READY" }) {
       if (roomForPlayer(roomId, playerId) === undefined) return { accepted: false, reason: "ROOM_NOT_FOUND" };
       return rooms.acceptCommand(roomId, { ...input, playerId });
+    },
+    combatResult(roomId: string, playerId: string, input: { readonly combatId: string; readonly resultHash: string }) {
+      if (roomForPlayer(roomId, playerId) === undefined) return { accepted: false, reason: "ROOM_NOT_FOUND" };
+      if (!input.combatId.trim() || !input.resultHash.trim()) return { accepted: false, reason: "INVALID_COMBAT_RESULT" };
+      return { accepted: rooms.recordCombatResult(roomId, input) };
     },
     recover(roomId: string, playerId: string, fencingToken: number) {
       if (roomForPlayer(roomId, playerId) === undefined) throw new Error("ROOM_NOT_FOUND");

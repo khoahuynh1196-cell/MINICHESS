@@ -104,4 +104,54 @@ describe("online HTTP boundary", () => {
     expect(snapshot.json().data).toMatchObject({ room_id: roomId, room: { ruleset_version: "production-4x6-0.1.0" }, realtime: { playerId: identities[0]!.player_id, lastSequence: 1, serverClockOffsetMs: 100 } });
     await app.close();
   });
+
+  it("bounds command payloads and rejects malformed realtime input", async () => {
+    const app = await onlineApp();
+    const identities = await Promise.all(Array.from({ length: 8 }, (_, index) => guest(app, `device-boundary-${index}`)));
+    let match: any;
+    for (const identity of identities) {
+      const response = await app.inject({ method: "POST", url: "/v1/matchmaking/tickets", headers: { authorization: `Bearer ${identity.access_token}` }, payload: { region: "sea", mode: "boundary" } });
+      if (response.statusCode === 201) match = response.json().data;
+    }
+    const roomId = match.room.room_id as string;
+    const malformed = await app.inject({ method: "POST", url: `/v1/rooms/${roomId}/realtime`, headers: { authorization: `Bearer ${identities[0]!.access_token}` }, payload: { type: "COMMAND", sequence: 1, command_id: "", payload: [] } });
+    expect(malformed.statusCode).toBe(400);
+    expect(malformed.json().error.code).toBe("INVALID_REALTIME_ENVELOPE");
+    await app.close();
+  });
+
+  it("accepts an idempotent combat result only from a room member", async () => {
+    const app = await onlineApp();
+    const identities = await Promise.all(Array.from({ length: 8 }, (_, index) => guest(app, `device-result-${index}`)));
+    let match: any;
+    for (const identity of identities) {
+      const response = await app.inject({ method: "POST", url: "/v1/matchmaking/tickets", headers: { authorization: `Bearer ${identity.access_token}` }, payload: { region: "sea", mode: "result" } });
+      if (response.statusCode === 201) match = response.json().data;
+    }
+    const url = `/v1/rooms/${match.room.room_id}/combat-results`;
+    const payload = { combat_id: "combat-1", result_hash: "hash-1" };
+    const first = await app.inject({ method: "POST", url, headers: { authorization: `Bearer ${identities[0]!.access_token}` }, payload });
+    const duplicate = await app.inject({ method: "POST", url, headers: { authorization: `Bearer ${identities[0]!.access_token}` }, payload });
+    expect(first.statusCode).toBe(200);
+    expect(first.json().data).toMatchObject({ accepted: true });
+    expect(duplicate.statusCode).toBe(200);
+    expect(duplicate.json().data).toMatchObject({ accepted: false, reason: "DUPLICATE_COMBAT_RESULT" });
+    const outsider = await guest(app, "result-outsider");
+    const hidden = await app.inject({ method: "POST", url, headers: { authorization: `Bearer ${outsider.access_token}` }, payload });
+    expect(hidden.statusCode).toBe(404);
+    await app.close();
+  });
+
+  it("returns a retryable 429 after the online request budget is exhausted", async () => {
+    const app = await onlineApp();
+    let limited: any;
+    for (let index = 0; index < 125; index += 1) {
+      limited = await app.inject({ method: "POST", url: "/v1/auth/guest", payload: { device_id: `rate-${index}` }, headers: { "x-forwarded-for": "rate-client" } });
+      if (limited.statusCode === 429) break;
+    }
+    expect(limited.statusCode).toBe(429);
+    expect(limited.headers["retry-after"]).toBeDefined();
+    expect(limited.json().error.retryable).toBe(true);
+    await app.close();
+  });
 });

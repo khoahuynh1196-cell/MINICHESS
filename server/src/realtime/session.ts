@@ -6,6 +6,8 @@ export function createRealtimeSession(options: { readonly playerId: string; read
   let offset = 0;
   return Object.freeze({
     accept(envelope: RealtimeEnvelope): Record<string, unknown> {
+      if (envelope.type === "PING" && (!Number.isSafeInteger(envelope.sequence) || !Number.isSafeInteger(envelope.sentAt))) throw new Error("INVALID_REALTIME_ENVELOPE");
+      if (envelope.type === "COMMAND" && (!Number.isSafeInteger(envelope.sequence) || !envelope.commandId.trim() || typeof envelope.payload !== "object" || envelope.payload === null || Array.isArray(envelope.payload))) throw new Error("INVALID_REALTIME_ENVELOPE");
       if (envelope.type === "COMMAND" && commands.has(envelope.commandId)) return { accepted: false, reason: "DUPLICATE_COMMAND" };
       if (!Number.isSafeInteger(envelope.sequence) || envelope.sequence <= lastSequence) throw new Error("SEQUENCE_OUT_OF_ORDER");
       lastSequence = envelope.sequence;
