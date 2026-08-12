@@ -20,13 +20,14 @@ priority, audio cue resolution, VFX pooling, Gate 2 stress, and mobile accessibi
 
 ## Android status
 
-Physical-device QA is **blocked**, not passed. The configured Android SDK has no
-`platform-tools`/`build-tools`, the Java SDK path is invalid, and no matching
-Godot Android export templates are installed. The export command fails before
-producing an APK. The available LDPlayer `adb.exe` reports no connected device.
-Therefore this checkpoint makes no claims about touch, FPS, frame-time
-percentiles, texture memory, loudness, or latency on Android. The existing
-2026-08-04 emulator note remains historical evidence only.
+Physical-device QA is **blocked**, not passed. `platform-tools` and OpenJDK 17
+are now installed/configured for the Android SDK, but the SDK still lacks
+`build-tools`/a platform package and matching Godot Android export templates.
+The export command therefore fails before producing an APK. Both the SDK and
+LDPlayer `adb` clients report no connected device. This checkpoint makes no
+claims about touch, FPS, frame-time percentiles, texture memory, loudness, or
+latency on Android. The existing 2026-08-04 emulator note remains historical
+evidence only.
 
 Required next evidence: install/configure the Android SDK and export templates,
 export the canonical APK, install on the agreed physical device, exercise the
