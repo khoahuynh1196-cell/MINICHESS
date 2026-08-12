@@ -137,3 +137,12 @@ from becoming client assets.
 - The in-memory runtime is an integration foundation only; transactional
   Postgres/Redis adapters, multi-client soak, and physical-device QA remain
   release gates.
+
+## ADR-010 - Online public identity versus durable UUID
+
+**Status:** Accepted - 2026-08-12
+
+- The HTTP/Godot contract keeps the immutable server-generated `guest_*` `player_id` as the public identity so reconnect and client storage do not change during the persistence rollout.
+- Supabase uses UUID `player_id` as the durable foreign key and stores the public value in `online_identities.public_id`; migration `20260812000002_online_identity_public_ids.sql` backfills existing rows.
+- A production adapter must resolve `public_id` to UUID inside the transaction before creating tickets, seats, commands, or combat results. It must reject an unresolved mapping and never cast a public id into a UUID column.
+- The in-memory runtime remains the default until this resolver, identity-row creation, Redis presence/lease coordination, and multi-process soak are implemented and evidenced.

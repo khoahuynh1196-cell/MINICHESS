@@ -26,6 +26,18 @@ export interface RefreshRotationResult {
   readonly playerId: string;
 }
 
+export interface CreateMatchTicketInput {
+  readonly ticketId: string;
+  readonly playerId: string;
+  readonly region: string;
+  readonly mode: string;
+}
+
+export interface CancelMatchTicketInput {
+  readonly ticketId: string;
+  readonly playerId: string;
+}
+
 export interface ClaimEightSeatMatchInput {
   readonly roomId: string;
   readonly region: string;
@@ -59,6 +71,13 @@ export interface RecoverRoomResult {
   readonly leaseExpiresAt?: string;
 }
 
+export interface RecordCombatResultInput {
+  readonly roomId: string;
+  readonly combatId: string;
+  readonly resultHash: string;
+  readonly result?: Record<string, unknown>;
+}
+
 interface RefreshRow {
   readonly refresh_id: string;
   readonly player_id: string;
@@ -72,6 +91,18 @@ interface FencingRow {
 interface TicketRow {
   readonly ticket_id: string;
   readonly player_id: string;
+}
+
+interface PlayerRow {
+  readonly player_id: string;
+}
+
+async function resolvePlayerId(client: SqlOnlinePersistenceClient, publicPlayerId: string): Promise<string | undefined> {
+  const result = await client.query(
+    "select player_id from public.online_identities where public_id = $1 or player_id::text = $1 limit 1",
+    [publicPlayerId],
+  );
+  return (result.rows[0] as PlayerRow | undefined)?.player_id;
 }
 
 function canonicalRoom(input: ClaimEightSeatMatchInput): void {
@@ -92,20 +123,45 @@ function canonicalRoom(input: ClaimEightSeatMatchInput): void {
  */
 export function createPostgresOnlinePersistence(client: SqlOnlinePersistenceClient) {
   return Object.freeze({
+    async createMatchTicket(input: CreateMatchTicketInput): Promise<void> {
+      await client.transaction(async (transaction) => {
+        const playerId = await resolvePlayerId(transaction, input.playerId);
+        if (playerId === undefined) throw new Error("PLAYER_NOT_FOUND");
+        await transaction.query(
+          "insert into public.online_match_tickets (ticket_id, player_id, region, mode) values ($1, $2, $3, $4)",
+          [input.ticketId, playerId, input.region, input.mode],
+        );
+      });
+    },
+
+    async cancelMatchTicket(input: CancelMatchTicketInput): Promise<boolean> {
+      return client.transaction(async (transaction) => {
+        const playerId = await resolvePlayerId(transaction, input.playerId);
+        if (playerId === undefined) return false;
+        const result = await transaction.query(
+          "update public.online_match_tickets set status = 'CANCELLED', cancelled_at = now() where ticket_id = $1 and player_id = $2 and status = 'QUEUED' returning ticket_id",
+          [input.ticketId, playerId],
+        );
+        return result.rows.length > 0;
+      });
+    },
+
     async rotateRefreshSession(input: RefreshRotationInput): Promise<RefreshRotationResult | undefined> {
       return client.transaction(async (transaction) => {
+        const playerId = await resolvePlayerId(transaction, input.playerId);
+        if (playerId === undefined) throw new Error("REFRESH_PLAYER_MISMATCH");
         const claimed = await transaction.query(
           "update public.online_refresh_sessions set revoked_at = now() where token_hash = $1 and revoked_at is null and expires_at > now() returning refresh_id, player_id",
           [input.currentTokenHash],
         );
         const row = claimed.rows[0] as RefreshRow | undefined;
         if (row === undefined) return undefined;
-        if (row.player_id !== input.playerId) throw new Error("REFRESH_PLAYER_MISMATCH");
+        if (row.player_id !== playerId) throw new Error("REFRESH_PLAYER_MISMATCH");
         await transaction.query(
           "insert into public.online_refresh_sessions (refresh_id, player_id, token_hash, expires_at, rotated_from) values ($1, $2, $3, $4, $5)",
-          [input.refreshId, input.playerId, input.tokenHash, input.expiresAt, row.refresh_id],
+          [input.refreshId, playerId, input.tokenHash, input.expiresAt, row.refresh_id],
         );
-        return { refreshId: input.refreshId, playerId: row.player_id };
+        return { refreshId: input.refreshId, playerId: input.playerId };
       });
     },
 
@@ -151,17 +207,27 @@ export function createPostgresOnlinePersistence(client: SqlOnlinePersistenceClie
         const room = roomResult.rows[0] as FencingRow | undefined;
         if (room === undefined) return { accepted: false, reason: "ROOM_NOT_FOUND" };
         if (Number(room.fencing_token) !== input.fencingToken) return { accepted: false, reason: "FENCING_TOKEN_STALE" };
+        const playerId = await resolvePlayerId(transaction, input.playerId);
+        if (playerId === undefined) return { accepted: false, reason: "PLAYER_NOT_IN_ROOM" };
         const member = await transaction.query(
           "select 1 from public.online_room_seats where room_id = $1 and player_id = $2",
-          [input.roomId, input.playerId],
+          [input.roomId, playerId],
         );
         if (member.rows.length === 0) return { accepted: false, reason: "PLAYER_NOT_IN_ROOM" };
         const inserted = await transaction.query(
           "insert into public.online_room_commands (room_id, command_id, player_id, fencing_token, sequence, payload) values ($1, $2, $3, $4, $5, $6::jsonb) on conflict (room_id, command_id) do nothing returning command_id",
-          [input.roomId, input.commandId, input.playerId, input.fencingToken, input.sequence, input.payload],
+          [input.roomId, input.commandId, playerId, input.fencingToken, input.sequence, input.payload],
         );
         return inserted.rows.length === 0 ? { accepted: false, reason: "DUPLICATE_COMMAND" } : { accepted: true };
       });
+    },
+
+    async recordCombatResult(input: RecordCombatResultInput): Promise<boolean> {
+      const result = await client.query(
+        "insert into public.online_combat_results (room_id, combat_id, result_hash, result) values ($1, $2, $3, $4::jsonb) on conflict (room_id, combat_id) do nothing returning combat_id",
+        [input.roomId, input.combatId, input.resultHash, input.result ?? {}],
+      );
+      return result.rows.length > 0;
     },
 
     async recoverRoom(input: { readonly roomId: string; readonly fencingToken: number }): Promise<RecoverRoomResult | undefined> {
@@ -181,3 +247,5 @@ export function createPostgresOnlinePersistence(client: SqlOnlinePersistenceClie
     },
   });
 }
+
+export type PostgresOnlinePersistence = ReturnType<typeof createPostgresOnlinePersistence>;

@@ -14,8 +14,9 @@ soak/security tests, and physical Android QA are complete; see
 
 The server also exposes a server-only Postgres persistence contract for atomic
 refresh rotation, eight-seat ticket claims, room command idempotency, and lease
-recovery. The default runtime remains in-memory until the production flag and
-Redis coordination are enabled.
+recovery. Public `guest_*` IDs are mapped to durable UUID foreign keys by the
+versioned Supabase migration; the default runtime remains in-memory until that
+resolver, identity-row creation, and Redis coordination are enabled.
 
 ## Run and verify
 

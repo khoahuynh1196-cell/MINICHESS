@@ -125,6 +125,9 @@
 - [x] Implement the in-memory matchmaking and room lifecycle with deterministic server authority; Godot Queue/Match HUD now covers queue polling, ready, reconnect, and room status.
 - [x] Run multi-client isolation, lease/reconnect chaos, malformed-envelope, duplicate-ticket, and Postgres transaction contract tests.
 - [x] Add HTTP rate limiting with retryable 429 responses and security-boundary coverage.
+- [x] Add the public `guest_*` to durable UUID migration and a transactional
+  adapter resolver contract; keep production wiring disabled until it is
+  integrated end-to-end.
 - [ ] Wire the Postgres/Redis adapter into the production runtime and run eight-client/bot soak before calling online gates ready.
 
 ### Final verification and handoff

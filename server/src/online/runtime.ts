@@ -55,7 +55,7 @@ export function createOnlineRuntime(options: OnlineRuntimeOptions): OnlineRuntim
       if (match === undefined) return { ticket };
       const players = match.seats.map((ticketId) => tickets.get(ticketId)?.playerId).filter((candidate): candidate is string => candidate !== undefined);
       if (players.length !== 8) throw new Error("MATCH_TICKET_NOT_FOUND");
-      const room = rooms.create({ roomId: `room_${randomUUID().slice(0, 12)}`, players, region, mode });
+      const room = rooms.create({ roomId: randomUUID(), players, region, mode });
       roomPlayers.set(room.roomId, new Set(players));
       for (const ticketId of match.seats) {
         const status = ticketStatuses.get(ticketId);

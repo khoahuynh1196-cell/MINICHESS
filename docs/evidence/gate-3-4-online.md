@@ -15,17 +15,19 @@
   recovery, and realtime envelopes.
 - Supabase migration for identity, refresh sessions, tickets, rooms, seats,
   commands, and combat results with RLS enabled and canonical version checks.
+- Public `guest_*` player IDs are separated from durable UUID foreign keys by
+  migration `20260812000002_online_identity_public_ids.sql`.
 - Postgres online persistence adapter with transactional refresh rotation,
   `FOR UPDATE SKIP LOCKED` eight-seat claims, room seat writes, command
-  idempotency, membership checks, fencing-token recovery, and server-only
-  request rate limiting.
+  idempotency, public-ID-to-UUID resolution, membership checks,
+  fencing-token recovery, and server-only request rate limiting.
 
 ## Verification
 
 - RED confirmed before implementation: online contract modules and HTTP routes
   were absent.
 - GREEN: online contract, HTTP, hardening, rate-limit, and Postgres persistence
-  tests; the server suite is 16 files / 174 tests passing, including
+  tests; the server suite is 16 files / 178 tests passing, including
   malformed-token, ticket-polling, multi-client isolation, lease chaos,
   reconnect-snapshot, duplicate-result, and 429 boundary coverage.
 - Client API/session/UI contracts: `online_api_client_test.gd`,
@@ -44,3 +46,7 @@
   result presentation still need soak validation.
 - Do not call online PvP release-ready until physical Android QA and these
   multi-client gates pass.
+
+## Identity migration gate
+
+The HTTP/Godot contract keeps the server-generated `guest_*` player ID public. Supabase durable foreign keys remain UUIDs; migration `20260812000002_online_identity_public_ids.sql` adds and backfills `online_identities.public_id`. Production wiring must resolve this public ID to UUID inside each transaction and reject unresolved mappings. Redis presence/lease coordination, multi-process soak, and physical Android QA remain open release gates.

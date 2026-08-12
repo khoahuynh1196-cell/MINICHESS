@@ -44,7 +44,7 @@ describe("online PvP contract surface", () => {
     expect(() => queue.enqueue({ playerId: "p0", region: "", mode: "ranked" })).toThrow("MATCHMAKING_INPUT_REQUIRED");
   });
 
-  it("keeps ticket ids monotonic and rejects duplicate active tickets", async () => {
+  it("keeps ticket ids unique and rejects duplicate active tickets", async () => {
     const { createMatchmakingQueue } = await import("../src/matchmaking/queue.js");
     const queue = createMatchmakingQueue();
     const first = queue.enqueue({ playerId: "p0", region: "sea", mode: "ranked" });
@@ -52,6 +52,7 @@ describe("online PvP contract surface", () => {
     expect(queue.cancel(first.ticketId)).toBe(true);
     const next = queue.enqueue({ playerId: "p0", region: "sea", mode: "ranked" });
     expect(next.ticketId).not.toBe(first.ticketId);
+    expect(next.ticketId).toMatch(/^[0-9a-f-]{36}$/);
   });
 
   it("rejects malformed realtime envelopes before advancing the sequence", async () => {
