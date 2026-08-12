@@ -11,7 +11,7 @@ Last audited: 2026-08-12
 - [x] Combat presentation uses the hero rig when a source texture is supplied; reduced-motion reaches that rig.
 - [x] Collection provides 20 roster entries and species/role filtering.
 - [x] English and Vietnamese UI catalog infrastructure, sound/haptic settings, and reduced-motion settings are covered by tests.
-- [ ] Android Debug export/device QA: blocked on missing SDK/build-tools/export templates; see `docs/evidence/2026-08-12-4x6-capture-and-device-qa.md`.
+- [x] Android Debug APK export/signature verification: Godot 4.7.1 template, Android 35/build-tools 35.0.0, and OpenJDK 17; see `docs/evidence/2026-08-12-4x6-capture-and-device-qa.md`.
 - [ ] Physical-device install, touch, audio, and performance evidence: not available in this environment.
 - [x] CI runs the TypeScript gate, whitespace gate, and all Godot headless tests.
 

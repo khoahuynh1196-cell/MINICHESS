@@ -84,7 +84,7 @@
 - [x] Run the harness and capture the initial timeout/failure as the RED evidence.
 - [x] Make scene boot deterministic and add a versioned capture metadata sidecar with a bounded launcher timeout.
 - [x] Run capture at 1080x1920, inspect the output, and record metadata.
-- [x] Locate/verify Godot; record the concrete Android SDK/export-template blocker (physical device evidence remains open).
+- [x] Locate/verify Godot; export and sign the canonical APK (physical device evidence remains open).
 
 ### Phase 4: Gate 2 release evidence
 
@@ -127,7 +127,7 @@
 
 ### Final verification and handoff
 
-- [x] Run `pnpm run check`, all Godot headless tests, and capture/stress harnesses; Android and online suites remain gated.
-- [ ] Verify `git diff --check`, version drift checks, migration reports, and clean staged scope.
-- [ ] Update all release docs with fresh evidence and explicit blockers.
-- [ ] Commit and push the dedicated branch; open the PR only after the verification output is captured.
+- [x] Run `pnpm run check`, all Godot headless tests, capture/stress harnesses, and canonical Android APK export; physical-device and online suites remain gated.
+- [x] Verify `git diff --check`, version drift checks, migration reports, and clean staged scope.
+- [x] Update all release docs with fresh evidence and explicit blockers.
+- [x] Commit and push the dedicated branch; open the PR only after the verification output is captured.

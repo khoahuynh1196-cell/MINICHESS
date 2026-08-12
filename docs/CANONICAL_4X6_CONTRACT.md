@@ -34,5 +34,6 @@ truncated or shifted implicitly; use [the compatibility mapping](migrations/4x8-
 - Capture: `tmp/adventure-combat-frame-1080x1920.png` and its JSON sidecar.
 - Gate 2 desktop stress: `gate2_stress_test.gd`, peak active pooled effect 1,
   64 reuses across deterministic 8×8 events.
-- Android physical QA remains open until SDK/export prerequisites and a reference
-  device are available; see `docs/evidence/2026-08-12-4x6-capture-and-device-qa.md`.
+- Android APK export and signature verification pass; physical-device QA remains
+  open until a reference device is connected. See
+  `docs/evidence/2026-08-12-4x6-capture-and-device-qa.md`.

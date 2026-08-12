@@ -100,7 +100,7 @@ The desktop Gate 2 combat presentation gate is closed by the focused animation/V
 
 ## Changelog
 
-- 2.1.0 - Locked the canonical rules/content/asset versions, added explicit 4x8 save/replay migration or rejection, and recorded Gate 2 desktop evidence plus the Android prerequisite blocker.
+- 2.1.0 - Locked the canonical rules/content/asset versions, added explicit 4x8 save/replay migration or rejection, and recorded Gate 2 desktop evidence plus canonical Android APK export; physical-device QA remains open.
 - 2.0.0 - Rebuilt the Adventure arena contract as 4x6/24 cells, added a shared TFT-style perspective projection and footer-safe mobile composition, and generated four matched v3 theme backgrounds.
 
 - 1.9.0 — Added the deterministic 1080 × 1920 Adventure frame capture harness and inspected the full combat presentation stack.

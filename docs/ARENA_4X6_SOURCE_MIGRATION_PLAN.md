@@ -71,5 +71,5 @@ Godot --headless --path client-godot --script res://test/task15_visual_contract_
 - Legacy persisted 4x8 data is explicitly migrated or rejected at the
   repository boundary; see [4x8-to-4x6.md](./migrations/4x8-to-4x6.md).
 - Desktop Godot capture and the full 38-script headless suite are green.
-- Physical Android export/device QA remains open because this workstation lacks
-  Android SDK build-tools, export templates, Java, and a configured `adb`.
+- Physical Android export is now green with the canonical signed APK; device QA
+  remains open because no reference device is connected to `adb`.
