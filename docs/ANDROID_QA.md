@@ -33,11 +33,14 @@ The remaining Android evidence requires a physical reference device for install,
 
 - Desktop Godot capture and all 38 headless client tests pass against the
   canonical `production-4x6-0.1.0` ruleset.
-- Android export was attempted with Godot 4.7.1 and failed before APK creation.
-  The configured SDK now has `platform-tools` and OpenJDK 17 configured, but it
-  still has no Android `build-tools`/platform package and matching Godot Android
-  export templates are absent. `adb devices` reports no connected device (the
-  LDPlayer and SDK ADB clients are both empty). No device result is claimed.
-- Follow-up must install those prerequisites, export the canonical APK, then
-  record physical-device touch, renderer, frame-time, texture-memory, audio,
-  and build-hash evidence here.
+- Android export now succeeds with Godot 4.7.1 after installing the matching
+  export template and configuring OpenJDK 17, Android platform 35, and
+  build-tools 35.0.0. The canonical debug APK was signed and verified with APK
+  Signature Scheme v2/v3 on 2026-08-12; SHA-256 is
+  `EDC295D8C2F0713B4A2C4B63A711681D7A2A63422BB2D69CACD6824C785DFC1F`.
+- Physical-device QA remains **blocked**, not passed: `adb devices` reports no
+  connected device (the LDPlayer and SDK ADB clients are both empty). No touch,
+  FPS, frame-time, texture-memory, loudness, or latency result is claimed.
+- Follow-up must install the canonical APK on the agreed physical device, then
+  record touch, renderer, frame-time, texture-memory, audio, and build-hash
+  evidence here.

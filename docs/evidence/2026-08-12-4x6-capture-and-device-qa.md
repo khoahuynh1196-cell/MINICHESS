@@ -20,15 +20,18 @@ priority, audio cue resolution, VFX pooling, Gate 2 stress, and mobile accessibi
 
 ## Android status
 
-Physical-device QA is **blocked**, not passed. `platform-tools` and OpenJDK 17
-are now installed/configured for the Android SDK, but the SDK still lacks
-`build-tools`/a platform package and matching Godot Android export templates.
-The export command therefore fails before producing an APK. Both the SDK and
-LDPlayer `adb` clients report no connected device. This checkpoint makes no
-claims about touch, FPS, frame-time percentiles, texture memory, loudness, or
-latency on Android. The existing 2026-08-04 emulator note remains historical
-evidence only.
+Godot 4.7.1 Android export is now **PASS**: the matching export template,
+Android platform 35, build-tools 35.0.0, and OpenJDK 17 produced and signed
+`tmp/auto-battler-canonical-4x6-debug.apk` on 2026-08-12. `apksigner verify`
+passed APK Signature Scheme v2/v3; SHA-256 is
+`EDC295D8C2F0713B4A2C4B63A711681D7A2A63422BB2D69CACD6824C785DFC1F`.
 
-Required next evidence: install/configure the Android SDK and export templates,
-export the canonical APK, install on the agreed physical device, exercise the
-full touch flow, and record renderer/build hash/frame-time/texture memory.
+Physical-device QA is still **blocked**, not passed. Both the SDK and LDPlayer
+`adb` clients report no connected device. This checkpoint makes no claims about
+touch, FPS, frame-time percentiles, texture memory, loudness, or latency on
+Android. The existing 2026-08-04 emulator note remains historical evidence
+only.
+
+Required next evidence: install the canonical APK on the agreed physical
+device, exercise the full touch flow, and record renderer/build hash/frame-time
+and texture memory.
