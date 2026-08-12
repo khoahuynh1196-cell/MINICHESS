@@ -21,13 +21,17 @@
   `FOR UPDATE SKIP LOCKED` eight-seat claims, room seat writes, command
   idempotency, public-ID-to-UUID resolution, membership checks,
   fencing-token recovery, and server-only request rate limiting.
+- Redis-compatible coordinator contract for atomic room lease acquire/renew/
+  release with fencing tokens and bounded player-presence heartbeats; it is
+  tested against an injected client but is not wired into the runtime yet.
 
 ## Verification
 
 - RED confirmed before implementation: online contract modules and HTTP routes
   were absent.
-- GREEN: online contract, HTTP, hardening, rate-limit, and Postgres persistence
-  tests; the server suite is 16 files / 178 tests passing, including
+- GREEN: online contract, HTTP, hardening, rate-limit, Postgres persistence,
+  and Redis-coordinator tests; the server suite is 17 files / 183 tests
+  passing, including
   malformed-token, ticket-polling, multi-client isolation, lease chaos,
   reconnect-snapshot, duplicate-result, and 429 boundary coverage.
 - Client API/session/UI contracts: `online_api_client_test.gd`,
@@ -36,9 +40,9 @@
 
 ## Still open before online beta
 
-- Wire the transactional Postgres adapter into the online runtime and add the
-  Redis presence/lease coordinator; the current runtime remains an explicit
-  in-memory integration mode.
+- Wire identity creation/session rotation, the transactional Postgres adapter,
+  and the Redis presence/lease coordinator into an async production runtime;
+  the current runtime remains an explicit in-memory integration mode.
 - Add multi-process/bot soak, reconnect chaos, phase-deadline, rate-limit,
   abuse, and security-boundary tests.
 - Initial Godot online screen now includes queue polling, match result, ready,

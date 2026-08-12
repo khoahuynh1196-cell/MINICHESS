@@ -79,6 +79,44 @@ describe("Postgres online persistence contract", () => {
     expect(insert?.values?.[2]).toBe("2c4e6f8a-8d65-4fb8-9b75-8e6f9c7d4a10");
   });
 
+  it("checks room membership before persisting a combat result", async () => {
+    const { createPostgresOnlinePersistence } = await import("../src/infra/postgres-online-persistence.js");
+    const queries: string[] = [];
+    const client: SqlOnlinePersistenceClient = {
+      async transaction<T>(work: (tx: typeof client) => Promise<T>): Promise<T> { return work(client); },
+      async query(text: string, _values: readonly unknown[]) {
+        queries.push(text);
+        if (text.startsWith("select player_id from public.online_identities")) return { rows: [{ player_id: "2c4e6f8a-8d65-4fb8-9b75-8e6f9c7d4a10" }] };
+        if (text.startsWith("select 1 from public.online_room_seats")) return { rows: [{ one: 1 }] };
+        if (text.startsWith("insert into public.online_combat_results")) return { rows: [{ combat_id: "combat-1" }] };
+        return { rows: [] };
+      },
+    };
+    const persistence = createPostgresOnlinePersistence(client);
+    await expect(persistence.recordCombatResult({ roomId: "room-a", playerId: "guest_public_1", combatId: "combat-1", resultHash: "hash-1" })).resolves.toBe(true);
+    expect(queries.some((text) => text.startsWith("select player_id from public.online_identities"))).toBe(true);
+    expect(queries.some((text) => text.startsWith("select 1 from public.online_room_seats"))).toBe(true);
+  });
+
+  it("checks room membership before advancing a recovery lease", async () => {
+    const { createPostgresOnlinePersistence } = await import("../src/infra/postgres-online-persistence.js");
+    const queries: string[] = [];
+    const client: SqlOnlinePersistenceClient = {
+      async transaction<T>(work: (tx: typeof client) => Promise<T>): Promise<T> { return work(client); },
+      async query(text: string, _values: readonly unknown[]) {
+        queries.push(text);
+        if (text.startsWith("select player_id from public.online_identities")) return { rows: [{ player_id: "2c4e6f8a-8d65-4fb8-9b75-8e6f9c7d4a10" }] };
+        if (text.startsWith("select 1 from public.online_room_seats")) return { rows: [{ one: 1 }] };
+        if (text.startsWith("update public.online_rooms")) return { rows: [{ fencing_token: 2, lease_expires_at: "2030-01-01T00:00:00.000Z" }] };
+        return { rows: [] };
+      },
+    };
+    const persistence = createPostgresOnlinePersistence(client);
+    await expect(persistence.recoverRoom({ roomId: "room-a", playerId: "guest_public_1", fencingToken: 1 })).resolves.toMatchObject({ fencingToken: 2 });
+    expect(queries.some((text) => text.startsWith("select player_id from public.online_identities"))).toBe(true);
+    expect(queries.some((text) => text.startsWith("select 1 from public.online_room_seats"))).toBe(true);
+  });
+
   it("atomically rotates a refresh session and rejects a replayed token", async () => {
     const { createPostgresOnlinePersistence } = await import("../src/infra/postgres-online-persistence.js");
     const queries: string[] = [];
@@ -106,19 +144,19 @@ describe("Postgres online persistence contract", () => {
   it("claims exactly eight ordered tickets and writes room seats in one transaction", async () => {
     const { createPostgresOnlinePersistence } = await import("../src/infra/postgres-online-persistence.js");
     const queries: string[] = [];
-    const tickets = Array.from({ length: 8 }, (_, index) => ({ ticket_id: `ticket-${index}`, player_id: `player-${index}` }));
+    const tickets = Array.from({ length: 8 }, (_, index) => ({ ticket_id: `ticket-${index}`, player_id: `player-${index}`, public_id: `guest-${index}` }));
     const client: SqlOnlinePersistenceClient = {
       async transaction<T>(work: (tx: typeof client) => Promise<T>): Promise<T> { return work(client); },
       async query(text: string, _values: readonly unknown[]) {
         queries.push(text);
-        if (text.startsWith("select ticket_id, player_id")) return { rows: tickets };
+        if (text.startsWith("select tickets.ticket_id, tickets.player_id")) return { rows: tickets };
         if (text.startsWith("select count(*)")) return { rows: [{ count: "0" }] };
         return { rows: [] };
       },
     };
     const persistence = createPostgresOnlinePersistence(client);
-    await expect(persistence.claimEightSeatMatch({ roomId: "room-a", region: "sea", mode: "ranked", rulesetVersion: "production-4x6-0.1.0", contentVersion: "alpha-0.4.0", assetManifestVersion: "asset-4x6-0.1.0" })).resolves.toMatchObject({ roomId: "room-a", playerIds: tickets.map((ticket) => ticket.player_id) });
-    expect(queries.some((text) => text.includes("for update skip locked"))).toBe(true);
+    await expect(persistence.claimEightSeatMatch({ roomId: "room-a", region: "sea", mode: "ranked", rulesetVersion: "production-4x6-0.1.0", contentVersion: "alpha-0.4.0", assetManifestVersion: "asset-4x6-0.1.0" })).resolves.toMatchObject({ roomId: "room-a", playerIds: tickets.map((ticket) => ticket.public_id) });
+    expect(queries.some((text) => text.includes("for update of tickets skip locked"))).toBe(true);
     expect(queries.some((text) => text.startsWith("insert into public.online_room_seats"))).toBe(true);
     expect(queries.some((text) => text.startsWith("update public.online_match_tickets"))).toBe(true);
   });
@@ -130,6 +168,7 @@ describe("Postgres online persistence contract", () => {
       async transaction<T>(work: (tx: typeof client) => Promise<T>): Promise<T> { return work(client); },
       async query(text: string, _values: readonly unknown[]) {
         if (text.startsWith("select fencing_token")) return { rows: [{ fencing_token: roomToken }] };
+        if (text.startsWith("select player_id from public.online_identities")) return { rows: [{ player_id: "2c4e6f8a-8d65-4fb8-9b75-8e6f9c7d4a10" }] };
         if (text.startsWith("select 1 from public.online_room_seats")) return { rows: [] };
         if (text.startsWith("update public.online_rooms")) return { rows: [{ fencing_token: roomToken + 1, lease_expires_at: "2030-01-01T00:00:00.000Z" }] };
         return { rows: [] };
@@ -138,7 +177,17 @@ describe("Postgres online persistence contract", () => {
     const persistence = createPostgresOnlinePersistence(client);
     await expect(persistence.acceptRoomCommand({ roomId: "room-a", playerId: "outsider", commandId: "cmd-a", fencingToken: 2, sequence: 1, payload: { type: "READY" } })).resolves.toEqual({ accepted: false, reason: "FENCING_TOKEN_STALE" });
     await expect(persistence.acceptRoomCommand({ roomId: "room-a", playerId: "outsider", commandId: "cmd-b", fencingToken: 3, sequence: 2, payload: { type: "READY" } })).resolves.toEqual({ accepted: false, reason: "PLAYER_NOT_IN_ROOM" });
+    const memberClient: SqlOnlinePersistenceClient = {
+      async transaction<T>(work: (tx: typeof memberClient) => Promise<T>): Promise<T> { return work(memberClient); },
+      async query(text: string, _values: readonly unknown[]) {
+        if (text.startsWith("select player_id from public.online_identities")) return { rows: [{ player_id: "2c4e6f8a-8d65-4fb8-9b75-8e6f9c7d4a10" }] };
+        if (text.startsWith("select 1 from public.online_room_seats")) return { rows: [{ one: 1 }] };
+        if (text.startsWith("update public.online_rooms")) return { rows: [{ fencing_token: 4, lease_expires_at: "2030-01-01T00:00:00.000Z" }] };
+        return { rows: [] };
+      },
+    };
+    const memberPersistence = createPostgresOnlinePersistence(memberClient);
     roomToken = 4;
-    await expect(persistence.recoverRoom({ roomId: "room-a", fencingToken: 3 })).resolves.toBeDefined();
+    await expect(memberPersistence.recoverRoom({ roomId: "room-a", playerId: "guest_public_1", fencingToken: 3 })).resolves.toBeDefined();
   });
 });

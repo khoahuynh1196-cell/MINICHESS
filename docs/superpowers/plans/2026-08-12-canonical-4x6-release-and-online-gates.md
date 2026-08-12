@@ -128,6 +128,8 @@
 - [x] Add the public `guest_*` to durable UUID migration and a transactional
   adapter resolver contract; keep production wiring disabled until it is
   integrated end-to-end.
+- [x] Add the Redis lease/presence coordinator contract with fencing and TTL
+  tests; keep it injected until a real Redis multi-process soak is available.
 - [ ] Wire the Postgres/Redis adapter into the production runtime and run eight-client/bot soak before calling online gates ready.
 
 ### Final verification and handoff

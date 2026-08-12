@@ -146,3 +146,11 @@ from becoming client assets.
 - Supabase uses UUID `player_id` as the durable foreign key and stores the public value in `online_identities.public_id`; migration `20260812000002_online_identity_public_ids.sql` backfills existing rows.
 - A production adapter must resolve `public_id` to UUID inside the transaction before creating tickets, seats, commands, or combat results. It must reject an unresolved mapping and never cast a public id into a UUID column.
 - The in-memory runtime remains the default until this resolver, identity-row creation, Redis presence/lease coordination, and multi-process soak are implemented and evidenced.
+
+## ADR-011 - Redis coordination boundary before production wiring
+
+**Status:** Accepted - 2026-08-12
+
+- Redis is an injected coordination port, not a client dependency in the current server package. The coordinator contract owns room lease fencing, renewal/release, and expiring player presence keys.
+- Lease acquisition must atomically allocate a monotonically increasing token; renew/release must compare owner and token, and a failed comparison must not mutate Redis state.
+- The contract is verified with an injected client. Runtime wiring remains gated on a real Redis deployment, async persistence runtime integration, and multi-process lease/queue soak evidence.

@@ -4,7 +4,7 @@ Last audited: 2026-08-12
 
 ## Verified in this workspace
 
-- [x] TypeScript typecheck and test suites pass: 115 `game-core` tests and 178 `server` tests.
+- [x] TypeScript typecheck and test suites pass: 115 `game-core` tests and 183 `server` tests.
 - [x] Godot replay, run, UI, asset-manifest, feedback, accessibility, Gate 2 stress, and online session suite passes: 40 headless tests.
 - [x] Portrait mobile flow reaches Lobby, Map, Prepare, Combat, Reward, Recap, Collection, Settings, and Online PvP.
 - [x] Prepare supports tap-select formation moves, board swaps, board-to-bench moves, item selection/equip feedback, sell, XP, five-card shop, tier odds, authoritative shop lock, and start-round intents.

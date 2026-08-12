@@ -73,6 +73,7 @@ export interface RecoverRoomResult {
 
 export interface RecordCombatResultInput {
   readonly roomId: string;
+  readonly playerId: string;
   readonly combatId: string;
   readonly resultHash: string;
   readonly result?: Record<string, unknown>;
@@ -91,6 +92,7 @@ interface FencingRow {
 interface TicketRow {
   readonly ticket_id: string;
   readonly player_id: string;
+  readonly public_id: string;
 }
 
 interface PlayerRow {
@@ -169,7 +171,7 @@ export function createPostgresOnlinePersistence(client: SqlOnlinePersistenceClie
       canonicalRoom(input);
       return client.transaction(async (transaction) => {
         const selected = await transaction.query(
-          "select ticket_id, player_id from public.online_match_tickets where region = $1 and mode = $2 and status = 'QUEUED' order by created_at, ticket_id limit 8 for update skip locked",
+          "select tickets.ticket_id, tickets.player_id, identities.public_id from public.online_match_tickets tickets join public.online_identities identities on identities.player_id = tickets.player_id where tickets.region = $1 and tickets.mode = $2 and tickets.status = 'QUEUED' order by tickets.created_at, tickets.ticket_id limit 8 for update of tickets skip locked",
           [input.region, input.mode],
         );
         const tickets = selected.rows as readonly TicketRow[];
@@ -194,7 +196,7 @@ export function createPostgresOnlinePersistence(client: SqlOnlinePersistenceClie
           "update public.online_match_tickets set status = 'MATCHED', room_id = $1 where ticket_id = any($2::uuid[])",
           [input.roomId, tickets.map((ticket) => ticket.ticket_id)],
         );
-        return { roomId: input.roomId, playerIds };
+        return { roomId: input.roomId, playerIds: tickets.map((ticket) => ticket.public_id) };
       });
     },
 
@@ -223,15 +225,31 @@ export function createPostgresOnlinePersistence(client: SqlOnlinePersistenceClie
     },
 
     async recordCombatResult(input: RecordCombatResultInput): Promise<boolean> {
-      const result = await client.query(
-        "insert into public.online_combat_results (room_id, combat_id, result_hash, result) values ($1, $2, $3, $4::jsonb) on conflict (room_id, combat_id) do nothing returning combat_id",
-        [input.roomId, input.combatId, input.resultHash, input.result ?? {}],
-      );
-      return result.rows.length > 0;
+      return client.transaction(async (transaction) => {
+        const playerId = await resolvePlayerId(transaction, input.playerId);
+        if (playerId === undefined) return false;
+        const member = await transaction.query(
+          "select 1 from public.online_room_seats where room_id = $1 and player_id = $2",
+          [input.roomId, playerId],
+        );
+        if (member.rows.length === 0) return false;
+        const result = await transaction.query(
+          "insert into public.online_combat_results (room_id, combat_id, result_hash, result) values ($1, $2, $3, $4::jsonb) on conflict (room_id, combat_id) do nothing returning combat_id",
+          [input.roomId, input.combatId, input.resultHash, input.result ?? {}],
+        );
+        return result.rows.length > 0;
+      });
     },
 
-    async recoverRoom(input: { readonly roomId: string; readonly fencingToken: number }): Promise<RecoverRoomResult | undefined> {
+    async recoverRoom(input: { readonly roomId: string; readonly playerId: string; readonly fencingToken: number }): Promise<RecoverRoomResult | undefined> {
       return client.transaction(async (transaction) => {
+        const playerId = await resolvePlayerId(transaction, input.playerId);
+        if (playerId === undefined) return undefined;
+        const member = await transaction.query(
+          "select 1 from public.online_room_seats where room_id = $1 and player_id = $2",
+          [input.roomId, playerId],
+        );
+        if (member.rows.length === 0) return undefined;
         const result = await transaction.query(
           "update public.online_rooms set fencing_token = fencing_token + 1, updated_at = now() where room_id = $1 and fencing_token = $2 returning fencing_token, lease_expires_at",
           [input.roomId, input.fencingToken],
