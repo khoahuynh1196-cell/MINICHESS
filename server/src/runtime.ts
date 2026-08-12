@@ -3,12 +3,14 @@ import { compileContentBundle, type CompiledContentBundle } from "@auto-battler/
 import { createInMemoryRunRepository, type CreateRunInput, type RunRepository, type ShopGenerator } from "./application/run-commands.js";
 import { createShopPool, rollShop, type ShopPool } from "./application/shop-pool.js";
 import { createHttpApp, type ContentManifestRepository } from "./http/app.js";
+import type { OnlineRuntime } from "./online/runtime.js";
 
 export interface RuntimeOptions {
   readonly contentPath: string;
   readonly actorId?: string;
   readonly tenantId?: string;
   readonly repository?: RunRepository;
+  readonly onlineRuntime?: OnlineRuntime;
 }
 
 export function loadCompiledContent(contentPath: string): CompiledContentBundle {
@@ -34,6 +36,7 @@ export async function createRuntimeApp(options: RuntimeOptions) {
     options.repository ?? createInMemoryRunRepository(),
     createContentShopGenerator(content),
     contentRepository,
+    options.onlineRuntime,
   );
 }
 

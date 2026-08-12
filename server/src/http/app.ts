@@ -5,6 +5,7 @@ import { applyRunCommand, assertCanonicalContentVersion, createInMemoryRunReposi
 import { shopOddsForLevel, type ShopTierOdds } from "../application/shop-pool.js";
 import type { RewardSelection } from "../application/reward-selection.js";
 import { resolveRunCombat } from "../application/resolve-run-combat.js";
+import type { OnlineRuntime } from "../online/runtime.js";
 
 type PublicRunView = Pick<RunRecord, "id" | "contentVersion" | "state" | "round" | "revision" | "gold" | "health" | "shop" | "shopLocked" | "bench" | "board" | "items" | "freeRefreshes" | "roundRewardPlan" | "rewardHeroes" | "recap"> & ReturnType<typeof progressionForRun> & { readonly shopOdds: ShopTierOdds };
 
@@ -31,8 +32,11 @@ function errorMessage(code: string): string {
     REWARD_SELECTION_INVALID: "Reward selection is invalid.",
     INVALID_COMMAND: "Command payload is invalid.",
     ACTIVE_RUN_EXISTS: "Tenant already has an active run.",
-    CONTENT_VERSION_NOT_FOUND: "Content version is not supported.",
-    INCOMPATIBLE_LEGACY_STATE: "Saved run is incompatible with the canonical 4x6 ruleset.",
+     CONTENT_VERSION_NOT_FOUND: "Content version is not supported.",
+     INCOMPATIBLE_LEGACY_STATE: "Saved run is incompatible with the canonical 4x6 ruleset.",
+     DEVICE_ID_REQUIRED: "A device identifier is required.",
+     MATCHMAKING_INPUT_REQUIRED: "Region and mode are required for matchmaking.",
+     TICKET_NOT_FOUND: "Match ticket was not found.",
   } as Readonly<Record<string, string>>)[code] ?? "Internal server error.";
 }
 
@@ -57,6 +61,16 @@ function parseRewardSelections(value: unknown): readonly RewardSelection[] | und
     }
     return Object.freeze({ offerId: (selection as Record<string, unknown>).offer_id as string, optionId: (selection as Record<string, unknown>).option_id as string });
   }));
+}
+
+function bearer(request: { readonly headers: { readonly authorization?: string | string[] | undefined } }, onlineRuntime: OnlineRuntime): { readonly playerId: string } {
+  const header = request.headers.authorization;
+  if (typeof header !== "string" || !header.startsWith("Bearer ")) throw new Error("AUTH_REQUIRED");
+  return onlineRuntime.verifyAccess(header.slice("Bearer ".length));
+}
+
+function publicRoom(room: { readonly roomId: string; readonly players: readonly string[]; readonly region: string; readonly mode: string; readonly maxPlayers: 8; readonly phase: string; readonly lease: { readonly fencingToken: number; readonly acquiredAt: number }; readonly rulesetVersion: string; readonly contentVersion: string; readonly assetManifestVersion: string }) {
+  return { room_id: room.roomId, players: room.players, region: room.region, mode: room.mode, max_players: room.maxPlayers, phase: room.phase, lease: { fencing_token: room.lease.fencingToken, acquired_at: room.lease.acquiredAt }, ruleset_version: room.rulesetVersion, content_version: room.contentVersion, asset_manifest_version: room.assetManifestVersion };
 }
 
 function publicBoard(board: NonNullable<RunRecord["board"]>): NonNullable<RunRecord["board"]> {
@@ -87,15 +101,28 @@ function toPublicRunView(run: RunRecord): PublicRunView {
   };
 }
 
-export function createHttpApp(context = { actorId: "anonymous", tenantId: "default" }, repository: RunRepository = createInMemoryRunRepository(), shopGenerator?: ShopGenerator, contentRepository?: ContentManifestRepository) {
+export function createHttpApp(context = { actorId: "anonymous", tenantId: "default" }, repository: RunRepository = createInMemoryRunRepository(), shopGenerator?: ShopGenerator, contentRepository?: ContentManifestRepository, onlineRuntime?: OnlineRuntime) {
   const app = Fastify();
   app.setErrorHandler((error, _request, reply) => {
     const code = error.message;
-    const statusCode = code === "RUN_REVISION_CONFLICT" || code === "COMMAND_NOT_ALLOWED" || code === "IDEMPOTENCY_KEY_REUSED" || code === "ACTIVE_RUN_EXISTS" || code === "INCOMPATIBLE_LEGACY_STATE" ? 409 : code === "RUN_NOT_FOUND" || code === "CONTENT_VERSION_NOT_FOUND" ? 404 : code === "GAME_RULE_VIOLATION" || code === "REWARD_SELECTION_REQUIRED" || code === "REWARD_SELECTION_INVALID" ? 422 : code === "INVALID_COMMAND" ? 400 : 500;
+    const statusCode = code === "AUTH_REQUIRED" || code === "INVALID_TOKEN" || code === "TOKEN_EXPIRED" || code === "IDENTITY_REVOKED" || code === "REFRESH_TOKEN_REVOKED" ? 401 : code === "RUN_REVISION_CONFLICT" || code === "COMMAND_NOT_ALLOWED" || code === "IDEMPOTENCY_KEY_REUSED" || code === "ACTIVE_RUN_EXISTS" || code === "INCOMPATIBLE_LEGACY_STATE" || code === "FENCING_TOKEN_STALE" ? 409 : code === "RUN_NOT_FOUND" || code === "CONTENT_VERSION_NOT_FOUND" || code === "ROOM_NOT_FOUND" || code === "TICKET_NOT_FOUND" || code === "TICKET_NOT_OWNED" ? 404 : code === "GAME_RULE_VIOLATION" || code === "REWARD_SELECTION_REQUIRED" || code === "REWARD_SELECTION_INVALID" ? 422 : code === "INVALID_COMMAND" || code === "MATCHMAKING_INPUT_REQUIRED" || code === "DEVICE_ID_REQUIRED" ? 400 : 500;
     const responseCode = statusCode === 500 ? "INTERNAL_ERROR" : code;
     return reply.code(statusCode).send(failure(responseCode, code === "RUN_REVISION_CONFLICT"));
   });
   app.get("/health", async () => ({ status: "ok" }));
+  if (onlineRuntime !== undefined) {
+     app.post<{ Body: { device_id: string } }>("/v1/auth/guest", async (request, reply) => { const deviceId = request.body?.device_id; if (typeof deviceId !== "string") throw new Error("DEVICE_ID_REQUIRED"); const identity = onlineRuntime.createGuest(deviceId); return reply.code(201).send(success({ player_id: identity.playerId, access_token: identity.accessToken, refresh_token: identity.refreshToken })); });
+     app.post<{ Body: { refresh_token: string } }>("/v1/auth/refresh", async (request) => { const refreshToken = request.body?.refresh_token; if (typeof refreshToken !== "string") throw new Error("INVALID_TOKEN"); const identity = onlineRuntime.rotateRefresh(refreshToken); return success({ player_id: identity.playerId, access_token: identity.accessToken, refresh_token: identity.refreshToken }); });
+    app.post("/v1/auth/revoke", async (request, reply) => { const identity = bearer(request, onlineRuntime); onlineRuntime.revoke(identity.playerId); return reply.code(204).send(); });
+     app.post<{ Body: { region: string; mode: string } }>("/v1/matchmaking/tickets", async (request, reply) => { const identity = bearer(request, onlineRuntime); const region = request.body?.region; const mode = request.body?.mode; if (typeof region !== "string" || typeof mode !== "string") throw new Error("MATCHMAKING_INPUT_REQUIRED"); const result = onlineRuntime.enqueue(identity.playerId, region, mode); if (result.room === undefined) return reply.code(202).send(success({ ticket_id: result.ticket.ticketId, status: "QUEUED" })); return reply.code(201).send(success({ ticket_id: result.ticket.ticketId, status: "MATCHED", room: publicRoom(result.room) })); });
+     app.delete<{ Params: { ticketId: string } }>("/v1/matchmaking/tickets/:ticketId", async (request, reply) => { const identity = bearer(request, onlineRuntime); return reply.code(onlineRuntime.cancel(identity.playerId, request.params.ticketId) ? 204 : 404).send(); });
+     app.get<{ Params: { ticketId: string } }>("/v1/matchmaking/tickets/:ticketId", async (request, reply) => { const identity = bearer(request, onlineRuntime); const status = onlineRuntime.ticketStatus(identity.playerId, request.params.ticketId); if (status === undefined) return reply.code(404).send(failure("TICKET_NOT_FOUND")); return success({ ticket_id: status.ticketId, status: status.status, ...(status.room === undefined ? {} : { room: publicRoom(status.room) }) }); });
+    app.get<{ Params: { roomId: string } }>("/v1/rooms/:roomId", async (request, reply) => { const identity = bearer(request, onlineRuntime); const room = onlineRuntime.roomForPlayer(request.params.roomId, identity.playerId); if (room === undefined) return reply.code(404).send(failure("ROOM_NOT_FOUND")); return success(publicRoom(room)); });
+    app.post<{ Params: { roomId: string }; Body: { fencing_token: number; command_id: string; type: "READY" } }>("/v1/rooms/:roomId/commands", async (request, reply) => { const identity = bearer(request, onlineRuntime); const result = onlineRuntime.command(request.params.roomId, identity.playerId, { fencingToken: request.body.fencing_token, commandId: request.body.command_id, type: request.body.type }); if (!result.accepted) { if (result.reason === "ROOM_NOT_FOUND") return reply.code(404).send(failure("ROOM_NOT_FOUND")); return reply.code(409).send(failure(result.reason ?? "COMMAND_NOT_ALLOWED")); } return success(result); });
+    app.post<{ Params: { roomId: string }; Body: { fencing_token: number } }>("/v1/rooms/:roomId/recover", async (request) => { const identity = bearer(request, onlineRuntime); return success(publicRoom(onlineRuntime.recover(request.params.roomId, identity.playerId, request.body.fencing_token))); });
+    app.post<{ Params: { roomId: string }; Body: { type: "PING" | "COMMAND"; sequence: number; sent_at?: number; command_id?: string; payload?: Record<string, unknown> } }>("/v1/rooms/:roomId/realtime", async (request) => { const identity = bearer(request, onlineRuntime); const body = request.body; const envelope = body.type === "PING" ? { type: "PING" as const, sequence: body.sequence, sentAt: body.sent_at ?? Date.now() } : { type: "COMMAND" as const, sequence: body.sequence, commandId: body.command_id ?? "", payload: body.payload ?? {} }; return success(onlineRuntime.realtime(request.params.roomId, identity.playerId, envelope)); });
+    app.get<{ Params: { roomId: string } }>("/v1/rooms/:roomId/realtime/snapshot", async (request) => { const identity = bearer(request, onlineRuntime); const room = onlineRuntime.roomForPlayer(request.params.roomId, identity.playerId); if (room === undefined) throw new Error("ROOM_NOT_FOUND"); return success({ room_id: request.params.roomId, room: publicRoom(room), realtime: onlineRuntime.realtimeSnapshot(request.params.roomId, identity.playerId) }); });
+  }
   app.get<{ Params: { contentVersion: string } }>("/v1/content/:contentVersion/manifest", async (request, reply) => {
     const content = await contentRepository?.getByVersion(request.params.contentVersion);
     if (content === undefined) return reply.code(404).send(failure("CONTENT_VERSION_NOT_FOUND"));

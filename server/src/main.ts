@@ -2,6 +2,7 @@ import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 import { startRuntimeServer } from "./runtime.js";
 import { createPostgresRuntime } from "./infra/postgres-runtime.js";
+import { createOnlineRuntime } from "./online/runtime.js";
 
 function port(value: string | undefined): number {
   const parsed = Number(value ?? "3000");
@@ -21,6 +22,7 @@ function defaultContentPath(): string {
 
 const contentPath = process.env.CONTENT_BUNDLE_PATH ?? defaultContentPath();
 const postgresRuntime = process.env.DATABASE_URL === undefined ? undefined : createPostgresRuntime(process.env.DATABASE_URL);
+const onlineRuntime = process.env.ONLINE_TOKEN_SECRET === undefined ? undefined : createOnlineRuntime({ tokenSecret: process.env.ONLINE_TOKEN_SECRET });
 
 startRuntimeServer({
   contentPath,
@@ -29,6 +31,7 @@ startRuntimeServer({
   ...(process.env.LOCAL_ACTOR_ID === undefined ? {} : { actorId: process.env.LOCAL_ACTOR_ID }),
   ...(process.env.LOCAL_TENANT_ID === undefined ? {} : { tenantId: process.env.LOCAL_TENANT_ID }),
   ...(postgresRuntime === undefined ? {} : { repository: postgresRuntime.repository }),
+  ...(onlineRuntime === undefined ? {} : { onlineRuntime }),
 }).catch((error: unknown) => {
   console.error(error);
   process.exitCode = 1;

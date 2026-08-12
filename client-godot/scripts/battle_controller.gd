@@ -25,6 +25,7 @@ const CombatHudScript = preload("res://scripts/ui/combat_hud.gd")
 const CombatVfxPoolScript = preload("res://scripts/combat_vfx_pool.gd")
 const RunRecapScreenScript = preload("res://scripts/ui/run_recap_screen.gd")
 const AdventureEncounterCatalogScript = preload("res://scripts/presentation/adventure_encounter_catalog.gd")
+const OnlineSessionScript = preload("res://scripts/online_session.gd")
 const BOARD_COLUMNS := 4
 const BOARD_ROWS := 6
 const BOARD_CELL_COUNT := BOARD_COLUMNS * BOARD_ROWS
@@ -82,6 +83,7 @@ var _collection_species_filter := "all"
 var _collection_role_filter := "all"
 var _collection_detail_hero_id := ""
 var _request_in_flight := false
+var online_session
 var _pending_reward_review := false
 var _mobile_pointer_sequence := 0
 var combat_hud
@@ -95,6 +97,9 @@ func _ready() -> void:
 	_ensure_combat_presentation()
 	_create_mobile_ui()
 	attach_run_api(RunApiClientScript.new())
+	online_session = OnlineSessionScript.new(run_api_client)
+	online_session.state_changed.connect(_handle_online_state)
+	online_session.error_received.connect(_handle_run_request_failed)
 	_resume_local_run()
 	load_replay(_replay_path)
 	queue_redraw()
@@ -535,6 +540,40 @@ func _handle_run_request_failed(message: String) -> void:
 		feedback_overlay.show_error(message, _retry_request)
 	_refresh_mobile_screen()
 
+func _queue_online_match() -> void:
+	if online_session == null:
+		return
+	if online_session.player_id.is_empty():
+		online_session.begin_guest("device-%s" % str(Time.get_ticks_msec()))
+		return
+	online_session.queue("sea", "ranked")
+	show_mobile_screen("online")
+
+func _ready_online_room() -> void:
+	if online_session != null:
+		online_session.ready()
+
+func _reconnect_online_room() -> void:
+	if online_session != null:
+		online_session.reconnect()
+
+func _poll_online_match() -> void:
+	if online_session != null:
+		online_session.poll_match()
+
+func _handle_online_state(next_state: Dictionary) -> void:
+	if screen_router == null:
+		return
+	var online_screen = screen_router.online_room_screen
+	var state := String(next_state.get("state", "OFFLINE"))
+	if state == "QUEUED":
+		online_screen.set_state(state, {}, String(next_state.get("ticket_id", "")))
+	elif next_state.has("room"):
+		online_screen.set_state(state, Dictionary(next_state.get("room", {})))
+	else:
+		online_screen.set_state(state)
+	show_mobile_screen("online")
+
 func load_authoritative_events(raw_events: Array) -> void:
 	_clear_unit_views()
 	_unknown_event_types.clear()
@@ -799,6 +838,7 @@ func _create_mobile_ui() -> void:
 	)
 	screen_router.lobby_screen.collection_requested.connect(func() -> void: show_mobile_screen("collection"))
 	screen_router.lobby_screen.settings_requested.connect(func() -> void: show_mobile_screen("settings"))
+	screen_router.lobby_screen.online_requested.connect(func() -> void: show_mobile_screen("online"))
 	screen_router.encounter_map_screen.encounter_selected.connect(_select_encounter)
 	screen_router.encounter_map_screen.back_requested.connect(func() -> void: show_mobile_screen("lobby"))
 	screen_router.settings_screen.settings_changed.connect(_apply_screen_settings)
@@ -810,6 +850,11 @@ func _create_mobile_ui() -> void:
 	screen_router.reward_screen.claim_empty_reward.connect(request_claim_empty_round_reward)
 	screen_router.reward_screen.ack_unique.connect(request_ack_unique_reveal)
 	screen_router.collection_screen.back_requested.connect(func() -> void: show_mobile_screen("lobby"))
+	screen_router.online_room_screen.back_requested.connect(func() -> void: show_mobile_screen("lobby"))
+	screen_router.online_room_screen.queue_requested.connect(_queue_online_match)
+	screen_router.online_room_screen.poll_requested.connect(_poll_online_match)
+	screen_router.online_room_screen.ready_requested.connect(_ready_online_room)
+	screen_router.online_room_screen.reconnect_requested.connect(_reconnect_online_room)
 	show_mobile_screen("lobby")
 
 func set_reduced_motion(enabled: bool) -> void:

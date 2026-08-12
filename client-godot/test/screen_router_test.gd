@@ -9,7 +9,7 @@ var _failed := false
 
 func _init() -> void:
 	var router = ScreenRouterScript.new()
-	var screen_ids := ["lobby", "map", "prepare", "combat", "reward", "recap", "collection", "settings"]
+	var screen_ids := ["lobby", "map", "prepare", "combat", "reward", "recap", "collection", "settings", "online"]
 	for screen_id in screen_ids:
 		if not _expect(router.show_screen(screen_id), "router must accept %s" % screen_id):
 			break

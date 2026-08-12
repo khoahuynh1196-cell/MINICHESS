@@ -7,6 +7,7 @@ signal start_pve_requested
 signal continue_requested
 signal collection_requested
 signal settings_requested
+signal online_requested
 
 var _continue_available := false
 
@@ -47,6 +48,7 @@ func _rebuild() -> void:
 	var navigation := _panel(Rect2(40.0, 790.0, 1000.0, 250.0), "Explore")
 	navigation.add_child(_button("Collection", func() -> void: collection_requested.emit(), ThemeTokensScript.STONE_RAISED, "Collection"))
 	navigation.add_child(_button("Comfort & Accessibility", func() -> void: settings_requested.emit(), ThemeTokensScript.STONE_RAISED, "Settings"))
+	navigation.add_child(_button("Online PvP · 8 Players", func() -> void: online_requested.emit(), ThemeTokensScript.PLAYER, "OnlinePvp"))
 
 func _panel(rect: Rect2, heading: String) -> VBoxContainer:
 	var panel := PanelContainer.new()

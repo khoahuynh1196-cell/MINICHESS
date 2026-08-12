@@ -1,12 +1,13 @@
 class_name ScreenRouter
 extends CanvasLayer
 
-const SCREEN_IDS := ["lobby", "map", "prepare", "combat", "reward", "recap", "collection", "settings"]
+const SCREEN_IDS := ["lobby", "map", "prepare", "combat", "reward", "recap", "collection", "settings", "online"]
 const LobbyScreenScript = preload("res://scripts/ui/lobby_screen.gd")
 const EncounterMapScreenScript = preload("res://scripts/ui/encounter_map_screen.gd")
 const SettingsScreenScript = preload("res://scripts/ui/settings_screen.gd")
 const RewardScreenScript = preload("res://scripts/ui/reward_screen.gd")
 const CollectionScreenScript = preload("res://scripts/ui/collection_screen.gd")
+const OnlineRoomScreenScript = preload("res://scripts/ui/online_room_screen.gd")
 
 var current_screen_id := ""
 var _screens: Dictionary = {}
@@ -15,6 +16,7 @@ var encounter_map_screen
 var settings_screen
 var reward_screen
 var collection_screen
+var online_room_screen
 
 func _init() -> void:
 	layer = 10
@@ -46,6 +48,9 @@ func _create_screen(screen_id: String) -> Control:
 		"collection":
 			collection_screen = CollectionScreenScript.new()
 			return collection_screen
+		"online":
+			online_room_screen = OnlineRoomScreenScript.new()
+			return online_room_screen
 		_:
 			return Control.new()
 

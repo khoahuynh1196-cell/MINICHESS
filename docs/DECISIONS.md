@@ -124,3 +124,16 @@ from becoming client assets.
   `production-4x6-0.1.0` / `alpha-0.4.0` / `asset-4x6-0.1.0`.
 - Legacy 4x8 state is migrated only when every occupied cell maps to the canonical three-row player half; otherwise it is rejected without mutation.
 - Online PvP work is sequenced after the offline canonical, capture, device, and Gate 2 evidence. A desktop pass cannot substitute for physical-device performance evidence.
+
+## ADR-009 — Online PvP foundation sequencing
+
+**Status:** Accepted — 2026-08-12
+
+- Online implementation starts with guest identity, rotating refresh credentials,
+  authenticated ordered realtime envelopes, region/mode matchmaking, then an
+  eight-seat fenced room.
+- Every room carries the canonical 4×6 rules/content/asset versions and rejects
+  stale fencing tokens or duplicate command/combat IDs.
+- The in-memory runtime is an integration foundation only; transactional
+  Postgres/Redis adapters, multi-client soak, and physical-device QA remain
+  release gates.

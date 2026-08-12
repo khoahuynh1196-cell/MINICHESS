@@ -4,6 +4,7 @@ const LobbyScreenPath := "res://scripts/ui/lobby_screen.gd"
 const EncounterMapScreenPath := "res://scripts/ui/encounter_map_screen.gd"
 const SettingsScreenPath := "res://scripts/ui/settings_screen.gd"
 const SettingsStoreScript = preload("res://scripts/ui/settings_store.gd")
+const OnlineRoomScreenScript = preload("res://scripts/ui/online_room_screen.gd")
 
 var _failed := false
 
@@ -21,6 +22,13 @@ func _init() -> void:
 		_test_map(map_script.new())
 	if settings_script != null:
 		_test_settings(settings_script.new())
+	var online = OnlineRoomScreenScript.new()
+	online.set_state("QUEUED", {}, "ticket-a")
+	_expect(online.find_child("PollOnline", true, false) != null, "queued online state must expose a match polling action")
+	online.set_state("MATCHED", { "room_id": "room-a", "players": ["p1", "p2"], "max_players": 8, "phase": "PREPARE", "lease": { "fencing_token": 1 } })
+	_expect(online.find_child("OnlineStatus", true, false).text == "STATUS  MATCHED", "online room screen must show the authoritative room state")
+	_expect(online.find_child("ReadyOnline", true, false) != null and online.find_child("ReconnectOnline", true, false) != null, "online room screen must expose ready and reconnect actions")
+	online.free()
 	_finish()
 
 func _test_lobby(lobby: Control) -> void:

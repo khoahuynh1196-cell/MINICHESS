@@ -6,7 +6,7 @@
 - Debug export preset: `Android Debug`, ARM64, package `com.autobattler.alpha`.
 - UI regression: `res://test/mobile_ui_accessibility_test.gd` verifies portrait bounds, 44-pixel touch targets, visible disabled encounter nodes, and text labels for all controls.
 - A local debug APK was exported, aligned, signed, and verified on 2026-08-04 at `tmp/auto-battler-debug-gl-expand.apk`.
-- Current APK SHA-256: `37F4759CBC6D2A98D5A024E9955FCD2620CB5F9220EAE92488483177C6CC59BF`.
+- The 2026-08-04 APK SHA-256 was `37F4759CBC6D2A98D5A024E9955FCD2620CB5F9220EAE92488483177C6CC59BF` (historical).
 - `apksigner verify --verbose` passed with APK Signature Scheme v2 and v3.
 
 ## 2026-08-04 automated Android evidence
@@ -31,16 +31,20 @@ The remaining Android evidence requires a physical reference device for install,
 
 ## 2026-08-12 canonical 4x6 checkpoint
 
-- Desktop Godot capture and all 38 headless client tests pass against the
+- Desktop Godot capture and all 40 headless client tests pass against the
   canonical `production-4x6-0.1.0` ruleset.
 - Android export now succeeds with Godot 4.7.1 after installing the matching
   export template and configuring OpenJDK 17, Android platform 35, and
   build-tools 35.0.0. The canonical debug APK was signed and verified with APK
   Signature Scheme v2/v3 on 2026-08-12; SHA-256 is
-  `EDC295D8C2F0713B4A2C4B63A711681D7A2A63422BB2D69CACD6824C785DFC1F`.
+  `D2734E0FABD08C29D5B280382502A7181CD75FF26D1F03BA2678033EF5C909C4`.
 - Physical-device QA remains **blocked**, not passed: `adb devices` reports no
   connected device (the LDPlayer and SDK ADB clients are both empty). No touch,
   FPS, frame-time, texture-memory, loudness, or latency result is claimed.
+- Android 15/API 35 emulator smoke is recorded separately in
+  `docs/evidence/2026-08-12-android-emulator-qa.md`: install, launch, portrait
+  surface, screenshot, and diagnostic memory/frame samples pass. Emulator data
+  does not substitute for physical-device QA.
 - Follow-up must install the canonical APK on the agreed physical device, then
   record touch, renderer, frame-time, texture-memory, audio, and build-hash
   evidence here.

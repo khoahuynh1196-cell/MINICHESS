@@ -84,7 +84,7 @@
 - [x] Run the harness and capture the initial timeout/failure as the RED evidence.
 - [x] Make scene boot deterministic and add a versioned capture metadata sidecar with a bounded launcher timeout.
 - [x] Run capture at 1080x1920, inspect the output, and record metadata.
-- [x] Locate/verify Godot; export and sign the canonical APK (physical device evidence remains open).
+- [x] Locate/verify Godot; export/sign the canonical APK and run API 35 emulator smoke (physical device evidence remains open).
 
 ### Phase 4: Gate 2 release evidence
 
@@ -119,10 +119,10 @@
 - `MatchmakingQueue` accepts region/mode tickets and returns a cancellable match offer.
 - `MatchRoom` is a single-writer eight-seat state machine with lease/fencing token, phase deadlines, idempotent combat IDs, recovery, and results.
 
-- [ ] Write failing contract tests for auth, reconnect, queue cancellation, eight-seat filling, room recovery, and duplicate result suppression.
-- [ ] Run RED tests and verify no online implementation is accidentally reachable from the offline client.
-- [ ] Implement identity and versioned realtime protocol first; require canonical 4x6/rules/content/asset versions in every room.
-- [ ] Implement matchmaking and room lifecycle with deterministic server authority, then add Godot Queue/Match HUD/result screens.
+- [x] Write failing contract tests for auth, reconnect, queue cancellation, eight-seat filling, room recovery, and duplicate result suppression.
+- [x] Run RED tests and verify no online implementation is accidentally reachable from the offline client.
+- [x] Implement identity and versioned realtime protocol first; require canonical 4x6/rules/content/asset versions in every room.
+- [x] Implement the in-memory matchmaking and room lifecycle with deterministic server authority; Godot Queue/Match HUD now covers queue polling, ready, reconnect, and room status.
 - [ ] Run multi-client/bot tests, chaos-at-phase-boundary tests, and security boundary tests before calling online gates ready.
 
 ### Final verification and handoff

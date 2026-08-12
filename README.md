@@ -5,6 +5,13 @@ The current PvE demo is an eight-round, server-authoritative auto-battler on the
 items, traits, replay combat, rewards, existing Unique items, recap, collection,
 English/Vietnamese UI, and Android debug export.
 
+The online PvP foundation is available behind `ONLINE_TOKEN_SECRET`: guest
+auth, rotating refresh, ordered realtime envelopes, cancellable matchmaking,
+eight-seat room membership, queue polling, ready, and reconnect snapshot flow.
+It is an integration foundation only until Postgres/Redis adapters, multi-client
+soak/security tests, and physical Android QA are complete; see
+[online Gate 3–4 evidence](docs/evidence/gate-3-4-online.md).
+
 ## Run and verify
 
 ```powershell

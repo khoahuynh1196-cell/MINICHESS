@@ -29,8 +29,8 @@ truncated or shifted implicitly; use [the compatibility mapping](migrations/4x8-
 
 ## Release evidence
 
-- TypeScript: `pnpm run check` — game-core 115 tests, server 150 tests.
-- Godot: all 38 `client-godot/test/*_test.gd` scripts pass, including the Gate 2 stress harness.
+- TypeScript: `pnpm run check` — game-core 115 tests, server 161 tests.
+- Godot: all 40 `client-godot/test/*_test.gd` scripts pass, including the Gate 2 stress harness and online session contracts.
 - Capture: `tmp/adventure-combat-frame-1080x1920.png` and its JSON sidecar.
 - Gate 2 desktop stress: `gate2_stress_test.gd`, peak active pooled effect 1,
   64 reuses across deterministic 8×8 events.

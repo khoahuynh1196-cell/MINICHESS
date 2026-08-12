@@ -4,6 +4,9 @@ signal run_view_received(view: Dictionary)
 signal command_completed(result: Dictionary)
 signal request_failed(message: String)
 signal combat_events_received(events: Array)
+signal identity_received(identity: Dictionary)
+signal matchmaking_received(result: Dictionary)
+signal room_received(room: Dictionary)
 
 var base_url := "http://127.0.0.1:3000"
 var access_token := ""
@@ -14,6 +17,48 @@ func _init(next_base_url: String = "") -> void:
 
 func set_access_token(next_access_token: String) -> void:
 	access_token = next_access_token
+
+func guest_auth_request(device_id: String) -> Dictionary:
+	return _json_request("/v1/auth/guest", HTTPClient.METHOD_POST, { "device_id": device_id })
+
+func refresh_auth_request(refresh_token: String) -> Dictionary:
+	return _json_request("/v1/auth/refresh", HTTPClient.METHOD_POST, { "refresh_token": refresh_token })
+
+func matchmaking_request(region: String, mode: String) -> Dictionary:
+	return _json_request("/v1/matchmaking/tickets", HTTPClient.METHOD_POST, { "region": region, "mode": mode })
+
+func matchmaking_ticket_request(ticket_id: String) -> Dictionary:
+	return _json_request("/v1/matchmaking/tickets/%s" % ticket_id.uri_encode(), HTTPClient.METHOD_GET)
+
+func room_request(room_id: String) -> Dictionary:
+	return _json_request("/v1/rooms/%s" % room_id.uri_encode(), HTTPClient.METHOD_GET)
+
+func room_command_request(room_id: String, fencing_token: int, command_id: String, command_type: String = "READY") -> Dictionary:
+	return _json_request("/v1/rooms/%s/commands" % room_id.uri_encode(), HTTPClient.METHOD_POST, { "fencing_token": fencing_token, "command_id": command_id, "type": command_type })
+
+func realtime_request(room_id: String, envelope: Dictionary) -> Dictionary:
+	return _json_request("/v1/rooms/%s/realtime" % room_id.uri_encode(), HTTPClient.METHOD_POST, envelope)
+
+func realtime_snapshot_request(room_id: String) -> Dictionary:
+	return _json_request("/v1/rooms/%s/realtime/snapshot" % room_id.uri_encode(), HTTPClient.METHOD_GET)
+
+func begin_guest_auth(device_id: String) -> void:
+	_request(guest_auth_request(device_id), "online_identity", "")
+
+func queue_matchmaking(region: String, mode: String) -> void:
+	_request(matchmaking_request(region, mode), "online_matchmaking", "")
+
+func poll_matchmaking_ticket(ticket_id: String) -> void:
+	_request(matchmaking_ticket_request(ticket_id), "online_matchmaking", ticket_id)
+
+func fetch_online_room(room_id: String) -> void:
+	_request(room_request(room_id), "online_room", room_id)
+
+func send_room_ready(room_id: String, fencing_token: int, command_id: String) -> void:
+	_request(room_command_request(room_id, fencing_token, command_id), "online_room_command", room_id)
+
+func fetch_realtime_snapshot(room_id: String) -> void:
+	_request(realtime_snapshot_request(room_id), "online_snapshot", room_id)
 
 func create_run_request(run_id: String, content_version: String) -> Dictionary:
 	return _json_request("/v1/runs", HTTPClient.METHOD_POST, { "id": run_id, "content_version": content_version })
@@ -93,6 +138,19 @@ func _handle_response(result: int, response_code: int, _headers: PackedStringArr
 		return
 	var envelope: Dictionary = parsed
 	var data: Dictionary = envelope.get("data", {})
+	if action == "online_identity":
+		access_token = String(data.get("access_token", access_token))
+		identity_received.emit(data)
+		return
+	if action == "online_matchmaking":
+		matchmaking_received.emit(data)
+		return
+	if action == "online_room" or action == "online_room_command":
+		room_received.emit(data)
+		return
+	if action == "online_snapshot":
+		room_received.emit(data)
+		return
 	if action == "start_command":
 		command_completed.emit(data)
 		resolve_combat(run_id)

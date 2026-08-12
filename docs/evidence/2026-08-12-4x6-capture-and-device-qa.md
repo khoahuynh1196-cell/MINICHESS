@@ -14,7 +14,7 @@
 
 ## Godot regression
 
-All 38 scripts under `client-godot/test/*_test.gd` passed with the Compatibility
+All 40 scripts under `client-godot/test/*_test.gd` passed with the Compatibility
 renderer, including replay migration/rejection, arena geometry, animation
 priority, audio cue resolution, VFX pooling, Gate 2 stress, and mobile accessibility.
 
@@ -24,7 +24,7 @@ Godot 4.7.1 Android export is now **PASS**: the matching export template,
 Android platform 35, build-tools 35.0.0, and OpenJDK 17 produced and signed
 `tmp/auto-battler-canonical-4x6-debug.apk` on 2026-08-12. `apksigner verify`
 passed APK Signature Scheme v2/v3; SHA-256 is
-`EDC295D8C2F0713B4A2C4B63A711681D7A2A63422BB2D69CACD6824C785DFC1F`.
+`D2734E0FABD08C29D5B280382502A7181CD75FF26D1F03BA2678033EF5C909C4`.
 
 Physical-device QA is still **blocked**, not passed. Both the SDK and LDPlayer
 `adb` clients report no connected device. This checkpoint makes no claims about
