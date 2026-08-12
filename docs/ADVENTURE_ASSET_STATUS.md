@@ -1,10 +1,9 @@
 # Adventure Asset Production Status
-**Version 1.9.0** · Client presentation milestone · 2026-08-11 · `codex/adventure-4x8-today`
+**Version 2.0.0** - Client presentation milestone - 2026-08-12 - `codex/arena-4x6-runtime`
 
-> Follow-up asset checkpoint: the canonical art pack now includes four
-> mirrored 4×6 arena themes. Runtime 4×6 source migration is tracked in
-> [ARENA_4X6_SOURCE_MIGRATION_PLAN.md](./ARENA_4X6_SOURCE_MIGRATION_PLAN.md)
-> and is intentionally separate from this asset-only checkpoint.
+> The canonical Adventure presentation now uses four symmetry-normalized 4x6
+> arena themes with a footer-safe mobile composition. Runtime migration is
+> tracked in [ARENA_4X6_SOURCE_MIGRATION_PLAN.md](./ARENA_4X6_SOURCE_MIGRATION_PLAN.md).
 
 ---
 
@@ -97,9 +96,11 @@ This state gate is the Gate 2 preparation slice, not the complete combat present
 - The focused asset and hero VFX manifest tests pass after importing the generated PNGs.
 - The same test fails when any monster source mode contains a pending fallback marker.
 - Visual evidence command (desktop GL): `Godot --path client-godot --script res://tools/capture_adventure_frame.gd`
-- Latest visual evidence: `tmp/adventure-combat-frame-1080x1920.png` (1080 × 1920; 8 replay units; 4 × 8 arena, monster layer, combat HUD, VFX and replay controls inspected).
+- Latest visual evidence target: `tmp/adventure-combat-frame-1080x1920.png` (1080 x 1920; the existing file is historical 4 x 8 output and must be regenerated after the capture harness timeout is resolved).
 
 ## Changelog
+
+- 2.0.0 - Rebuilt the Adventure arena contract as 4x6/24 cells, added a shared TFT-style perspective projection and footer-safe mobile composition, and generated four matched v3 theme backgrounds.
 
 - 1.9.0 — Added the deterministic 1080 × 1920 Adventure frame capture harness and inspected the full combat presentation stack.
 - 1.8.0 — Added all eleven designed Adventure audio cues, manifest resolution, asset-first HeroSfxBus playback, and a procedural fallback regression.

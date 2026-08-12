@@ -14,6 +14,15 @@ export {
   type CombatPassive,
   type TargetingUnit,
 } from "./simulation/kernel.js";
+export {
+  BOARD_CELL_COUNT,
+  BOARD_COLUMNS,
+  BOARD_ROWS,
+  PLAYER_FORMATION_SIZE,
+  PLAYER_GLOBAL_START,
+  isEnemyPosition,
+  isPlayerPosition,
+} from "./simulation/board.js";
 export { createSeededRng, type SeededRng } from "./simulation/seeded-rng.js";
 export {
   validateEffectDefinition,

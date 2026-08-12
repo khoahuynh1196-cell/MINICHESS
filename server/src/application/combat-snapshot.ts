@@ -1,4 +1,4 @@
-import type { CombatEffect, CombatImmunity, CombatPassive, CombatSnapshot, CombatUnit, CompiledCombatTrigger, CompiledContentBundle } from "@auto-battler/game-core";
+import { PLAYER_GLOBAL_START, PLAYER_FORMATION_SIZE, type CombatEffect, type CombatImmunity, type CombatPassive, type CombatSnapshot, type CombatUnit, type CompiledCombatTrigger, type CompiledContentBundle } from "@auto-battler/game-core";
 import type { ItemInstance, LockedRoundSnapshot } from "./run-commands.js";
 
 const SCALE = 1_000;
@@ -300,8 +300,6 @@ function toCombatUnit(content: CompiledContentBundle, heroId: string, id: string
   };
 }
 
-const PLAYER_FORMATION_SIZE = 16;
-const PLAYER_GLOBAL_START = 16;
 
 export function buildCombatSnapshot(input: BuildCombatSnapshotInput): CombatSnapshot {
   if (input.lockedSnapshot.board.length > PLAYER_FORMATION_SIZE) throw new Error("GAME_RULE_VIOLATION");

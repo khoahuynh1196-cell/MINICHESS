@@ -17,7 +17,7 @@ describe("HTTP adapter", () => {
     const app = createHttpApp({ actorId: "actor-a", tenantId: "tenant-a" });
     const response = await app.inject({ method: "POST", url: "/v1/runs", payload: { id: "run-http", content_version: "alpha-0.3.0", tenant_id: "tenant-b" } });
     expect(response.statusCode).toBe(201);
-    expect(response.json()).toMatchObject({ data: { id: "run-http", contentVersion: "alpha-0.3.0", state: "PREPARE", revision: 0, gold: 8, round: 1, level: 3, experience: 0, experienceToNext: 10, boardCap: 3, shopOdds: { tier1: 55, tier2: 35, tier3: 10, tier4: 0, tier5: 0 }, shopLocked: false, bench: [], board: Array(16).fill(null) } });
+    expect(response.json()).toMatchObject({ data: { id: "run-http", contentVersion: "alpha-0.3.0", state: "PREPARE", revision: 0, gold: 8, round: 1, level: 3, experience: 0, experienceToNext: 10, boardCap: 3, shopOdds: { tier1: 55, tier2: 35, tier3: 10, tier4: 0, tier5: 0 }, shopLocked: false, bench: [], board: Array(12).fill(null) } });
     expect(response.json()).toMatchObject({
       request_id: expect.stringMatching(/^[0-9a-f-]{36}$/),
       server_time: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T/),
@@ -80,7 +80,7 @@ describe("HTTP adapter", () => {
         gold: 6,
         shop: [{ heroId: "H01", cost: 1 }],
         bench: [{ instanceId: "hero-bench", heroId: "H02", cost: 2 }],
-        board: [{ instanceId: "hero-board", heroId: "H03", cost: 3 }, ...Array(15).fill(null)],
+        board: [{ instanceId: "hero-board", heroId: "H03", cost: 3 }, ...Array(11).fill(null)],
         items: [{ instanceId: "item-read", itemId: "I01", kind: "normal" }],
       },
     });
@@ -249,7 +249,7 @@ describe("HTTP adapter", () => {
     expect(command.statusCode).toBe(200);
     expect(command.json()).toMatchObject({ data: { runRevision: 1, status: "APPLIED" } });
     expect(resume.statusCode).toBe(200);
-    expect(resume.json()).toMatchObject({ data: { state: "COMBAT", round: 1, board: [boardHero, ...Array(15).fill(null)] } });
+    expect(resume.json()).toMatchObject({ data: { state: "COMBAT", round: 1, board: [boardHero, ...Array(11).fill(null)] } });
     expect(resume.json()).not.toHaveProperty("data.lockedSnapshot");
     expect(resume.json()).not.toHaveProperty("data.commandResponses");
   });
@@ -354,14 +354,14 @@ describe("HTTP adapter", () => {
     const { createInMemoryRunRepository } = await import("../src/application/run-commands.js");
     const repository = createInMemoryRunRepository();
     const hero = { instanceId: "hero-http", heroId: "H01", cost: 1 };
-    await repository.save({ id: "run-move-http", tenantId: "tenant-a", contentVersion: "alpha-0.3.0", state: "PREPARE", revision: 0, gold: 8, commandResponses: {}, bench: [hero], board: Array(16).fill(null) });
+    await repository.save({ id: "run-move-http", tenantId: "tenant-a", contentVersion: "alpha-0.3.0", state: "PREPARE", revision: 0, gold: 8, commandResponses: {}, bench: [hero], board: Array(12).fill(null) });
     const app = createHttpApp({ actorId: "actor-a", tenantId: "tenant-a" }, repository);
 
-    const response = await app.inject({ method: "POST", url: "/v1/runs/run-move-http/commands", payload: { command_id: "cmd-move-http", expected_run_revision: 0, type: "MOVE_HERO", hero_instance_id: hero.instanceId, destination: 16 } });
+    const response = await app.inject({ method: "POST", url: "/v1/runs/run-move-http/commands", payload: { command_id: "cmd-move-http", expected_run_revision: 0, type: "MOVE_HERO", hero_instance_id: hero.instanceId, destination: 12 } });
 
     expect(response.statusCode).toBe(200);
     expect(response.json()).toMatchObject({ data: { runRevision: 1, status: "APPLIED" } });
-    await expect(repository.get("run-move-http", "tenant-a")).resolves.toMatchObject({ bench: [], board: [hero, ...Array(15).fill(null)] });
+    await expect(repository.get("run-move-http", "tenant-a")).resolves.toMatchObject({ bench: [], board: [hero, ...Array(11).fill(null)] });
   });
 
   it("does not allow a tenant to move a hero in another tenant's run", async () => {

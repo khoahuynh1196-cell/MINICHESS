@@ -8,18 +8,16 @@ const HeroVisualCatalogScript = preload("res://scripts/presentation/hero_visual_
 const FormationSlotButtonScript = preload("res://scripts/ui/formation_slot_button.gd")
 const ShopPanelScript = preload("res://scripts/ui/shop_panel.gd")
 const AssetManifestScript = preload("res://scripts/presentation/asset_manifest.gd")
+const ArenaProjectionScript = preload("res://scripts/presentation/arena_projection.gd")
 const AdventureTutorialScript = preload("res://scripts/ui/adventure_tutorial.gd")
 
 const PORTRAIT_RECT := Rect2(0.0, 0.0, 1080.0, 1920.0)
 const BOARD_COLUMNS := 4
-const BOARD_ROWS := 8
-const PLAYER_BOARD_ROWS := 4
+const BOARD_ROWS := 6
+const PLAYER_BOARD_ROWS := 3
 const SHOP_SLOT_COUNT := 5
 const BENCH_SLOT_COUNT := 8
 const BOARD_PANEL_RECT := Rect2(24.0, 140.0, 1032.0, 708.0)
-const BOARD_CELL_SIZE := Vector2(216.0, 74.0)
-const BOARD_CELL_STEP := Vector2(198.0, 68.0)
-const BOARD_FIRST_CENTER := Vector2(243.0, 263.0)
 
 signal buy_shop_slot(index: int)
 signal refresh_shop
@@ -120,7 +118,7 @@ func _add_board_art() -> void:
 	add_child(board_art)
 
 func _board_texture() -> Texture2D:
-	var texture := AssetManifestScript.resolve_biome_texture(_biome_id)
+	var texture := AssetManifestScript.resolve_arena_4x6_texture(_biome_id)
 	if texture != null:
 		return texture
 	var gradient := Gradient.new()
@@ -132,9 +130,21 @@ func _board_texture() -> Texture2D:
 	return fallback
 
 func _board_cell_rect(row: int, column: int) -> Rect2:
-	var center := BOARD_FIRST_CENTER + Vector2(column * BOARD_CELL_STEP.x, row * BOARD_CELL_STEP.y)
-	center.x += 16.0 if row % 2 == 1 else 0.0
-	return Rect2(center - BOARD_CELL_SIZE * 0.5, BOARD_CELL_SIZE)
+	var row_fraction := float(row) / BOARD_ROWS
+	var next_fraction := float(row + 1) / BOARD_ROWS
+	var left := ArenaProjectionScript.BOARD_TOP_LEFT.lerp(ArenaProjectionScript.BOARD_BOTTOM_LEFT, row_fraction)
+	var right := ArenaProjectionScript.BOARD_TOP_RIGHT.lerp(ArenaProjectionScript.BOARD_BOTTOM_RIGHT, row_fraction)
+	var next_left := ArenaProjectionScript.BOARD_TOP_LEFT.lerp(ArenaProjectionScript.BOARD_BOTTOM_LEFT, next_fraction)
+	var next_right := ArenaProjectionScript.BOARD_TOP_RIGHT.lerp(ArenaProjectionScript.BOARD_BOTTOM_RIGHT, next_fraction)
+	var top_left := left.lerp(right, float(column) / BOARD_COLUMNS)
+	var top_right := left.lerp(right, float(column + 1) / BOARD_COLUMNS)
+	var bottom_left := next_left.lerp(next_right, float(column) / BOARD_COLUMNS)
+	var bottom_right := next_left.lerp(next_right, float(column + 1) / BOARD_COLUMNS)
+	var min_x := minf(minf(top_left.x, top_right.x), minf(bottom_left.x, bottom_right.x))
+	var max_x := maxf(maxf(top_left.x, top_right.x), maxf(bottom_left.x, bottom_right.x))
+	var min_y := minf(minf(top_left.y, top_right.y), minf(bottom_left.y, bottom_right.y))
+	var max_y := maxf(maxf(top_left.y, top_right.y), maxf(bottom_left.y, bottom_right.y))
+	return Rect2(Vector2(min_x + 5.0, min_y + 5.0), Vector2(max_x - min_x - 10.0, max_y - min_y - 10.0))
 
 func _transparent_style() -> StyleBoxEmpty:
 	return StyleBoxEmpty.new()
@@ -215,7 +225,7 @@ func _header() -> void:
 func _board() -> void:
 	_panel("BoardPanel", BOARD_PANEL_RECT, Color(ThemeTokensScript.BOARD_DARK, 0.88))
 	_add_board_art()
-	_label("BoardHeading", "BATTLEFIELD  4 x 8" , Rect2(52.0, 157.0, 310.0, 26.0), 18, ThemeTokensScript.PARCHMENT)
+	_label("BoardHeading", "BATTLEFIELD  4 x 6" , Rect2(52.0, 157.0, 310.0, 26.0), 18, ThemeTokensScript.PARCHMENT)
 	_label("DeployedCount", "%d / %d" % [_deployed_count(), int(_view.get("boardCap", 0))], Rect2(900.0, 157.0, 105.0, 26.0), 18, ThemeTokensScript.GOLD)
 	_label("EnemyTerritory", "ENCOUNTER PREVIEW", Rect2(737.0, 196.0, 250.0, 24.0), 15, Color(ThemeTokensScript.ENEMY, 0.9))
 	_label("PlayerTerritory", "YOUR FORMATION", Rect2(80.0, 772.0, 260.0, 24.0), 15, Color(ThemeTokensScript.PLAYER, 0.95))
@@ -244,14 +254,14 @@ func _board() -> void:
 			var index := (row - PLAYER_BOARD_ROWS) * BOARD_COLUMNS + column
 			var hero = board[index] if index < board.size() else null
 			var selected := hero != null and String(hero.get("instanceId", "")) == _selected_hero_instance_id
-			var cell := _formation_slot("BoardCell%02d" % index, "", rect, ThemeTokensScript.GOLD if selected else ThemeTokensScript.PLAYER, String(hero.get("instanceId", "")) if hero != null else "", 16 + index)
+			var cell := _formation_slot("BoardCell%02d" % index, "", rect, ThemeTokensScript.GOLD if selected else ThemeTokensScript.PLAYER, String(hero.get("instanceId", "")) if hero != null else "", 12 + index)
 			_style_board_cell(cell, hero, selected)
 			cell.move_dropped.connect(func(instance_id: String, destination: int) -> void: formation_drag_dropped.emit(instance_id, destination))
 			cell.item_equip_dropped.connect(func(item_instance_id: String, hero_instance_id: String) -> void: item_equip_requested.emit(item_instance_id, hero_instance_id))
 			if hero == null:
-				cell.pressed.connect(_emit_formation_destination.bind(16 + index))
+				cell.pressed.connect(_emit_formation_destination.bind(12 + index))
 			else:
-				cell.pressed.connect(_emit_formation_hero.bind(String(hero.get("instanceId", "")), 16 + index))
+				cell.pressed.connect(_emit_formation_hero.bind(String(hero.get("instanceId", "")), 12 + index))
 
 func _tutorial() -> void:
 	var tutorial = AdventureTutorialScript.new()

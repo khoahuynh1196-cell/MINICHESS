@@ -5,6 +5,7 @@ const CombatHudScript = preload("res://scripts/ui/combat_hud.gd")
 const RunRecapScreenScript = preload("res://scripts/ui/run_recap_screen.gd")
 const BattleControllerScript = preload("res://scripts/battle_controller.gd")
 const ThemeTokensScript = preload("res://scripts/ui/theme_tokens.gd")
+const ArenaProjectionScript = preload("res://scripts/presentation/arena_projection.gd")
 
 var _failed := false
 
@@ -40,10 +41,10 @@ func _init() -> void:
 	controller.apply_event(CombatEventScript.from_dictionary({ "sequence": 2, "tick": 0, "type": "UNIT_SPAWNED", "source_unit_id": "player:H01:focus", "payload": { "side": "player", "position": 18, "max_hp": 100 } }))
 	controller.apply_event(CombatEventScript.from_dictionary({ "sequence": 3, "tick": 0, "type": "UNIT_SPAWNED", "source_unit_id": "enemy:PVE_08:focus", "payload": { "side": "enemy", "position": 3, "max_hp": 100 } }))
 	var boss = controller.unit_views["enemy:PVE_08:focus"]
-	_expect(controller.get_node_or_null("CombatCamera") != null and controller.camera_focus_position == boss.position, "boss arrival must use a presentation-only camera emphasis")
+	_expect(controller.get_node_or_null("CombatCamera") != null and controller.camera_focus_position == ArenaProjectionScript.camera_anchor(), "boss arrival must preserve the centered portrait arena camera")
 	var hp_before_cast: int = int(controller.unit_views["player:H01:focus"].hp)
 	controller.apply_event(CombatEventScript.from_dictionary({ "sequence": 4, "tick": 1, "type": "CAST_STARTED", "source_unit_id": "player:H01:focus", "target_unit_id": "enemy:PVE_08:focus", "payload": {} }))
-	_expect(controller.camera_focus_position == controller.unit_views["player:H01:focus"].position and controller.unit_views["player:H01:focus"].hp == hp_before_cast, "cast camera emphasis must not mutate authoritative simulation state")
+	_expect(controller.camera_focus_position == ArenaProjectionScript.camera_anchor() and controller.unit_views["player:H01:focus"].hp == hp_before_cast, "cast camera emphasis must not mutate authoritative simulation state")
 	controller.apply_event(CombatEventScript.from_dictionary({ "sequence": 5, "tick": 2, "type": "DAMAGE_APPLIED", "source_unit_id": "enemy:PVE_08:focus", "target_unit_id": "player:H01:focus", "payload": { "amount": 10, "remaining_hp": 90 } }))
 	var vfx_pool = controller.get_node_or_null("CombatVfxPool")
 	_expect(vfx_pool != null and vfx_pool.last_route == "damage", "controller must forward damage events to the pooled presentation VFX")

@@ -41,7 +41,7 @@ func request_return_to_bench(hero_instance_id: String, bench_slot: int, run_stat
 	return true
 
 func _is_formation_destination(destination: int) -> bool:
-	return destination >= 16 and destination <= 31
+	return destination >= 12 and destination <= 23
 
 func _is_bench_destination(destination: int) -> bool:
 	return destination >= 0 and destination < 8

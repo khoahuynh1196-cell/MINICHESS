@@ -16,7 +16,7 @@ describe("combat snapshot adapter", () => {
       content,
       lockedSnapshot: {
         runId: "run-h15-summon", contentVersion: "alpha-0.3.0", round: 1,
-        board: [{ instanceId: "h15", heroId: "H15", cost: 1 }, ...Array(15).fill(null)],
+        board: [{ instanceId: "h15", heroId: "H15", cost: 1 }, ...Array(11).fill(null)],
       },
       combatId: "combat-h15-summon", combatSeed: "seed-h15-summon", rulesetVersion: "alpha-0.3.0",
     });
@@ -27,7 +27,7 @@ describe("combat snapshot adapter", () => {
       maxTicks: 11,
       units: snapshot.units.map((unit) => {
         if (unit.id === "player:h15") {
-          return { ...unit, position: 16, attackSpeed: 0, startingMana: 100_000, maxMana: 100_000 };
+          return { ...unit, position: 12, attackSpeed: 0, startingMana: 100_000, maxMana: 100_000 };
         }
         const position = enemyIndex === 0 ? 4 : 7;
         enemyIndex += 1;
@@ -51,7 +51,7 @@ describe("combat snapshot adapter", () => {
         runId: "run-player-half-snapshot", contentVersion: "alpha-0.3.0", round: 1,
         board: [
           { instanceId: "first-slot", heroId: "H01", cost: 1 },
-          ...Array(14).fill(null),
+          ...Array(10).fill(null),
           { instanceId: "last-slot", heroId: "H02", cost: 2 },
         ],
       },
@@ -59,8 +59,8 @@ describe("combat snapshot adapter", () => {
     });
 
     expect(snapshot.units.filter((unit) => unit.side === "player").map((unit) => ({ id: unit.id, position: unit.position }))).toEqual([
-      { id: "player:first-slot", position: 16 },
-      { id: "player:last-slot", position: 31 },
+      { id: "player:first-slot", position: 12 },
+      { id: "player:last-slot", position: 23 },
     ]);
   });
 
@@ -74,7 +74,7 @@ describe("combat snapshot adapter", () => {
       content,
       lockedSnapshot: {
         runId: "run-oversized-formation", contentVersion: "alpha-0.3.0", round: 1,
-        board: [...Array(16).fill(null), { instanceId: "outside-board", heroId: "H01", cost: 1 }],
+        board: [...Array(12).fill(null), { instanceId: "outside-board", heroId: "H01", cost: 1 }],
       },
       combatId: "combat-oversized-formation", combatSeed: "seed-oversized", rulesetVersion: "alpha-rules-0.3.0",
     })).toThrow("GAME_RULE_VIOLATION");

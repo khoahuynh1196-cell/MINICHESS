@@ -1,13 +1,12 @@
 import Fastify from "fastify";
 import { randomUUID } from "node:crypto";
-import type { CompiledContentBundle } from "@auto-battler/game-core";
+import { PLAYER_FORMATION_SIZE, type CompiledContentBundle } from "@auto-battler/game-core";
 import { applyRunCommand, createInMemoryRunRepository, createRun, progressionForRun, type RunRecord, type RunRecap, type RunRepository, type ShopGenerator } from "../application/run-commands.js";
 import { shopOddsForLevel, type ShopTierOdds } from "../application/shop-pool.js";
 import type { RewardSelection } from "../application/reward-selection.js";
 import { resolveRunCombat } from "../application/resolve-run-combat.js";
 
 type PublicRunView = Pick<RunRecord, "id" | "contentVersion" | "state" | "round" | "revision" | "gold" | "health" | "shop" | "shopLocked" | "bench" | "board" | "items" | "freeRefreshes" | "roundRewardPlan" | "rewardHeroes" | "recap"> & ReturnType<typeof progressionForRun> & { readonly shopOdds: ShopTierOdds };
-const PLAYER_FORMATION_SIZE = 16;
 
 export interface ContentManifestRepository {
   getByVersion(version: string): Promise<CompiledContentBundle | undefined>;

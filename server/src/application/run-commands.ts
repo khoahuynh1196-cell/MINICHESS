@@ -1,5 +1,5 @@
 import { randomBytes } from "node:crypto";
-import type { CombatEvent } from "@auto-battler/game-core";
+import { PLAYER_FORMATION_SIZE, PLAYER_GLOBAL_START, type CombatEvent } from "@auto-battler/game-core";
 import { claimResolvedRoundReward } from "./round-lifecycle.js";
 import type { RoundRewardPlan, RewardSelection } from "./reward-selection.js";
 import { cloneShopPool, returnHeroToShopPool, returnShopSlots, type ShopPool, type ShopSlot } from "./shop-pool.js";
@@ -140,8 +140,6 @@ export interface CreateRunSetup {
 const ALPHA_RULESET_VERSION = "alpha-rules-0.3.0";
 const INITIAL_PLAYER_LEVEL = 3;
 const MAX_PLAYER_LEVEL = 10;
-const PLAYER_FORMATION_SIZE = 16;
-const PLAYER_GLOBAL_START = 16;
 const MAX_PLAYER_BOARD_CAP = 8;
 const XP_PER_PURCHASE = 4;
 const XP_TO_NEXT_BY_LEVEL = [0, 2, 6, 10, 20, 36, 56, 80, 100, 100, 0] as const;

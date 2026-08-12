@@ -3,6 +3,7 @@ extends Node2D
 const UnitViewScript = preload("res://scripts/unit_view.gd")
 const MonsterViewScript = preload("res://scripts/presentation/monster_view.gd")
 const AssetManifestScript = preload("res://scripts/presentation/asset_manifest.gd")
+const ArenaProjectionScript = preload("res://scripts/presentation/arena_projection.gd")
 const ReplayLoaderScript = preload("res://scripts/replay_loader.gd")
 const ReplaySchedulerScript = preload("res://scripts/replay_scheduler.gd")
 const CombatEventScript = preload("res://scripts/combat_event.gd")
@@ -25,11 +26,10 @@ const CombatVfxPoolScript = preload("res://scripts/combat_vfx_pool.gd")
 const RunRecapScreenScript = preload("res://scripts/ui/run_recap_screen.gd")
 const AdventureEncounterCatalogScript = preload("res://scripts/presentation/adventure_encounter_catalog.gd")
 const BOARD_COLUMNS := 4
-const BOARD_ROWS := 8
-const CELL_WIDTH := 250.0
-const CELL_HEIGHT := 120.0
-const BOARD_ORIGIN := Vector2(40.0, 190.0)
-const BOARD_RECT := Rect2(BOARD_ORIGIN, Vector2(CELL_WIDTH * BOARD_COLUMNS, CELL_HEIGHT * BOARD_ROWS))
+const BOARD_ROWS := 6
+const BOARD_CELL_COUNT := BOARD_COLUMNS * BOARD_ROWS
+const PLAYER_GLOBAL_START := BOARD_CELL_COUNT / 2
+const BOARD_RECT := Rect2(Vector2(132.0, 176.0), Vector2(816.0, 652.0))
 const COMBAT_NOTICE_BODY_FONT_SIZE := 20.0
 const COMBAT_NOTICE_BODY_LINES := 4.0
 const COMBAT_NOTICE_VERTICAL_PADDING := 44.0
@@ -179,7 +179,7 @@ func restart_replay() -> void:
 func set_playback_speed(speed: float) -> void:
 	_playback_speed = speed
 	_bind_combat_hud()
-	_set_status("Replaying combat at %s×" % speed)
+	_set_status("Replaying combat at %sx" % speed)
 
 func toggle_pause() -> void:
 	_paused = not _paused
@@ -414,7 +414,7 @@ func request_move_bench_hero(hero_instance_id: String, destination: int) -> void
 	request_move_hero(hero_instance_id, destination)
 
 func request_move_hero(hero_instance_id: String, destination: int) -> void:
-	if run_state.state != "PREPARE" or not ((destination >= 0 and destination < 8) or (destination >= 16 and destination < 32)) or not _has_hero_instance(hero_instance_id):
+	if run_state.state != "PREPARE" or not ((destination >= 0 and destination < 8) or (destination >= 12 and destination < 24)) or not _has_hero_instance(hero_instance_id):
 		return
 	command_requested.emit(build_command_payload("client-move-%s-%s" % [run_state.revision, hero_instance_id], "MOVE_HERO", { "hero_instance_id": hero_instance_id, "destination": destination }))
 
@@ -654,16 +654,10 @@ func _ensure_combat_presentation() -> void:
 		camera_focus_position = combat_camera.position
 
 func _emphasize_camera(unit) -> void:
-	if unit == null:
-		return
 	_ensure_combat_presentation()
-	camera_focus_position = unit.position
+	camera_focus_position = ArenaProjectionScript.camera_anchor()
 	combat_camera.position = camera_focus_position
-	combat_camera.zoom = Vector2(1.08, 1.08)
-	if bool(settings.get("reduced_motion", false)):
-		return
-	var reset := create_tween()
-	reset.tween_property(combat_camera, "zoom", Vector2.ONE, 0.22)
+	combat_camera.zoom = Vector2.ONE
 
 func _hero_id_from_unit_id(unit_id: String) -> String:
 	var instance_id := unit_id.trim_prefix("player:")
@@ -714,18 +708,19 @@ func _biome_for_monster(monster_id: String) -> String:
 	return "meadow"
 
 func _show_biome_layer(biome_id: String) -> void:
-	var texture := AssetManifestScript.resolve_biome_texture(biome_id)
+	var texture := AssetManifestScript.resolve_arena_4x6_texture(biome_id)
 	if texture == null:
 		return
 	var layer := get_node_or_null("BiomeLayer") as Sprite2D
 	if layer == null:
 		layer = Sprite2D.new()
 		layer.name = "BiomeLayer"
-		layer.position = BOARD_RECT.get_center()
+		layer.position = ArenaProjectionScript.texture_position()
 		layer.z_index = -1
 		add_child(layer)
 	layer.texture = texture
-	layer.scale = Vector2(BOARD_RECT.size.x / texture.get_size().x, BOARD_RECT.size.y / texture.get_size().y)
+	layer.position = ArenaProjectionScript.texture_position()
+	layer.scale = ArenaProjectionScript.texture_scale(texture.get_size())
 
 func board_tile_fill_color() -> Color:
 	return Color(0.10, 0.15, 0.23, 0.42)
@@ -1069,7 +1064,7 @@ func _board_hero_count() -> int:
 func _place_first_bench_hero(board_index: int) -> void:
 	if run_state.bench.is_empty():
 		return
-	request_move_bench_hero(String(run_state.bench.front().get("instanceId", "")), 16 + board_index)
+	request_move_bench_hero(String(run_state.bench.front().get("instanceId", "")), PLAYER_GLOBAL_START + board_index)
 
 func _place_hero_on_first_open_tile(hero_instance_id: String) -> void:
 	var destination := _first_open_board_destination()
@@ -1095,7 +1090,7 @@ func _build_combat_screen(root: Control) -> void:
 		reward_button.name = "ReviewRoundRewards"
 		reward_button.tooltip_text = "Open the authoritative rewards after watching this combat replay."
 		panel.add_child(reward_button)
-	var notice := _screen_panel(root, Rect2(layout.message), "4 x 8 ARENA")
+	var notice := _screen_panel(root, Rect2(layout.message), "4 x 6 TFT ARENA")
 	notice.get_parent().name = "CombatBoardMessage"
 	var label := Label.new()
 	label.text = "Enemy ranks occupy the upper half. Your squad holds the lower half."
@@ -1111,7 +1106,7 @@ func _build_combat_screen(root: Control) -> void:
 
 func combat_layout() -> Dictionary:
 	var margin := 24.0
-	var controls := Rect2(margin, BOARD_RECT.end.y + margin, 1080.0 - margin * 2.0, 170.0)
+	var controls := Rect2(margin, ArenaProjectionScript.ui_bottom() + margin, 1080.0 - margin * 2.0, 170.0)
 	var message := Rect2(margin, controls.end.y + 16.0, 1080.0 - margin * 2.0, combat_notice_height())
 	return { "controls": controls, "message": message }
 
@@ -1154,7 +1149,7 @@ func _authoritative_recap_snapshot() -> Dictionary:
 	return run_state.recap.duplicate(true)
 
 func _build_collection_screen(root: Control) -> void:
-	var panel := _screen_panel(root, Rect2(40.0, 165.0, 1000.0, 1550.0), "20 current heroes  •  no reward-only Unique heroes")
+	var panel := _screen_panel(root, Rect2(40.0, 165.0, 1000.0, 1550.0), "20 current heroes - no reward-only Unique heroes")
 	var cards := GridContainer.new()
 	cards.columns = 2
 	cards.add_theme_constant_override("h_separation", ThemeTokensScript.TOUCH_GAP)
@@ -1179,7 +1174,7 @@ func _build_collection_screen(root: Control) -> void:
 			continue
 		if _collection_role_filter != "all" and String(profile.role) != _collection_role_filter:
 			continue
-		cards.add_child(_mobile_button(hero_id + "  •  View profile", func() -> void: _set_status("%s profile selected" % hero_id), ThemeTokensScript.STONE_RAISED))
+		cards.add_child(_mobile_button(hero_id + " - View profile", func() -> void: _set_status("%s profile selected" % hero_id), ThemeTokensScript.STONE_RAISED))
 	panel.add_child(_mobile_button("Back", func() -> void: show_mobile_screen("lobby"), ThemeTokensScript.GOLD))
 
 func collection_hero_ids() -> Array[String]:
@@ -1276,16 +1271,16 @@ func _refresh_run_ui() -> void:
 		return
 	if run_state.run_id.is_empty():
 		run_label.text = "Run: not connected"
-		shop_label.text = "Shop: —"
-		bench_label.text = "Bench: —"
-		item_label.text = "Items: —"
+		shop_label.text = "Shop: empty"
+		bench_label.text = "Bench: empty"
+		item_label.text = "Items: empty"
 		refresh_shop_button.disabled = true
 		start_round_button.disabled = true
 		reward_label.text = "Rewards: unavailable"
 		_refresh_action_buttons()
 		_refresh_reward_buttons()
 		return
-	run_label.text = "Round %d · %s · %d gold · %d HP" % [run_state.round, run_state.state, run_state.gold, run_state.health]
+	run_label.text = "Round %d - %s - %d gold - %d HP" % [run_state.round, run_state.state, run_state.gold, run_state.health]
 	shop_label.text = "Shop: %s" % _slots_text(run_state.shop, "heroId")
 	bench_label.text = "Bench: %s" % _slots_text(run_state.bench, "heroId")
 	item_label.text = "Items: %s" % _slots_text(run_state.items, "itemId")
@@ -1340,7 +1335,7 @@ func _refresh_action_buttons() -> void:
 func _first_open_board_destination() -> int:
 	for board_index in run_state.board.size():
 		if run_state.board[board_index] == null:
-			return 16 + board_index
+			return PLAYER_GLOBAL_START + board_index
 	return -1
 
 func _refresh_item_buttons() -> void:
@@ -1367,7 +1362,7 @@ func _refresh_item_buttons() -> void:
 			continue
 		for hero in heroes:
 			var equip_button := Button.new()
-			equip_button.text = "Equip %s → %s" % [item_id, String(hero.get("heroId", "?"))]
+			equip_button.text = "Equip %s -> %s" % [item_id, String(hero.get("heroId", "?"))]
 			equip_button.disabled = run_state.state != "PREPARE"
 			if not equip_button.disabled:
 				equip_button.pressed.connect(request_equip_item.bind(item_instance_id, String(hero.get("instanceId", ""))))
@@ -1415,14 +1410,17 @@ func _slots_text(slots: Array, key: String) -> String:
 		return "empty"
 	var labels: Array[String] = []
 	for slot in slots:
-		labels.append("—" if slot == null else String(slot.get(key, "?")))
+		labels.append("empty" if slot == null else String(slot.get(key, "?")))
 	return ", ".join(labels)
 
 func _draw() -> void:
 	draw_rect(BOARD_RECT, board_base_color(), true)
-	for row in BOARD_ROWS:
-		for column in BOARD_COLUMNS:
-			var cell := Rect2(BOARD_ORIGIN.x + column * CELL_WIDTH, BOARD_ORIGIN.y + row * CELL_HEIGHT, CELL_WIDTH, CELL_HEIGHT)
-			draw_rect(cell.grow(-6.0), board_tile_fill_color(), true)
-			draw_rect(cell.grow(-6.0), Color("#334155"), false, 2.0)
-	draw_string(ThemeDB.fallback_font, Vector2(24.0, 176.0), "AUTO BATTLER ALPHA  •  REPLAY BOARD", HORIZONTAL_ALIGNMENT_LEFT, -1, 22, Color("#93c5fd"))
+	for index in BOARD_CELL_COUNT:
+		var polygon := ArenaProjectionScript.cell_polygon(index)
+		if polygon.is_empty():
+			continue
+		draw_colored_polygon(polygon, board_tile_fill_color())
+		draw_polyline(PackedVector2Array([polygon[0], polygon[1], polygon[2], polygon[3], polygon[0]]), Color("#334155"), 2.0, true)
+	draw_line(ArenaProjectionScript.BOARD_TOP_LEFT, ArenaProjectionScript.BOARD_TOP_RIGHT, Color("#f9c74f", 0.35), 2.0, true)
+	draw_line(ArenaProjectionScript.BOARD_BOTTOM_LEFT, ArenaProjectionScript.BOARD_BOTTOM_RIGHT, Color("#f9c74f", 0.35), 2.0, true)
+	draw_string(ThemeDB.fallback_font, Vector2(24.0, 176.0), "AUTO BATTLER ALPHA 4x6 TFT REPLAY", HORIZONTAL_ALIGNMENT_LEFT, -1, 22, Color("#93c5fd"))

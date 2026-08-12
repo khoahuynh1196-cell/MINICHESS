@@ -21,10 +21,15 @@ func _init() -> void:
 		var bench_button := _button(screen, "BenchSlot%02d" % index)
 		_expect(bench_button.find_child("BenchEmpty", true, false) != null and bench_button.tooltip_text == "Empty bench slot %d" % (index + 1) and bench_button.get_rect().end.x <= 1080.0, "Empty bench controls must expose a compact, accessible empty-slot affordance")
 	var board_terrain := screen.find_child("BoardTerrain", true, false) as TextureRect
-	_expect(_board_cell_count(screen) == 16 and _enemy_cell_count(screen) == 16 and _button(screen, "BoardCell15") != null and _button(screen, "BoardCell16") == null, "Prepare must render a 4x8 battlefield with 16 legal player-half board slots")
+	_expect(_board_cell_count(screen) == 12 and _enemy_cell_count(screen) == 12 and _button(screen, "BoardCell11") != null and _button(screen, "BoardCell12") == null, "Prepare must render a 4x6 battlefield with 12 legal player-half board slots")
 	_expect(_label(screen, "EnemyTerritory") == "ENCOUNTER PREVIEW", "Prepare must label the enemy half as an encounter preview when manifest monster art is rendered")
-	var final_board_cell := _button(screen, "BoardCell15")
-	_expect(final_board_cell != null and final_board_cell.destination == 31, "BoardCell15 must map to global player target 31")
+	var final_board_cell := _button(screen, "BoardCell11")
+	_expect(final_board_cell != null and final_board_cell.destination == 23, "BoardCell11 must map to global player target 23")
+	var first_board_cell := _button(screen, "BoardCell00")
+	_expect(first_board_cell != null and final_board_cell != null and first_board_cell.size.x < final_board_cell.size.x, "Prepare board rows must use the shared TFT perspective instead of a flat equal-width grid")
+	var shop_panel := screen.find_child("ShopPanel", true, false) as Control
+	var action_rail := screen.find_child("ActionRail", true, false) as Control
+	_expect(shop_panel != null and action_rail != null and shop_panel.position.y > 850.0 and action_rail.position.y > shop_panel.position.y + shop_panel.size.y, "Prepare must reserve a clear footer below the board for shop and primary actions")
 	_expect(board_terrain != null and board_terrain.texture != null, "Prepare must render registered board art or a visible fallback")
 	var biome_origins: Dictionary = {}
 	for biome_id in ["meadow", "ruins", "frost_keep", "ember_citadel"]:
@@ -32,16 +37,16 @@ func _init() -> void:
 		biome_view["biome"] = biome_id
 		screen.bind_run(biome_view)
 		var biome_terrain := screen.find_child("BoardTerrain", true, false) as TextureRect
-		biome_origins[biome_id] = _texture_region_origin(biome_terrain.texture if biome_terrain != null else null)
+		biome_origins[biome_id] = biome_terrain.texture.resource_path if biome_terrain != null and biome_terrain.texture != null else ""
 	_expect(biome_origins["meadow"] != biome_origins["ruins"] and biome_origins["ruins"] != biome_origins["frost_keep"] and biome_origins["frost_keep"] != biome_origins["ember_citadel"], "Prepare must select a distinct manifest board quadrant for each Adventure biome")
-	_expect(_texture_region_origin(AssetManifestScript.resolve_biome_texture("meadow")) != _texture_region_origin(AssetManifestScript.resolve_biome_texture("ruins")), "manifest biome board regions must remain distinct")
+	_expect(AssetManifestScript.resolve_arena_4x6_texture("meadow").resource_path != AssetManifestScript.resolve_arena_4x6_texture("ruins").resource_path, "manifest biome board regions must remain distinct")
 	var preview_view := _prepare_view()
 	preview_view["enemyPreview"] = [{ "position": 3, "monsterId": "meadow" }, { "position": 5, "monsterId": "meadow" }]
 	screen.bind_run(preview_view)
 	var preview_sprite := screen.find_child("MonsterPreview", true, false) as Sprite2D
 	_expect(preview_sprite != null and preview_sprite.texture != null and preview_sprite.texture.resource_path == "res://assets/monsters/meadow-moss-goblin-scout-v1.png", "Prepare must render a manifest-backed enemy preview instead of a fog-of-war marker when encounter data is available")
 	var tutorial := screen.find_child("AdventureTutorial", true, false) as Control
-	var bottom_board_cell := _button(screen, "BoardCell15")
+	var bottom_board_cell := _button(screen, "BoardCell11")
 	_expect(tutorial != null and bottom_board_cell != null and not tutorial.get_rect().intersects(bottom_board_cell.get_rect()), "Tutorial must not overlap or intercept the bottom formation row")
 	_expect(screen.find_child("TraitBottomSheet", true, false) != null, "Prepare must render trait chips in a bottom sheet")
 	_expect(_trait_chip_texts(screen).any(func(text): return text.contains("Cat  1 / 6")), "trait chips must count board heroes only, never matching bench heroes")
@@ -75,13 +80,13 @@ func _init() -> void:
 		screen.connect("collection_requested", func() -> void: interaction_intents.append(["collection"]))
 	_expect(screen.has_signal("formation_hero_pressed") and screen.has_signal("formation_destination_selected") and screen.has_signal("item_selected") and screen.has_signal("collection_requested"), "Prepare must expose formation, item, and collection intents")
 	_button(screen, "BoardCell00").pressed.emit()
-	_button(screen, "BoardCell15").pressed.emit()
+	_button(screen, "BoardCell11").pressed.emit()
 	var item_button := _button(screen, "InventoryItem0")
 	_expect(item_button != null, "Prepare inventory must expose an accessible item action")
 	if item_button != null:
 		item_button.pressed.emit()
 	_button(screen, "ViewCollection").pressed.emit()
-	_expect(interaction_intents == [["hero", "board-h01", 16], ["destination", 31], ["item", "item-1"], ["collection"]], "Prepare interaction controls must emit typed intents without mutating the run")
+	_expect(interaction_intents == [["hero", "board-h01", 12], ["destination", 23], ["item", "item-1"], ["collection"]], "Prepare interaction controls must emit typed intents without mutating the run")
 	var dismiss_tutorial := _button(screen, "DismissTutorialCue")
 	if dismiss_tutorial != null:
 		dismiss_tutorial.pressed.emit()
@@ -116,7 +121,7 @@ func _init() -> void:
 
 func _prepare_view() -> Dictionary:
 	var board: Array = []
-	board.resize(16)
+	board.resize(12)
 	board.fill(null)
 	board[0] = { "instanceId": "board-h01", "heroId": "H01", "stars": 1 }
 	return {

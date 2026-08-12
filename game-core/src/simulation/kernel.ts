@@ -1,11 +1,9 @@
 import { createSeededRng } from "./seeded-rng.js";
+import { BOARD_CELL_COUNT, BOARD_COLUMNS, BOARD_ROWS, isEnemyPosition, isPlayerPosition } from "./board.js";
 import { validateEffectDefinition, type CombatEffect, type CombatStat } from "../effects/definitions.js";
 import type { CombatTriggerKind } from "../content/types.js";
 
 export const SCALE = 1_000;
-const BOARD_COLUMNS = 4;
-const BOARD_ROWS = 8;
-const BOARD_CELL_COUNT = BOARD_COLUMNS * BOARD_ROWS;
 const MAX_COMBAT_TICKS = 700;
 
 export type CombatSide = "player" | "enemy";
@@ -229,8 +227,8 @@ function assertUnit(unit: CombatUnit): void {
   if (!Number.isSafeInteger(unit.position) || unit.position < 0 || unit.position >= BOARD_CELL_COUNT) {
     throw new Error(`Invalid board position for ${unit.id}`);
   }
-  if ((unit.side === "player" && unit.position < BOARD_CELL_COUNT / 2)
-    || (unit.side === "enemy" && unit.position >= BOARD_CELL_COUNT / 2)) {
+  if ((unit.side === "player" && !isPlayerPosition(unit.position))
+    || (unit.side === "enemy" && !isEnemyPosition(unit.position))) {
     throw new Error(`Invalid board position for ${unit.id}`);
   }
   assertSafeInteger(unit.maxHp, `maxHp for ${unit.id}`, 1);

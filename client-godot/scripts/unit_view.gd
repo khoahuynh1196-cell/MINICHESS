@@ -2,10 +2,7 @@ extends Node2D
 
 const HeroRigScript = preload("res://scripts/presentation/hero_rig_2d.gd")
 const AssetManifestScript = preload("res://scripts/presentation/asset_manifest.gd")
-const BOARD_COLUMNS := 4
-const CELL_WIDTH := 250.0
-const CELL_HEIGHT := 120.0
-const BOARD_ORIGIN := Vector2(40.0, 190.0)
+const ArenaProjectionScript = preload("res://scripts/presentation/arena_projection.gd")
 
 var grid_index := 0
 var hp := 100000
@@ -192,7 +189,7 @@ func _animation_priority(state: String) -> int:
 			return 0
 
 func _update_position() -> void:
-	position = BOARD_ORIGIN + Vector2((grid_index % BOARD_COLUMNS + 0.5) * CELL_WIDTH, (grid_index / BOARD_COLUMNS + 0.5) * CELL_HEIGHT)
+	position = ArenaProjectionScript.cell_center(grid_index)
 
 func _draw() -> void:
 	var body_color := Color("#e76f51") if side == "enemy" else Color("#4cc9f0")

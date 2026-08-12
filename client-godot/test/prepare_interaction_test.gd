@@ -1,4 +1,4 @@
-extends SceneTree
+﻿extends SceneTree
 
 const BattleControllerScript = preload("res://scripts/battle_controller.gd")
 const FormationSlotButtonScript = preload("res://scripts/ui/formation_slot_button.gd")
@@ -21,18 +21,18 @@ func _init() -> void:
 	if has_drag_controls:
 		var initial_board: Array = controller.run_state.board.duplicate(true)
 		var initial_bench: Array = controller.run_state.bench.duplicate(true)
-		board_destination = controller.prepare_screen.find_child("BoardCell15", true, false)
-		board_destination._drop_data(Vector2.ZERO, { "hero_instance_id": "board-a", "origin": 16 })
-		_expect(_move_command(commands, "board-a", 31), "dragging a board hero onto the final 4x8 board slot must bridge a board-to-board MOVE_HERO command")
+		board_destination = controller.prepare_screen.find_child("BoardCell11", true, false)
+		board_destination._drop_data(Vector2.ZERO, { "hero_instance_id": "board-a", "origin": 12 })
+		_expect(_move_command(commands, "board-a", 23), "dragging a board hero onto the final 4x6 board slot must bridge a board-to-board MOVE_HERO command")
 		_expect(controller.run_state.board == initial_board and controller.run_state.bench == initial_bench, "board-to-board drag must not mutate local run state before the authoritative response")
 		commands.clear()
 		bench_empty = controller.prepare_screen.find_child("BenchSlot02", true, false)
-		bench_empty._drop_data(Vector2.ZERO, { "hero_instance_id": "board-a", "origin": 16 })
+		bench_empty._drop_data(Vector2.ZERO, { "hero_instance_id": "board-a", "origin": 12 })
 		_expect(_move_command(commands, "board-a", 2), "dragging a board hero onto an empty bench slot must bridge a board-to-bench MOVE_HERO command")
 		_expect(controller.run_state.board == initial_board and controller.run_state.bench == initial_bench, "board-to-bench drag must not mutate local run state before the authoritative response")
 		commands.clear()
 		bench_occupied = controller.prepare_screen.find_child("BenchSlot00", true, false)
-		bench_occupied._drop_data(Vector2.ZERO, { "hero_instance_id": "board-a", "origin": 16 })
+		bench_occupied._drop_data(Vector2.ZERO, { "hero_instance_id": "board-a", "origin": 12 })
 		_expect(_move_command(commands, "board-a", 0), "dragging a board hero onto an occupied bench slot must bridge a MOVE_HERO command for server-authoritative resolution")
 		_expect(controller.run_state.board == initial_board and controller.run_state.bench == initial_bench, "occupied-bench drag must not mutate local run state before the authoritative response")
 	commands.clear()
@@ -42,7 +42,7 @@ func _init() -> void:
 	board_cell.pressed.emit()
 	var move_command: Dictionary = commands[0] if commands.size() > 0 else {}
 	_expect(String(move_command.get("type", "")) == "MOVE_HERO", "tap formation flow must emit a MOVE_HERO command")
-	_expect(int(move_command.get("destination", -1)) == 18, "formation command must preserve the global player-half destination")
+	_expect(int(move_command.get("destination", -1)) == 14, "formation command must preserve the global player-half destination")
 	controller.prepare_screen.find_child("InventoryItem0", true, false).pressed.emit()
 	controller.prepare_screen.find_child("BenchSlot00", true, false).pressed.emit()
 	var equip_command: Dictionary = commands[1] if commands.size() > 1 else {}
@@ -68,7 +68,7 @@ func _init() -> void:
 	commands.clear()
 	var combat_view := _run_view("COMBAT")
 	controller.apply_run_view(combat_view)
-	controller.request_drag_formation_move("board-a", 31)
+	controller.request_drag_formation_move("board-a", 23)
 	_expect(commands.is_empty(), "the drag command bridge must reject formation moves during COMBAT")
 	_expect(controller.run_state.board == combat_view.board and controller.run_state.bench == combat_view.bench, "a rejected COMBAT drag must not mutate local run state")
 	controller.free()
@@ -88,7 +88,7 @@ func _run_view(state: String) -> Dictionary:
 
 func _board() -> Array:
 	var board: Array = []
-	board.resize(16)
+	board.resize(12)
 	board.fill(null)
 	board[0] = { "instanceId": "board-a", "heroId": "H03", "stars": 1 }
 	board[1] = { "instanceId": "board-b", "heroId": "H04", "stars": 1 }
